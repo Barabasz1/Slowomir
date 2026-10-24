@@ -9,7 +9,7 @@ interface Command {
     /**
      * Executes the encapsulated logic and returns the outcome.
      *
-     * @return A [CommandResult] indicating whether the execution succeeded, failed, or encountered an error.
+     * @return A [CommandResult] indicating whether the execution succeeded, failed or encountered an error.
      */
     fun execute(): CommandResult
 

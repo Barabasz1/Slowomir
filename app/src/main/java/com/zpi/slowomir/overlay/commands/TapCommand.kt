@@ -7,6 +7,13 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import javax.inject.Provider
 
+/**
+ * A command that simulates a tap gesture at the specified screen coordinates.
+ *
+ * @param touchExecutorProvider A provider for the touch executor.
+ * @param x The x-coordinate of the tap location.
+ * @param y The y-coordinate of the tap location.
+ */
 class TapCommand @AssistedInject constructor(
     private val touchExecutorProvider: Provider<TouchExecutor?>,
     @Assisted("x") private val x: Float,
