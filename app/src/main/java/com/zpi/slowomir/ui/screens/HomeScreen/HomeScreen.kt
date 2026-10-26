@@ -1,5 +1,8 @@
 package com.zpi.slowomir.ui.screens.HomeScreen
 
+import android.content.Intent
+import android.provider.Settings
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -25,6 +28,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.zpi.slowomir.overlay.commands.CommandResult
 import com.zpi.slowomir.overlay.voice.VoiceUiState
+import androidx.core.net.toUri
 
 @Composable
 fun HomeScreen(
@@ -41,7 +45,7 @@ fun HomeScreen(
             inputText = ""
         }
     }
-
+    val context = LocalContext.current
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -49,6 +53,40 @@ fun HomeScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
+        Button(
+            onClick = {
+                val intent = Intent(
+                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    "package:${context.packageName}".toUri()
+                )
+                context.startActivity(intent)
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Enable Display Over Other Apps")
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Button(
+            onClick = {
+                context.startActivity(
+                    Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                )
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Enable Accessibility Service")
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Button(
+            onClick = { viewModel.toggleGrid() },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Turn On Grid")
+        }
         Text(
             text = "Tap Command Demo",
             style = MaterialTheme.typography.headlineMedium
@@ -129,3 +167,4 @@ private fun renderVoiceState(state: VoiceUiState): String {
         is VoiceUiState.Error -> "Error: ${state.message}"
     }
 }
+
