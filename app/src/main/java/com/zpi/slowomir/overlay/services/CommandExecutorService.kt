@@ -4,8 +4,10 @@ import android.accessibilityservice.AccessibilityService
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.view.accessibility.AccessibilityEvent
+import com.zpi.slowomir.overlay.executors.GridExecutor
 import com.zpi.slowomir.overlay.executors.TouchExecutor
 import com.zpi.slowomir.overlay.mediator.CommandMediator
+import com.zpi.slowomir.overlay.services.grid.GridService
 import com.zpi.slowomir.overlay.voice.VoiceSessionManager
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -32,6 +34,9 @@ class CommandExecutorService : AccessibilityService() {
     var touchExecutor: TouchExecutor? = null
         private set
 
+    var gridExecutor: GridExecutor? = null
+        private set
+
     companion object {
         var instance: CommandExecutorService? = null
             private set
@@ -39,6 +44,9 @@ class CommandExecutorService : AccessibilityService() {
 
     override fun onServiceConnected() {
         super.onServiceConnected()
+
+        gridExecutor = GridExecutor(GridService(this))
+        gridExecutor?.toggle()
 
         touchExecutor = TouchExecutor(this)
         instance = this

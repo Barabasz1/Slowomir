@@ -1,5 +1,6 @@
 package com.zpi.slowomir.modules
 
+import com.zpi.slowomir.overlay.executors.GridExecutor
 import com.zpi.slowomir.overlay.executors.TouchExecutor
 import com.zpi.slowomir.overlay.services.CommandExecutorService
 import dagger.Module
@@ -13,5 +14,9 @@ class ExecutorModule {
     @Provides
     fun provideTouchExecutor(): TouchExecutor? {
         return CommandExecutorService.instance?.touchExecutor
+    }
+    @Provides
+    fun provideGridExecutor(): GridExecutor? {
+        return CommandExecutorService.instance?.gridExecutor
     }
 }

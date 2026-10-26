@@ -6,6 +6,7 @@ import com.zpi.slowomir.overlay.OverlayContext
 import com.zpi.slowomir.overlay.commands.Command
 import com.zpi.slowomir.overlay.commands.CommandResult
 import com.zpi.slowomir.overlay.commands.TapCommand
+import com.zpi.slowomir.overlay.commands.grid.ToggleGridCommand
 import com.zpi.slowomir.overlay.voice.VoiceSessionManager
 import com.zpi.slowomir.overlay.voice.VoiceUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -18,6 +19,7 @@ import javax.inject.Inject
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val tapCommandFactory: TapCommand.Factory,
+    private val toggleGridCommandFactory: ToggleGridCommand.Factory,
     private val voiceSessionManager: VoiceSessionManager
 ) : ViewModel() {
 
@@ -25,6 +27,7 @@ class HomeViewModel @Inject constructor(
     val uiState: StateFlow<CommandResult?> = _uiState.asStateFlow()
 
     val voiceUiState: StateFlow<VoiceUiState> = voiceSessionManager.uiState
+
 
     fun executeTapAt(x: Float, y: Float) {
         viewModelScope.launch {
@@ -44,5 +47,12 @@ class HomeViewModel @Inject constructor(
 
     fun simulateVoiceInput(input: String) {
         voiceSessionManager.onSpeechResult(input, isFinal = true)
+    }
+
+    fun toggleGrid() {
+        viewModelScope.launch {
+            val command: Command = toggleGridCommandFactory.create()
+            command.execute()
+        }
     }
 }
