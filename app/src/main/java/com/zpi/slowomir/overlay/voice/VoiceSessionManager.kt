@@ -1,5 +1,6 @@
 package com.zpi.slowomir.overlay.voice
 
+import com.zpi.slowomir.overlay.events.VoiceEvent
 import com.zpi.slowomir.overlay.commands.Command
 import com.zpi.slowomir.overlay.commands.CommandArgument
 import com.zpi.slowomir.overlay.commands.CommandIdentifier
@@ -7,7 +8,7 @@ import com.zpi.slowomir.overlay.commands.CommandResult
 import com.zpi.slowomir.overlay.commands.LogCommand
 import com.zpi.slowomir.overlay.commands.TapCommand
 import com.zpi.slowomir.overlay.mediator.CommandMediator
-import com.zpi.slowomir.overlay.pipeline.CommandPipeline
+import com.zpi.slowomir.overlay.pipeline.Pipeline
 import com.zpi.slowomir.overlay.pipeline.PipelineStage
 import com.zpi.slowomir.overlay.services.CommandExecutorService
 import kotlinx.coroutines.CoroutineScope
@@ -22,7 +23,7 @@ import javax.inject.Singleton
 
 /**
  * Voice Session Manager coordinating speech recognition state,
- * routing transcribed text through a [CommandPipeline], and dispatching resulting commands
+ * routing transcribed text through a [Pipeline], and dispatching resulting commands
  * to the [CommandMediator].
  */
 @Singleton
@@ -34,9 +35,6 @@ class VoiceSessionManager @Inject constructor(
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
-    private val _uiState = MutableStateFlow<VoiceUiState>(VoiceUiState.Idle)
-    val uiState: StateFlow<VoiceUiState> = _uiState.asStateFlow()
-
     @Volatile
     private var lastParsedIntent: VoiceIntent? = null
 
@@ -45,11 +43,12 @@ class VoiceSessionManager @Inject constructor(
     }
 
     private val intentStage = PipelineStage<String, VoiceIntent> { text ->
-        _uiState.value = VoiceUiState.ProcessingCommand(text)
-        val intent = intentParser.parse(text)
-        if (intent == null) {
-            _uiState.value = VoiceUiState.Error("Nierozpoznano komendy: '$text'")
+        scope.launch {
+            mediator.handleEvent(VoiceEvent.ProcessingCommand(text))
         }
+
+        val intent = intentParser.parse(text)
+
         lastParsedIntent = intent
         intent
     }
@@ -58,53 +57,61 @@ class VoiceSessionManager @Inject constructor(
         resolveIntentToCommand(intent)
     }
 
-    private val pipeline = CommandPipeline.Builder<String>(mediator)
+    private val pipeline = Pipeline.Builder.create<String>()
         .addStage(filterStage)
         .addStage(intentStage)
         .addStage(commandStage)
         .build()
 
-    init {
-        scope.launch {
-            mediator.commandResults.collect { (command, result) ->
-                val intentDesc = lastParsedIntent?.let {
-                    val argStr = when (val arg = it.argument) {
-                        is CommandArgument.Number -> " [${arg.value}]"
-                        is CommandArgument.TwoNumbers -> " [${arg.from} -> ${arg.to}]"
-                        is CommandArgument.Text -> " ['${arg.value}']"
-                        null -> ""
-                    }
-                    "${it.identifier}$argStr"
-                } ?: command::class.simpleName
-
-                _uiState.value = when (result) {
-                    is CommandResult.Success -> VoiceUiState.CommandExecuted("$intentDesc via ${command::class.simpleName}")
-                    is CommandResult.Failure -> VoiceUiState.Error("${command::class.simpleName} Failed: ${result.reason}")
-                    is CommandResult.InvalidContext -> VoiceUiState.Error("Invalid Context: ${result.reason}")
-                }
-            }
-        }
-    }
+//    init {
+//        scope.launch {
+//            mediator.commandResults.collect { (command, result) ->
+//                val intentDesc = lastParsedIntent?.let {
+//                    val argStr = when (val arg = it.argument) {
+//                        is CommandArgument.Number -> " [${arg.value}]"
+//                        is CommandArgument.TwoNumbers -> " [${arg.from} -> ${arg.to}]"
+//                        is CommandArgument.Text -> " ['${arg.value}']"
+//                        null -> ""
+//                    }
+//                    "${it.identifier}$argStr"
+//                } ?: command::class.simpleName
+//
+//                _uiState.value = when (result) {
+//                    is CommandResult.Success -> OverlayState.CommandExecuted("$intentDesc via ${command::class.simpleName}")
+//                    is CommandResult.Failure -> OverlayState.Error("${command::class.simpleName} Failed: ${result.reason}")
+//                    is CommandResult.InvalidContext -> OverlayState.Error("Invalid Context: ${result.reason}")
+//                }
+//            }
+//        }
+//    }
 
     /**
-     * Called when a wake word is detected to update UI state to listening mode.
+     * Called when a wake word is detected.
      */
     fun onWakeWordDetected() {
-        _uiState.value = VoiceUiState.ListeningForWakeWord
+        scope.launch {
+            mediator.handleEvent(VoiceEvent.WakeWordDetected)
+        }
     }
 
     /**
      * Called when speech recognition produces results.
      *
      * @param text The transcribed speech string.
-     * @param isFinal True if the speech segment is complete and ready for command processing.
+     * @param isFinal True if the speech segment is complete and ready for processing.
      */
     fun onSpeechResult(text: String, isFinal: Boolean) {
-        if (!isFinal) {
-            _uiState.value = VoiceUiState.ListeningToSpeech(text)
-        } else {
-            scope.launch {
-                pipeline.execute(text)
+        scope.launch {
+            if (!isFinal) {
+                mediator.handleEvent(VoiceEvent.SpeechPartial(text))
+            } else {
+                val command = pipeline.process(text)
+
+                if (command != null) {
+                    mediator.handleEvent(VoiceEvent.CommandInterpreted(command))
+                } else {
+                    mediator.handleEvent(VoiceEvent.InvalidCommand(text))
+                }
             }
         }
     }
@@ -124,6 +131,7 @@ class VoiceSessionManager @Inject constructor(
                 }
                 tapCommandFactory.create(x, y)
             }
+
             else -> LogCommand(intent.identifier, intent.argument)
         }
     }

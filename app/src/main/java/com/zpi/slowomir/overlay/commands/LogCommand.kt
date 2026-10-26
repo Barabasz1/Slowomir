@@ -23,7 +23,7 @@ class LogCommand(
             null -> "none"
         }
         Log.i(TAG, "Command dispatched: $identifier | argument: $argDescription")
-        return CommandResult.Success
+        return CommandResult.Success()
     }
 
     override fun canExecute(context: OverlayContext): Boolean = true

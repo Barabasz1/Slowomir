@@ -3,19 +3,31 @@ package com.zpi.slowomir.overlay.mediator
 import com.zpi.slowomir.overlay.OverlayContext
 import com.zpi.slowomir.overlay.commands.Command
 import com.zpi.slowomir.overlay.commands.CommandResult
+import com.zpi.slowomir.overlay.events.VoiceEvent
+import com.zpi.slowomir.overlay.voice.OverlayState
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 
+
+data class MediatorState(
+    val overlayState: OverlayState = OverlayState.Idle,
+    val overlayContext: OverlayContext = OverlayContext(
+        packageName = "",
+        isTextFieldFocused = false
+    )
+)
+
+
 /**
- * Central mediator interfacing command emitters, pipelines, context state, and command execution logic.
- * Decouples producers of commands from the command execution runtime.
+ * Central Mediator orchestrating communication between event colleagues,
+ * pipeline processing, context validation, overlay UI management, and command execution.
  */
 interface CommandMediator {
 
     /**
-     * Reactive stream of dispatched commands observed across the application.
+     * Observable UI state representing the current session/voice state.
      */
-    val commandStream: SharedFlow<Command>
+    val mediatorState: StateFlow<MediatorState>
 
     /**
      * Reactive stream emitting execution results paired with their respective [Command].
@@ -23,14 +35,14 @@ interface CommandMediator {
     val commandResults: SharedFlow<Pair<Command, CommandResult>>
 
     /**
-     * Current [OverlayContext] state used to validate command prerequisites.
-     */
-    val currentContext: StateFlow<OverlayContext>
-
-    /**
      * Updates the current [OverlayContext].
      */
     fun updateContext(context: OverlayContext)
+
+    /**
+     * Receives and mediates incoming events from colleague modules (e.g. voice session).
+     */
+    suspend fun handleEvent(event: VoiceEvent)
 
     /**
      * Dispatches and executes a command after validating against [currentContext].
