@@ -11,7 +11,6 @@ android {
         version = release(37)
     }
 
-
     defaultConfig {
         applicationId = "com.zpi.slowomir"
         minSdk = 33
@@ -20,6 +19,10 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        ndk {
+            abiFilters.addAll(listOf("armeabi-v7a", "arm64-v8a", "x86_64", "x86"))
+        }
     }
 
     buildTypes {
@@ -38,6 +41,10 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+    }
+
+    testOptions {
+        unitTests.isReturnDefaultValues = true
     }
 }
 
