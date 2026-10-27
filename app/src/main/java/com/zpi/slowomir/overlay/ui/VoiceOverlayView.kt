@@ -35,7 +35,10 @@ fun VoiceOverlayView(mediator: CommandMediator) {
                 text = when (val state = uiState.overlayState) {
                     is OverlayState.ProcessingCommand -> state.text
                     is OverlayState.ListeningToSpeech -> state.partialText
-                    else -> "Listening..."
+                    is OverlayState.CommandExecuted -> state.resultName
+                    is OverlayState.Error -> state.message
+                    is OverlayState.Idle -> "Idle"
+                    is OverlayState.ListeningForWakeWord -> "Listening..."
                 },
                 fontWeight = FontWeight.SemiBold,
                 style = MaterialTheme.typography.bodyLarge

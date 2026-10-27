@@ -1,11 +1,15 @@
 package com.zpi.slowomir.overlay.mediator
 
 import android.util.Log
+import androidx.compose.runtime.currentComposer
 import com.zpi.slowomir.overlay.OverlayContext
 import com.zpi.slowomir.overlay.commands.Command
+import com.zpi.slowomir.overlay.commands.CommandArgument
 import com.zpi.slowomir.overlay.commands.CommandResult
 import com.zpi.slowomir.overlay.events.VoiceEvent
+import com.zpi.slowomir.overlay.voice.OverlayState
 import com.zpi.slowomir.overlay.voice.OverlayState.*
+import com.zpi.slowomir.overlay.voice.VoiceIntent
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -26,11 +30,6 @@ class DefaultCommandMediator @Inject constructor() : CommandMediator {
 
     private val _mediatorState = MutableStateFlow(MediatorState())
     override val mediatorState: StateFlow<MediatorState> = _mediatorState.asStateFlow()
-
-    private val _commandResults =
-        MutableSharedFlow<Pair<Command, CommandResult>>(extraBufferCapacity = 64)
-    override val commandResults: SharedFlow<Pair<Command, CommandResult>> =
-        _commandResults.asSharedFlow()
 
     override fun updateContext(context: OverlayContext) {
         _mediatorState.update { currentState ->
@@ -55,11 +54,8 @@ class DefaultCommandMediator @Inject constructor() : CommandMediator {
             }
 
             is VoiceEvent.CommandInterpreted -> {
-                when (val result = dispatch(event.command)) {
-                    is CommandResult.Success -> CommandExecuted("${event.command::class.simpleName} Succeeded")
-                    is CommandResult.Failure -> Error(result.reason)
-                    is CommandResult.InvalidContext -> Error(result.reason)
-                }
+                val result = dispatch(event.command)
+                formatCommandResult(event.command, result, mediatorState.value.intent)
             }
 
             is VoiceEvent.InvalidCommand -> {
@@ -69,10 +65,20 @@ class DefaultCommandMediator @Inject constructor() : CommandMediator {
             is VoiceEvent.ProcessingCommand -> {
                 ProcessingCommand(event.text)
             }
+
+            is VoiceEvent.IntentParsed -> {
+                _mediatorState.update {
+                    it.copy(intent = event.intent)
+                }
+
+                null
+            }
         }
 
-        _mediatorState.update { currentState ->
-            currentState.copy(overlayState = state)
+        if (state != null) {
+            _mediatorState.update {
+                it.copy(overlayState = state)
+            }
         }
     }
 
@@ -84,7 +90,6 @@ class DefaultCommandMediator @Inject constructor() : CommandMediator {
                 "Command ${command::class.simpleName} cannot execute in current context"
             )
 
-            _commandResults.emit(command to invalidResult)
             return invalidResult
         }
 
@@ -94,8 +99,31 @@ class DefaultCommandMediator @Inject constructor() : CommandMediator {
             CommandResult.Failure("Unhandled exception during execution of ${command::class.simpleName}:\n ${e.message}")
         }
 
-        _commandResults.emit(command to result)
+
         return result
+    }
+
+    fun formatCommandResult(
+        command: Command,
+        result: CommandResult,
+        intent: VoiceIntent?
+    ): OverlayState {
+        val intentDesc = intent?.let {
+            val argStr = when (val arg = it.argument) {
+                is CommandArgument.Number -> " [${arg.value}]"
+                is CommandArgument.TwoNumbers -> " [${arg.from} -> ${arg.to}]"
+                is CommandArgument.Text -> " ['${arg.value}']"
+                null -> ""
+            }
+            "${it.identifier}$argStr"
+        } ?: command::class.simpleName
+
+
+        return when (result) {
+            is CommandResult.Success -> CommandExecuted("$intentDesc via ${command::class.simpleName}")
+            is CommandResult.Failure -> Error("${command::class.simpleName} Failed: ${result.reason}")
+            is CommandResult.InvalidContext -> Error("Invalid Context: ${result.reason}")
+        }
     }
 
     companion object {

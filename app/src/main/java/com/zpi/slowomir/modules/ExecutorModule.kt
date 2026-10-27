@@ -3,6 +3,7 @@ package com.zpi.slowomir.modules
 import android.content.Context
 import com.zpi.slowomir.overlay.executors.GridExecutor
 import com.zpi.slowomir.overlay.executors.TouchExecutor
+import com.zpi.slowomir.overlay.mediator.CommandMediator
 import com.zpi.slowomir.overlay.services.CommandExecutorService
 import com.zpi.slowomir.overlay.ui.VoiceOverlayManager
 import dagger.Module
@@ -28,8 +29,9 @@ class ExecutorModule {
     @Provides
     @Singleton
     fun provideVoiceOverlayManager(
-        @ApplicationContext context: Context
+        commandMediator: CommandMediator,
+        @ApplicationContext context: Context,
     ): VoiceOverlayManager {
-        return VoiceOverlayManager(context)
+        return VoiceOverlayManager(commandMediator, context)
     }
 }

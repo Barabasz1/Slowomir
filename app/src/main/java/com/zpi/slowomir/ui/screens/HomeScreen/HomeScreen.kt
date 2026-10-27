@@ -40,7 +40,8 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import com.zpi.slowomir.overlay.commands.CommandResult
-import com.zpi.slowomir.overlay.voice.VoiceUiState
+import com.zpi.slowomir.overlay.voice.OverlayState
+import androidx.core.net.toUri
 
 @Composable
 fun HomeScreen(
@@ -49,7 +50,7 @@ fun HomeScreen(
 ) {
     val context = LocalContext.current
     val resultState by viewModel.uiState.collectAsState()
-    val voiceUiState by viewModel.overlayState.collectAsState()
+    val mediatorState by viewModel.overlayState.collectAsState()
     var inputText by remember { mutableStateOf("") }
     val voiceUiState by viewModel.voiceUiState.collectAsState()
     val isServiceRunning by viewModel.isVoiceServiceRunning.collectAsState()
@@ -125,69 +126,10 @@ fun HomeScreen(
             Text("Wyślij polecenie")
         }
 
-
         Spacer(modifier = Modifier.height(24.dp))
 
-        Button(
-            onClick = toggleVoiceService,
-            colors = if (isServiceRunning) {
-                ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-            } else {
-                ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-            },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(if (isServiceRunning) "Stop Voice Recognition" else "Start Voice Recognition")
-        }
-
-        // Live speech recognition display (bypassing the command pipeline, shows raw partial & final text)
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 8.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant
-            )
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-            ) {
-                Text(
-                    text = "Recognized live text (Vosk):",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                if (liveSpeechState.text.isBlank()) {
-                    Text(
-                        text = liveSpeechState.statusMessage ?: (if (isServiceRunning) "Waiting for voice..." else "Voice service is stopped"),
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontStyle = FontStyle.Italic,
-                        color = MaterialTheme.colorScheme.outline
-                    )
-                } else {
-                    Text(
-                        text = liveSpeechState.text,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = if (liveSpeechState.isPartial) FontWeight.Normal else FontWeight.Bold,
-                        fontStyle = if (liveSpeechState.isPartial) FontStyle.Italic else FontStyle.Normal,
-                        color = if (liveSpeechState.isPartial) {
-                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                        } else {
-                            MaterialTheme.colorScheme.primary
-                        }
-                    )
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // Voice Status (Original state lifecycle)
         Text(
-            text = "Voice Status: ${renderVoiceStatus(voiceUiState, isServiceRunning)}",
+            text = "Voice Status: ${renderVoiceStatus(mediatorState.overlayState, isServiceRunning)}",
             style = MaterialTheme.typography.bodyLarge
         )
 
@@ -287,3 +229,4 @@ private fun renderVoiceStatus(state: VoiceUiState, isServiceRunning: Boolean): S
         is VoiceUiState.Error -> "Error: ${state.message}"
     }
 }
+

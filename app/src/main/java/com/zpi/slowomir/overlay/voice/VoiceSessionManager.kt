@@ -4,7 +4,6 @@ import com.zpi.slowomir.overlay.events.VoiceEvent
 import com.zpi.slowomir.overlay.commands.Command
 import com.zpi.slowomir.overlay.commands.CommandArgument
 import com.zpi.slowomir.overlay.commands.CommandIdentifier
-import com.zpi.slowomir.overlay.commands.CommandResult
 import com.zpi.slowomir.overlay.commands.LogCommand
 import com.zpi.slowomir.overlay.commands.TapCommand
 import com.zpi.slowomir.overlay.mediator.CommandMediator
@@ -14,9 +13,6 @@ import com.zpi.slowomir.overlay.services.CommandExecutorService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -35,9 +31,6 @@ class VoiceSessionManager @Inject constructor(
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
-    @Volatile
-    private var lastParsedIntent: VoiceIntent? = null
-
     private val filterStage = PipelineStage<String, String> { text ->
         if (text.isNotBlank()) text else null
     }
@@ -49,7 +42,12 @@ class VoiceSessionManager @Inject constructor(
 
         val intent = intentParser.parse(text)
 
-        lastParsedIntent = intent
+        if (intent != null) {
+            scope.launch {
+                mediator.handleEvent(VoiceEvent.IntentParsed(intent))
+            }
+        }
+
         intent
     }
 
@@ -62,28 +60,6 @@ class VoiceSessionManager @Inject constructor(
         .addStage(intentStage)
         .addStage(commandStage)
         .build()
-
-//    init {
-//        scope.launch {
-//            mediator.commandResults.collect { (command, result) ->
-//                val intentDesc = lastParsedIntent?.let {
-//                    val argStr = when (val arg = it.argument) {
-//                        is CommandArgument.Number -> " [${arg.value}]"
-//                        is CommandArgument.TwoNumbers -> " [${arg.from} -> ${arg.to}]"
-//                        is CommandArgument.Text -> " ['${arg.value}']"
-//                        null -> ""
-//                    }
-//                    "${it.identifier}$argStr"
-//                } ?: command::class.simpleName
-//
-//                _uiState.value = when (result) {
-//                    is CommandResult.Success -> OverlayState.CommandExecuted("$intentDesc via ${command::class.simpleName}")
-//                    is CommandResult.Failure -> OverlayState.Error("${command::class.simpleName} Failed: ${result.reason}")
-//                    is CommandResult.InvalidContext -> OverlayState.Error("Invalid Context: ${result.reason}")
-//                }
-//            }
-//        }
-//    }
 
     /**
      * Called when a wake word is detected.

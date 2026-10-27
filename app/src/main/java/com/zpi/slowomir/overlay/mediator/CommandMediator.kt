@@ -5,6 +5,7 @@ import com.zpi.slowomir.overlay.commands.Command
 import com.zpi.slowomir.overlay.commands.CommandResult
 import com.zpi.slowomir.overlay.events.VoiceEvent
 import com.zpi.slowomir.overlay.voice.OverlayState
+import com.zpi.slowomir.overlay.voice.VoiceIntent
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -14,7 +15,8 @@ data class MediatorState(
     val overlayContext: OverlayContext = OverlayContext(
         packageName = "",
         isTextFieldFocused = false
-    )
+    ),
+    val intent: VoiceIntent? = null,
 )
 
 
@@ -28,11 +30,6 @@ interface CommandMediator {
      * Observable UI state representing the current session/voice state.
      */
     val mediatorState: StateFlow<MediatorState>
-
-    /**
-     * Reactive stream emitting execution results paired with their respective [Command].
-     */
-    val commandResults: SharedFlow<Pair<Command, CommandResult>>
 
     /**
      * Updates the current [OverlayContext].

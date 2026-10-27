@@ -34,8 +34,8 @@ class HomeViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow<CommandResult?>(null)
     val uiState: StateFlow<CommandResult?> = _uiState.asStateFlow()
+    val overlayState: StateFlow<MediatorState> = mediator.mediatorState
 
-    val overlayState: StateFlow<OverlayState> = voiceSessionManager.uiState
     val isVoiceServiceRunning: StateFlow<Boolean> = VoiceRecognitionService.isRunning
     val liveSpeechState: StateFlow<LiveSpeechState> = voskSpeechRecognizer.liveTranscript
 
