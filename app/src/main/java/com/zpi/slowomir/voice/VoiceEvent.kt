@@ -1,10 +1,9 @@
-package com.zpi.slowomir.overlay.events
+package com.zpi.slowomir.voice
 
 import com.zpi.slowomir.overlay.commands.Command
-import com.zpi.slowomir.overlay.voice.VoiceIntent
 
 /**
- * Events emitted by voice recording/recognition colleagues to the [com.zpi.slowomir.overlay.mediator.CommandMediator].
+ * Events emitted by voice recording/recognition colleagues to the [com.zpi.slowomir.voice.mediator.CommandMediator].
  */
 sealed class VoiceEvent {
     object WakeWordDetected : VoiceEvent()

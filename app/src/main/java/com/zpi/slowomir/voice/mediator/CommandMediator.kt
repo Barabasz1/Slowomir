@@ -1,12 +1,11 @@
-package com.zpi.slowomir.overlay.mediator
+package com.zpi.slowomir.voice.mediator
 
 import com.zpi.slowomir.overlay.OverlayContext
 import com.zpi.slowomir.overlay.commands.Command
 import com.zpi.slowomir.overlay.commands.CommandResult
-import com.zpi.slowomir.overlay.events.VoiceEvent
-import com.zpi.slowomir.overlay.voice.OverlayState
-import com.zpi.slowomir.overlay.voice.VoiceIntent
-import kotlinx.coroutines.flow.SharedFlow
+import com.zpi.slowomir.voice.OverlayState
+import com.zpi.slowomir.voice.VoiceEvent
+import com.zpi.slowomir.voice.VoiceIntent
 import kotlinx.coroutines.flow.StateFlow
 
 

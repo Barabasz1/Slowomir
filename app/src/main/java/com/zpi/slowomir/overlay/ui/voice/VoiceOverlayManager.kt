@@ -1,4 +1,4 @@
-package com.zpi.slowomir.overlay.ui
+package com.zpi.slowomir.overlay.ui.voice
 
 import android.content.Context
 import android.content.Intent
@@ -12,9 +12,10 @@ import androidx.core.net.toUri
 import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.lifecycle.setViewTreeViewModelStoreOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
-import com.zpi.slowomir.overlay.executors.OverlayLifecycleOwner
-import com.zpi.slowomir.overlay.mediator.CommandMediator
+import com.zpi.slowomir.overlay.ui.VoiceOverlayView
+import com.zpi.slowomir.overlay.ui.lifecycle.OverlayLifecycleOwner
 import com.zpi.slowomir.ui.theme.SłowomirTheme
+import com.zpi.slowomir.voice.mediator.CommandMediator
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -22,7 +23,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * UI Window Manager that renders the floating [VoiceOverlayView] on top of system interfaces.
+ * UI Window Manager that renders the floating [com.zpi.slowomir.overlay.ui.VoiceOverlayView] on top of system interfaces.
  * Displays live speech-to-text transcriptions and pipeline execution states in real-time.
  */
 @Singleton

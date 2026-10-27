@@ -117,7 +117,7 @@ class VoskSpeechRecognizer @Inject constructor(
      * @return True if listening was successfully started, false otherwise.
      */
     @Synchronized
-    fun startListening(onFinalResult: (String) -> Unit, onError: (Throwable) -> Unit): Boolean {
+    fun startListening(onPartialResult: (String) -> Unit, onFinalResult: (String) -> Unit, onError: (Throwable) -> Unit): Boolean {
         if (isListening) {
             Log.w(TAG, "SpeechService is already listening.")
             return true
@@ -144,7 +144,7 @@ class VoskSpeechRecognizer @Inject constructor(
 
             val started = service.startListening(object : RecognitionListener {
                 override fun onPartialResult(hypothesis: String?) {
-                    extractAndEmitPartial(hypothesis)
+                    extractAndEmitPartial(hypothesis, onPartialResult)
                 }
 
                 override fun onResult(hypothesis: String?) {
@@ -215,7 +215,7 @@ class VoskSpeechRecognizer @Inject constructor(
 
     fun isModelReady(): Boolean = model != null && recognizer != null
 
-    private fun extractAndEmitPartial(jsonString: String?) {
+    private fun extractAndEmitPartial(jsonString: String?, callback: (String) -> Unit) {
         if (jsonString.isNullOrBlank()) return
 
         try {
@@ -224,6 +224,7 @@ class VoskSpeechRecognizer @Inject constructor(
             if (partial.isNotBlank()) {
                 Log.d(TAG, "Partial speech: '$partial'")
                 _liveTranscript.value = LiveSpeechState(text = partial, isPartial = true, statusMessage = "Listening...")
+                callback(partial)
             }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to parse partial result JSON", e)

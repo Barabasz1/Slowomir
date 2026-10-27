@@ -12,8 +12,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.zpi.slowomir.overlay.mediator.CommandMediator
-import com.zpi.slowomir.overlay.voice.OverlayState
+import com.zpi.slowomir.voice.mediator.CommandMediator
+import com.zpi.slowomir.voice.OverlayState
 
 /**
  * Floating system overlay Composable that renders real-time speech transcription

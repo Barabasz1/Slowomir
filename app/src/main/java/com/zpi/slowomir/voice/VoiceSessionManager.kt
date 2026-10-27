@@ -1,14 +1,14 @@
-package com.zpi.slowomir.overlay.voice
+package com.zpi.slowomir.voice
 
-import com.zpi.slowomir.overlay.events.VoiceEvent
+import com.zpi.slowomir.voice.VoiceEvent
 import com.zpi.slowomir.overlay.commands.Command
 import com.zpi.slowomir.overlay.commands.CommandArgument
 import com.zpi.slowomir.overlay.commands.CommandIdentifier
 import com.zpi.slowomir.overlay.commands.LogCommand
 import com.zpi.slowomir.overlay.commands.TapCommand
-import com.zpi.slowomir.overlay.mediator.CommandMediator
-import com.zpi.slowomir.overlay.pipeline.Pipeline
-import com.zpi.slowomir.overlay.pipeline.PipelineStage
+import com.zpi.slowomir.voice.mediator.CommandMediator
+import com.zpi.slowomir.voice.pipeline.Pipeline
+import com.zpi.slowomir.voice.pipeline.PipelineStage
 import com.zpi.slowomir.overlay.services.CommandExecutorService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -74,21 +74,27 @@ class VoiceSessionManager @Inject constructor(
      * Called when speech recognition produces results.
      *
      * @param text The transcribed speech string.
-     * @param isFinal True if the speech segment is complete and ready for processing.
      */
-    fun onSpeechResult(text: String, isFinal: Boolean) {
+    fun onSpeechResult(text: String) {
         scope.launch {
-            if (!isFinal) {
-                mediator.handleEvent(VoiceEvent.SpeechPartial(text))
-            } else {
-                val command = pipeline.process(text)
+            val command = pipeline.process(text)
 
-                if (command != null) {
-                    mediator.handleEvent(VoiceEvent.CommandInterpreted(command))
-                } else {
-                    mediator.handleEvent(VoiceEvent.InvalidCommand(text))
-                }
+            if (command != null) {
+                mediator.handleEvent(VoiceEvent.CommandInterpreted(command))
+            } else {
+                mediator.handleEvent(VoiceEvent.InvalidCommand(text))
             }
+        }
+    }
+
+    /**
+     * Called when speech recognition produces partial results.
+     *
+     * @param text The transcribed speech string.
+     */
+    fun onSpeechPartial(text: String) {
+        scope.launch {
+            mediator.handleEvent(VoiceEvent.SpeechPartial(text))
         }
     }
 

@@ -10,7 +10,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
-import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
@@ -18,8 +17,8 @@ import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import com.zpi.slowomir.MainActivity
 import com.zpi.slowomir.R
-import com.zpi.slowomir.overlay.voice.VoiceSessionManager
 import com.zpi.slowomir.overlay.voice.VoskSpeechRecognizer
+import com.zpi.slowomir.voice.VoiceSessionManager
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -99,8 +98,11 @@ class VoiceRecognitionService : Service() {
         voskSpeechRecognizer.initialize(
             onReady = {
                 val started = voskSpeechRecognizer.startListening(
+                    onPartialResult = { text ->
+                        voiceSessionManager.onSpeechPartial(text)
+                    },
                     onFinalResult = { text ->
-                        voiceSessionManager.onSpeechResult(text, isFinal = true)
+                        voiceSessionManager.onSpeechResult(text)
                     },
                     onError = { throwable ->
                         Log.e(TAG, "Voice recognition error: ${throwable.message}", throwable)

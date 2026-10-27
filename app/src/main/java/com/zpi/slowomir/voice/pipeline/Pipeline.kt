@@ -1,7 +1,7 @@
-package com.zpi.slowomir.overlay.pipeline
+package com.zpi.slowomir.voice.pipeline
 
 import com.zpi.slowomir.overlay.commands.Command
-import com.zpi.slowomir.overlay.mediator.CommandMediator
+import com.zpi.slowomir.voice.mediator.CommandMediator
 
 /**
  * Pipeline that passes input data sequentially through a set of [PipelineStage]s,

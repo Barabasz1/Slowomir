@@ -40,8 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import com.zpi.slowomir.overlay.commands.CommandResult
-import com.zpi.slowomir.overlay.voice.OverlayState
-import androidx.core.net.toUri
+import com.zpi.slowomir.voice.OverlayState
 
 @Composable
 fun HomeScreen(
@@ -52,11 +51,9 @@ fun HomeScreen(
     val resultState by viewModel.uiState.collectAsState()
     val mediatorState by viewModel.overlayState.collectAsState()
     var inputText by remember { mutableStateOf("") }
-    val voiceUiState by viewModel.voiceUiState.collectAsState()
     val isServiceRunning by viewModel.isVoiceServiceRunning.collectAsState()
     val liveSpeechState by viewModel.liveSpeechState.collectAsState()
 
-    var manualInputText by remember { mutableStateOf("") }
     val scrollState = rememberScrollState()
 
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -168,6 +165,60 @@ fun HomeScreen(
             }
         }
 
+        Button(
+            onClick = toggleVoiceService,
+            colors = if (isServiceRunning) {
+                ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+            } else {
+                ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(if (isServiceRunning) "Stop Voice Recognition" else "Start Voice Recognition")
+        }
+
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
+            )
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            ) {
+                Text(
+                    text = "Recognized live text (Vosk):",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                if (liveSpeechState.text.isBlank()) {
+                    Text(
+                        text = liveSpeechState.statusMessage ?: (if (isServiceRunning) "Waiting for voice..." else "Voice service is stopped"),
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontStyle = FontStyle.Italic,
+                        color = MaterialTheme.colorScheme.outline
+                    )
+                } else {
+                    Text(
+                        text = liveSpeechState.text,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = if (liveSpeechState.isPartial) FontWeight.Normal else FontWeight.Bold,
+                        fontStyle = if (liveSpeechState.isPartial) FontStyle.Italic else FontStyle.Normal,
+                        color = if (liveSpeechState.isPartial) {
+                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                        } else {
+                            MaterialTheme.colorScheme.primary
+                        }
+                    )
+                }
+            }
+        }
+
 
         Button(
             onClick = { viewModel.toggleGrid() },
@@ -216,17 +267,17 @@ fun HomeScreen(
     }
 }
 
-private fun renderVoiceStatus(state: VoiceUiState, isServiceRunning: Boolean): String {
-    if (!isServiceRunning && state is VoiceUiState.Idle) {
+private fun renderVoiceStatus(state: OverlayState, isServiceRunning: Boolean): String {
+    if (!isServiceRunning && state is OverlayState.Idle) {
         return "Stopped"
     }
     return when (state) {
-        is VoiceUiState.Idle -> if (isServiceRunning) "Listening..." else "Stopped"
-        is VoiceUiState.ListeningForWakeWord -> "Listening for wake-word..."
-        is VoiceUiState.ListeningToSpeech -> "Listening..."
-        is VoiceUiState.ProcessingCommand -> "Processing..."
-        is VoiceUiState.CommandExecuted -> "Executed: ${state.resultName}"
-        is VoiceUiState.Error -> "Error: ${state.message}"
+        is OverlayState.Idle -> if (isServiceRunning) "Listening..." else "Stopped"
+        is OverlayState.ListeningForWakeWord -> "Listening for wake-word..."
+        is OverlayState.ListeningToSpeech -> "Listening..."
+        is OverlayState.ProcessingCommand -> "Processing..."
+        is OverlayState.CommandExecuted -> "Executed: ${state.resultName}"
+        is OverlayState.Error -> "Error: ${state.message}"
     }
 }
 

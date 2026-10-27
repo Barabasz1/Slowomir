@@ -1,4 +1,4 @@
-package com.zpi.slowomir.overlay.executors
+package com.zpi.slowomir.overlay.ui.lifecycle
 
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
@@ -10,7 +10,7 @@ import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 
 /**
- * Lightweight custom [LifecycleOwner], [ViewModelStoreOwner], and [SavedStateRegistryOwner]
+ * Lightweight custom [androidx.lifecycle.LifecycleOwner], [androidx.lifecycle.ViewModelStoreOwner], and [androidx.savedstate.SavedStateRegistryOwner]
  * required to render Jetpack Compose UI components inside a [android.view.WindowManager] overlay
  * without requiring an Activity context.
  */

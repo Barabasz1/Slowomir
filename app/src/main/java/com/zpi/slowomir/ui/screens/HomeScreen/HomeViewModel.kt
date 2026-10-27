@@ -5,15 +5,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.zpi.slowomir.overlay.commands.CommandResult
 import com.zpi.slowomir.overlay.commands.TapCommand
-import com.zpi.slowomir.overlay.mediator.CommandMediator
-import com.zpi.slowomir.overlay.ui.VoiceOverlayManager
 import com.zpi.slowomir.overlay.commands.grid.ToggleGridCommand
 import com.zpi.slowomir.overlay.services.VoiceRecognitionService
 import com.zpi.slowomir.overlay.voice.LiveSpeechState
-import com.zpi.slowomir.overlay.voice.VoiceSessionManager
-import com.zpi.slowomir.overlay.commands.grid.ToggleGridCommand
-import com.zpi.slowomir.overlay.voice.OverlayState
-import com.zpi.slowomir.overlay.voice.VoiceUiState
+import com.zpi.slowomir.overlay.ui.voice.VoiceOverlayManager
+import com.zpi.slowomir.voice.VoiceSessionManager
+import com.zpi.slowomir.voice.mediator.CommandMediator
+import com.zpi.slowomir.voice.mediator.MediatorState
 import com.zpi.slowomir.overlay.voice.VoskSpeechRecognizer
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -62,11 +60,11 @@ class HomeViewModel @Inject constructor(
     }
 
     fun simulateSpeechInput(speechText: String) {
-        voiceSessionManager.onSpeechResult(speechText, isFinal = false)
+        voiceSessionManager.onSpeechPartial(speechText)
     }
 
     fun simulateSpeechCompletion(input: String) {
-        voiceSessionManager.onSpeechResult(input, isFinal = true)
+        voiceSessionManager.onSpeechResult(input)
     }
 
     fun toggleGrid() {
