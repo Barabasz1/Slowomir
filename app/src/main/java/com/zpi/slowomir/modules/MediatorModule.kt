@@ -1,7 +1,7 @@
 package com.zpi.slowomir.modules
 
-import com.zpi.slowomir.overlay.mediator.CommandMediator
-import com.zpi.slowomir.overlay.mediator.DefaultCommandMediator
+import com.zpi.slowomir.voice.mediator.CommandMediator
+import com.zpi.slowomir.voice.mediator.DefaultCommandMediator
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn

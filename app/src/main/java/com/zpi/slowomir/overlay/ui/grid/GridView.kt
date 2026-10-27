@@ -1,4 +1,4 @@
-package com.zpi.slowomir.overlay.services.grid
+package com.zpi.slowomir.overlay.ui.grid
 
 import android.content.Context
 import android.graphics.Canvas

@@ -1,9 +1,8 @@
-package com.zpi.slowomir.overlay.services.grid
+package com.zpi.slowomir.overlay.ui.grid
 
 import android.app.Service
 import android.content.Context.WINDOW_SERVICE
 import android.graphics.PixelFormat
-import android.util.Log
 import android.view.Gravity
 import android.view.WindowManager
 

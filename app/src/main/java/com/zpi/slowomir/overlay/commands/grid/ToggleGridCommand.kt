@@ -19,7 +19,7 @@ class ToggleGridCommand @AssistedInject constructor(
             ?: return CommandResult.Failure("Grid executor is null")
 
         gridExecutor.toggle()
-        return CommandResult.Success
+        return CommandResult.Success()
     }
 
     override fun canExecute(context: OverlayContext): Boolean {

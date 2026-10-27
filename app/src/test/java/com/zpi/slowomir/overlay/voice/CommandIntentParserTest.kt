@@ -2,6 +2,8 @@ package com.zpi.slowomir.overlay.voice
 
 import com.zpi.slowomir.overlay.commands.CommandArgument
 import com.zpi.slowomir.overlay.commands.CommandIdentifier
+import com.zpi.slowomir.voice.CommandIntentParser
+import com.zpi.slowomir.voice.PolishTextNormalizer
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Test

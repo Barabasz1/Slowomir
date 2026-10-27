@@ -1,4 +1,4 @@
-package com.zpi.slowomir.overlay.voice
+package com.zpi.slowomir.voice
 
 import javax.inject.Inject
 

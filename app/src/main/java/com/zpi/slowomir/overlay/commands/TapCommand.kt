@@ -25,7 +25,7 @@ class TapCommand @AssistedInject constructor(
             ?: return CommandResult.Failure("Accessibility Service is not enabled")
 
         val success = executor.tap(x, y)
-        return if (success) CommandResult.Success else CommandResult.Failure("Tap failed")
+        return if (success) CommandResult.Success() else CommandResult.Failure("Tap failed")
     }
 
     override fun canExecute(context: OverlayContext): Boolean {

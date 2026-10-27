@@ -1,4 +1,4 @@
-package com.zpi.slowomir.overlay.pipeline
+package com.zpi.slowomir.voice.pipeline
 
 /**
  * Represents a single transformation, filter, or enrichment step within a processing pipeline.

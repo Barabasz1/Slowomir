@@ -1,10 +1,8 @@
 package com.zpi.slowomir.ui.screens.HomeScreen
 
 import android.Manifest
-import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -42,12 +40,8 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import com.zpi.slowomir.overlay.commands.CommandResult
-import com.zpi.slowomir.overlay.voice.VoiceUiState
+import com.zpi.slowomir.voice.OverlayState
 
-/**
- * Main application screen providing controls for accessibility service setup,
- * overlay permissions, voice recognition service lifecycle, and live speech display.
- */
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel,
@@ -55,11 +49,11 @@ fun HomeScreen(
 ) {
     val context = LocalContext.current
     val resultState by viewModel.uiState.collectAsState()
-    val voiceUiState by viewModel.voiceUiState.collectAsState()
+    val mediatorState by viewModel.overlayState.collectAsState()
+    var inputText by remember { mutableStateOf("") }
     val isServiceRunning by viewModel.isVoiceServiceRunning.collectAsState()
     val liveSpeechState by viewModel.liveSpeechState.collectAsState()
 
-    var manualInputText by remember { mutableStateOf("") }
     val scrollState = rememberScrollState()
 
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -86,11 +80,10 @@ fun HomeScreen(
             }
         }
     }
-
-    val sendManualCommand = {
-        if (manualInputText.isNotBlank()) {
-            viewModel.simulateVoiceInput(manualInputText)
-            manualInputText = ""
+    val sendCommand = {
+        if (inputText.isNotBlank()) {
+            viewModel.simulateSpeechCompletion(inputText)
+            inputText = ""
         }
     }
 
@@ -100,46 +93,78 @@ fun HomeScreen(
             .verticalScroll(scrollState)
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Top
-    ) {
-        Spacer(modifier = Modifier.height(16.dp))
+        verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.Top),
 
+        ) {
         Text(
-            text = "Słowomir Controls",
+            text = "Tap Command Demo",
             style = MaterialTheme.typography.headlineMedium
         )
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Permission: Display Over Other Apps
+        OutlinedTextField(
+            value = inputText,
+            onValueChange = {
+                inputText = it
+                viewModel.simulateSpeechInput(it)
+            },
+            label = { Text("Wpisz komendę (np. 'Kliknij 5')") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+            keyboardActions = KeyboardActions(onSend = { sendCommand() })
+        )
+
         Button(
-            onClick = {
-                val intent = Intent(
-                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                    "package:${context.packageName}".toUri()
+            onClick = { sendCommand() },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Wyślij polecenie")
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Text(
+            text = "Voice Status: ${renderVoiceStatus(mediatorState.overlayState, isServiceRunning)}",
+            style = MaterialTheme.typography.bodyLarge
+        )
+
+
+        // Command Execution Status
+        when (val result = resultState) {
+            is CommandResult.Success -> {
+                Text(
+                    text = "Last Action: Executed successfully",
+                    color = MaterialTheme.colorScheme.primary,
+                    style = MaterialTheme.typography.bodyMedium
                 )
-                context.startActivity(intent)
-            },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Enable Display Over Other Apps")
+            }
+
+            is CommandResult.Failure -> {
+                Text(
+                    text = "Last Action: Failed - ${result.reason}",
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+
+            is CommandResult.InvalidContext -> {
+                Text(
+                    text = "Last Action: Invalid Context - ${result.reason}",
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+
+            null -> {
+                Text(
+                    text = "Last Action: None",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // Permission: Accessibility Service
-        Button(
-            onClick = {
-                context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-            },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Enable Accessibility Service")
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // Voice Recognition Service Toggle
         Button(
             onClick = toggleVoiceService,
             colors = if (isServiceRunning) {
@@ -152,29 +177,6 @@ fun HomeScreen(
             Text(if (isServiceRunning) "Stop Voice Recognition" else "Start Voice Recognition")
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // Grid Toggle
-        Button(
-            onClick = { viewModel.toggleGrid() },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Toggle Grid")
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // Tap Demo
-        Button(
-            onClick = { viewModel.executeTapAt(x = 500f, y = 500f) },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Execute Demo Tap at (500, 500)")
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Live speech recognition display (bypassing the command pipeline, shows raw partial & final text)
         Card(
             modifier = Modifier
                 .fillMaxWidth()
@@ -217,83 +219,65 @@ fun HomeScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // Voice Status (Original state lifecycle)
-        Text(
-            text = "Voice Status: ${renderVoiceStatus(voiceUiState, isServiceRunning)}",
-            style = MaterialTheme.typography.bodyLarge
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // Command Execution Status
-        when (val result = resultState) {
-            is CommandResult.Success -> {
-                Text(
-                    text = "Last Action: Executed successfully",
-                    color = MaterialTheme.colorScheme.primary,
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            }
-            is CommandResult.Failure -> {
-                Text(
-                    text = "Last Action: Failed - ${result.reason}",
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            }
-            is CommandResult.InvalidContext -> {
-                Text(
-                    text = "Last Action: Invalid Context - ${result.reason}",
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            }
-            null -> {
-                Text(
-                    text = "Last Action: None",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Manual text fallback for testing without microphone
-        OutlinedTextField(
-            value = manualInputText,
-            onValueChange = { manualInputText = it },
-            label = { Text("Manual command test (e.g., 'kliknij 5')") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-            keyboardActions = KeyboardActions(onSend = { sendManualCommand() })
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
 
         Button(
-            onClick = { sendManualCommand() },
+            onClick = { viewModel.toggleGrid() },
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Send Manual Command")
+            Text("Turn On Grid")
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Button(
+            onClick = { viewModel.toggleVoiceOverlay() },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Toggle Overlay")
+        }
+
+        Button(
+            onClick = { viewModel.executeTapAt(x = 500f, y = 500f) },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Execute Tap at (10f, 10f)")
+        }
+
+        Button(
+            onClick = {
+                val intent = Intent(
+                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    "package:${context.packageName}".toUri()
+                )
+                context.startActivity(intent)
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Enable Display Over Other Apps")
+        }
+
+        Button(
+            onClick = {
+                context.startActivity(
+                    Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                )
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Enable Accessibility Service")
+        }
     }
 }
 
-private fun renderVoiceStatus(state: VoiceUiState, isServiceRunning: Boolean): String {
-    if (!isServiceRunning && state is VoiceUiState.Idle) {
+private fun renderVoiceStatus(state: OverlayState, isServiceRunning: Boolean): String {
+    if (!isServiceRunning && state is OverlayState.Idle) {
         return "Stopped"
     }
     return when (state) {
-        is VoiceUiState.Idle -> if (isServiceRunning) "Listening..." else "Stopped"
-        is VoiceUiState.ListeningForWakeWord -> "Listening for wake-word..."
-        is VoiceUiState.ListeningToSpeech -> "Listening..."
-        is VoiceUiState.ProcessingCommand -> "Processing..."
-        is VoiceUiState.CommandExecuted -> "Executed: ${state.resultName}"
-        is VoiceUiState.Error -> "Error: ${state.message}"
+        is OverlayState.Idle -> if (isServiceRunning) "Listening..." else "Stopped"
+        is OverlayState.ListeningForWakeWord -> "Listening for wake-word..."
+        is OverlayState.ListeningToSpeech -> "Listening..."
+        is OverlayState.ProcessingCommand -> "Processing..."
+        is OverlayState.CommandExecuted -> "Executed: ${state.resultName}"
+        is OverlayState.Error -> "Error: ${state.message}"
     }
 }
+

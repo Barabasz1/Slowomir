@@ -6,9 +6,9 @@ import android.content.Intent
 import android.view.accessibility.AccessibilityEvent
 import com.zpi.slowomir.overlay.executors.GridExecutor
 import com.zpi.slowomir.overlay.executors.TouchExecutor
-import com.zpi.slowomir.overlay.mediator.CommandMediator
-import com.zpi.slowomir.overlay.services.grid.GridService
-import com.zpi.slowomir.overlay.voice.VoiceSessionManager
+import com.zpi.slowomir.voice.mediator.CommandMediator
+import com.zpi.slowomir.overlay.ui.grid.GridService
+import com.zpi.slowomir.voice.VoiceSessionManager
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
