@@ -1,4 +1,4 @@
-package com.zpi.slowomir.overlay.commands.macros
+package com.zpi.slowomir.overlay.commands.navigation
 
 import com.zpi.slowomir.overlay.OverlayContext
 import com.zpi.slowomir.overlay.commands.Command
@@ -21,7 +21,7 @@ class SwipeRightCommand @AssistedInject constructor(
             ?: return CommandResult.Failure("Accessibility Service is not enabled")
 
         val success = executor.swipeRight()
-        return if (success) CommandResult.Success() else CommandResult.Failure("Navigation swipe rigth failed")
+        return if (success) CommandResult.Success() else CommandResult.Failure("Navigation swipe right failed")
     }
 
     override fun canExecute(context: OverlayContext): Boolean {

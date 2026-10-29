@@ -8,6 +8,11 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import javax.inject.Provider
 
+/**
+ * A command that opens or prepares an SMS message draft.
+ *
+ * @param phoneCallExecutorProvider A provider for the [PhoneCallExecutor].
+ */
 class WriteSMSCommand @AssistedInject constructor(
     private val phoneCallExecutorProvider: Provider<PhoneCallExecutor?>,
 ) : Command {

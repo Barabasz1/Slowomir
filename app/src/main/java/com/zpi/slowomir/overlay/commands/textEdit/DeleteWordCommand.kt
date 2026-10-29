@@ -8,6 +8,11 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import javax.inject.Provider
 
+/**
+ * A command that deletes the word preceding the text editing cursor.
+ *
+ * @param textEditExecutorProvider A provider for the [TextEditExecutor].
+ */
 class DeleteWordCommand @AssistedInject constructor(
     private val textEditExecutorProvider: Provider<TextEditExecutor?>,
 ) : Command {

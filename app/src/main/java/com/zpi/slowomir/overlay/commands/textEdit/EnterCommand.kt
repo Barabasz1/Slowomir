@@ -8,6 +8,11 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import javax.inject.Provider
 
+/**
+ * A command that sends an Enter key event in text editing mode.
+ *
+ * @param textEditExecutorProvider A provider for the [TextEditExecutor].
+ */
 class EnterCommand @AssistedInject constructor(
     private val textEditExecutorProvider: Provider<TextEditExecutor?>,
 ) : Command {
@@ -16,7 +21,7 @@ class EnterCommand @AssistedInject constructor(
             ?: return CommandResult.Failure("Accessibility Service is not enabled")
 
         val success = executor.enter()
-        return if (success) CommandResult.Success() else CommandResult.Failure("Text entering failed")
+        return if (success) CommandResult.Success() else CommandResult.Failure("Text enter failed")
     }
 
     override fun canExecute(context: OverlayContext): Boolean {

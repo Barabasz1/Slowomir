@@ -8,6 +8,11 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import javax.inject.Provider
 
+/**
+ * A command that confirms a predicted or suggested system action.
+ *
+ * @param predictionExecutorProvider A provider for the [PredictionExecutor].
+ */
 class ConfirmCommand @AssistedInject constructor(
     private val predictionExecutorProvider: Provider<PredictionExecutor?>,
 ) : Command {

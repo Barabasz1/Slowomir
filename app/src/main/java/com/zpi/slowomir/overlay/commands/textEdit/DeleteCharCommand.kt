@@ -8,6 +8,11 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import javax.inject.Provider
 
+/**
+ * A command that deletes the character preceding the text editing cursor.
+ *
+ * @param textEditExecutorProvider A provider for the [TextEditExecutor].
+ */
 class DeleteCharCommand @AssistedInject constructor(
     private val textEditExecutorProvider: Provider<TextEditExecutor?>,
 ) : Command {

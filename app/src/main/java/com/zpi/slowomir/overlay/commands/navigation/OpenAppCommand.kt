@@ -1,4 +1,4 @@
-package com.zpi.slowomir.overlay.commands.macros
+package com.zpi.slowomir.overlay.commands.navigation
 
 import com.zpi.slowomir.overlay.OverlayContext
 import com.zpi.slowomir.overlay.commands.Command
@@ -9,7 +9,7 @@ import dagger.assisted.AssistedInject
 import javax.inject.Provider
 
 /**
- * A command that opens the notifications bar.
+ * A command that opens a specified application.
  *
  * @param navigationExecutorProvider A provider for the navigation executor.
  */

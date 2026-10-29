@@ -8,6 +8,11 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import javax.inject.Provider
 
+/**
+ * A command that moves the text editing cursor backward by one character.
+ *
+ * @param textEditExecutorProvider A provider for the [TextEditExecutor].
+ */
 class CursorBackwardCommand @AssistedInject constructor(
     private val textEditExecutorProvider: Provider<TextEditExecutor?>,
 ) : Command {

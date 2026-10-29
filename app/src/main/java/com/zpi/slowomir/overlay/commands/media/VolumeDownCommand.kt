@@ -8,6 +8,11 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import javax.inject.Provider
 
+/**
+ * A command that decreases media volume.
+ *
+ * @param mediaExecutorProvider A provider for the [MediaExecutor].
+ */
 class VolumeDownCommand @AssistedInject constructor(
     private val mediaExecutorProvider: Provider<MediaExecutor?>,
 ) : Command {
@@ -25,6 +30,6 @@ class VolumeDownCommand @AssistedInject constructor(
 
     @AssistedFactory
     interface Factory {
-        fun create(): VolumeUpCommand
+        fun create(): VolumeDownCommand
     }
 }

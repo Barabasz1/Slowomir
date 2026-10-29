@@ -8,6 +8,11 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import javax.inject.Provider
 
+/**
+ * A command that declines an incoming phone call.
+ *
+ * @param phoneCallExecutorProvider A provider for the [PhoneCallExecutor].
+ */
 class DeclineCommand @AssistedInject constructor(
     private val phoneCallExecutorProvider: Provider<PhoneCallExecutor?>,
 ) : Command {
@@ -16,7 +21,7 @@ class DeclineCommand @AssistedInject constructor(
             ?: return CommandResult.Failure("Accessibility Service is not enabled")
 
         val success = executor.decline()
-        return if (success) CommandResult.Success() else CommandResult.Failure("Phone call pick up failed")
+        return if (success) CommandResult.Success() else CommandResult.Failure("Phone call decline failed")
     }
 
     override fun canExecute(context: OverlayContext): Boolean {

@@ -8,6 +8,11 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import javax.inject.Provider
 
+/**
+ * A command that answers an incoming phone call.
+ *
+ * @param phoneCallExecutorProvider A provider for the [PhoneCallExecutor].
+ */
 class PickUpCommand @AssistedInject constructor(
     private val phoneCallExecutorProvider: Provider<PhoneCallExecutor?>,
 ) : Command {

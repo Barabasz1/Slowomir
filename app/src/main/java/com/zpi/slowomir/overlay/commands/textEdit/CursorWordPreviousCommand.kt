@@ -8,6 +8,11 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import javax.inject.Provider
 
+/**
+ * A command that moves the text editing cursor backward to the previous word.
+ *
+ * @param textEditExecutorProvider A provider for the [TextEditExecutor].
+ */
 class CursorWordPreviousCommand @AssistedInject constructor(
     private val textEditExecutorProvider: Provider<TextEditExecutor?>,
 ) : Command {

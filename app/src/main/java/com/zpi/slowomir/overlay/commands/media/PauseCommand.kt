@@ -8,6 +8,11 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import javax.inject.Provider
 
+/**
+ * A command that pauses media playback.
+ *
+ * @param mediaExecutorProvider A provider for the [MediaExecutor].
+ */
 class PauseCommand @AssistedInject constructor(
     private val mediaExecutorProvider: Provider<MediaExecutor?>,
 ) : Command {

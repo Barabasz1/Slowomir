@@ -5,7 +5,7 @@ import android.accessibilityservice.AccessibilityService
 /**
  * Executor for navigation commands.
  *
- * @oaram service The accessibility service.
+ * @param service The accessibility service.
  */
 class NavigationExecutor(service: AccessibilityService) {
     /**

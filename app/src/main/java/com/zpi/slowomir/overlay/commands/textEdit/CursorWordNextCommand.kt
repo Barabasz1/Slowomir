@@ -8,6 +8,11 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import javax.inject.Provider
 
+/**
+ * A command that moves the text editing cursor forward to the next word.
+ *
+ * @param textEditExecutorProvider A provider for the [TextEditExecutor].
+ */
 class CursorWordNextCommand @AssistedInject constructor(
     private val textEditExecutorProvider: Provider<TextEditExecutor?>,
 ) : Command {

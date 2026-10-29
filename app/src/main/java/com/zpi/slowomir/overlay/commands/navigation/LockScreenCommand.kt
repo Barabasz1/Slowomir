@@ -1,4 +1,4 @@
-package com.zpi.slowomir.overlay.commands.macros
+package com.zpi.slowomir.overlay.commands.navigation
 
 import com.zpi.slowomir.overlay.OverlayContext
 import com.zpi.slowomir.overlay.commands.Command

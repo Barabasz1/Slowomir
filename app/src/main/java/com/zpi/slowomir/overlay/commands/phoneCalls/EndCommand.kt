@@ -8,6 +8,11 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import javax.inject.Provider
 
+/**
+ * A command that ends an ongoing phone call.
+ *
+ * @param phoneCallExecutorProvider A provider for the [PhoneCallExecutor].
+ */
 class EndCommand @AssistedInject constructor(
     private val phoneCallExecutorProvider: Provider<PhoneCallExecutor?>,
 ) : Command {
@@ -16,7 +21,7 @@ class EndCommand @AssistedInject constructor(
             ?: return CommandResult.Failure("Accessibility Service is not enabled")
 
         val success = executor.end()
-        return if (success) CommandResult.Success() else CommandResult.Failure("Phone call pick up failed")
+        return if (success) CommandResult.Success() else CommandResult.Failure("Phone call end failed")
     }
 
     override fun canExecute(context: OverlayContext): Boolean {

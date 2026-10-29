@@ -8,6 +8,11 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import javax.inject.Provider
 
+/**
+ * A command that increases media volume.
+ *
+ * @param mediaExecutorProvider A provider for the [MediaExecutor].
+ */
 class VolumeUpCommand @AssistedInject constructor(
     private val mediaExecutorProvider: Provider<MediaExecutor?>,
 ) : Command {

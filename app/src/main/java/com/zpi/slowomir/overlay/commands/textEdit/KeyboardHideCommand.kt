@@ -8,6 +8,11 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import javax.inject.Provider
 
+/**
+ * A command that hides the soft keyboard.
+ *
+ * @param textEditExecutorProvider A provider for the [TextEditExecutor].
+ */
 class KeyboardHideCommand @AssistedInject constructor(
     private val textEditExecutorProvider: Provider<TextEditExecutor?>,
 ) : Command {
@@ -16,7 +21,7 @@ class KeyboardHideCommand @AssistedInject constructor(
             ?: return CommandResult.Failure("Accessibility Service is not enabled")
 
         val success = executor.keyboardHide()
-        return if (success) CommandResult.Success() else CommandResult.Failure("Text hide keyboard failed")
+        return if (success) CommandResult.Success() else CommandResult.Failure("Hide keyboard failed")
     }
 
     override fun canExecute(context: OverlayContext): Boolean {
