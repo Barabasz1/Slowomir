@@ -1,13 +1,13 @@
 package com.zpi.slowomir.overlay.executors
 
-import android.accessibilityservice.AccessibilityService
+import android.telecom.InCallService
 
 /**
  * Handles phone calls using the Accessibility API.
  *
  * @param service The accessibility service to use for injection.
  */
-class PhoneCallExecutor(private val service: AccessibilityService) {
+class PhoneCallExecutor(private val service: InCallService) {
     /**
      * Picks up a phone call.
      */

@@ -1,8 +1,12 @@
 package com.zpi.slowomir.overlay.executors
 
 import android.accessibilityservice.AccessibilityService
+import android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK
+import android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN
 import android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_NOTIFICATIONS
 import android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_QUICK_SETTINGS
+import android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_RECENTS
+import android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_TAKE_SCREENSHOT
 
 /**
  * Executor for navigation commands.
@@ -56,7 +60,7 @@ class NavigationExecutor(private val service: AccessibilityService) {
      * Navigates back.
      */
     fun navigateBack(): Boolean {
-        return true
+        return service.performGlobalAction(GLOBAL_ACTION_BACK)
     }
 
     /**
@@ -70,20 +74,22 @@ class NavigationExecutor(private val service: AccessibilityService) {
      * Shows recent apps.
      */
     fun navigateRecent(): Boolean {
-        return true
+        return service.performGlobalAction(GLOBAL_ACTION_RECENTS)
     }
 
     /**
-     * Opens notifications bar.
+     * Toggles notifications bar.
      */
-    fun notifications(): Boolean {
+    fun notificationsToggle(): Boolean {
         return service.performGlobalAction(GLOBAL_ACTION_NOTIFICATIONS)
+        // GLOBAL_ACTION_DISMISS_NOTIFICATION_SHADE for closing the panel, worth considering
+
     }
 
     /**
-     * Opens quick settings.
+     * Toggles quick settings.
      */
-    fun quickSettings(): Boolean {
+    fun quickSettingsToggle(): Boolean {
         return service.performGlobalAction(GLOBAL_ACTION_QUICK_SETTINGS)
     }
 
@@ -98,13 +104,13 @@ class NavigationExecutor(private val service: AccessibilityService) {
      * Locks the screen.
      */
     fun lockScreen(): Boolean {
-        return true
+        return service.performGlobalAction(GLOBAL_ACTION_LOCK_SCREEN)
     }
 
     /**
      * Takes a screenshot.
      */
     fun screenshot(): Boolean {
-        return true
+        return service.performGlobalAction(GLOBAL_ACTION_TAKE_SCREENSHOT)
     }
 }

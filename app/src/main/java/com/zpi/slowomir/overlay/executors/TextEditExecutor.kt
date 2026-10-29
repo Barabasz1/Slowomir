@@ -1,13 +1,15 @@
 package com.zpi.slowomir.overlay.executors
 
 import android.accessibilityservice.AccessibilityService
+import android.accessibilityservice.AccessibilityService.SHOW_MODE_AUTO
+import android.accessibilityservice.AccessibilityService.SHOW_MODE_HIDDEN
 
 /**
  * Handles text editing and cursor manipulation actions using the Accessibility API.
  *
  * @param service The accessibility service to use for text actions.
  */
-class TextEditExecutor(service: AccessibilityService) {
+class TextEditExecutor(private val service: AccessibilityService) {
     /**
      * Sends an enter action or line break.
      */
@@ -68,13 +70,13 @@ class TextEditExecutor(service: AccessibilityService) {
      * Displays the soft keyboard.
      */
     fun keyboardShow(): Boolean {
-        return true
+        return service.softKeyboardController.setShowMode(SHOW_MODE_AUTO)
     }
 
     /**
      * Hides the soft keyboard.
      */
     fun keyboardHide(): Boolean {
-        return true
+        return service.softKeyboardController.setShowMode(SHOW_MODE_HIDDEN)
     }
 }

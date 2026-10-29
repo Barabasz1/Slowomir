@@ -20,7 +20,7 @@ class QuickSettingsCommand @AssistedInject constructor(
         val executor = navigationExecutorProvider.get()
             ?: return CommandResult.Failure("Accessibility Service is not enabled")
 
-        val success = executor.quickSettings()
+        val success = executor.quickSettingsToggle()
         return if (success) CommandResult.Success() else CommandResult.Failure("Navigation quick settings failed")
     }
 

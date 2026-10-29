@@ -1,13 +1,18 @@
 package com.zpi.slowomir.voice
 
-import com.zpi.slowomir.voice.VoiceEvent
 import com.zpi.slowomir.overlay.commands.Command
 import com.zpi.slowomir.overlay.commands.CommandArgument
 import com.zpi.slowomir.overlay.commands.CommandIdentifier
 import com.zpi.slowomir.overlay.commands.LogCommand
 import com.zpi.slowomir.overlay.commands.TapCommand
+import com.zpi.slowomir.overlay.commands.navigation.LockScreenCommand
+import com.zpi.slowomir.overlay.commands.navigation.NavigateHomeCommand
+import com.zpi.slowomir.overlay.commands.navigation.NavigateRecentCommand
 import com.zpi.slowomir.overlay.commands.navigation.NotificationsCommand
 import com.zpi.slowomir.overlay.commands.navigation.QuickSettingsCommand
+import com.zpi.slowomir.overlay.commands.navigation.ScreenshotCommand
+import com.zpi.slowomir.overlay.commands.textEdit.KeyboardHideCommand
+import com.zpi.slowomir.overlay.commands.textEdit.KeyboardShowCommand
 import com.zpi.slowomir.voice.mediator.CommandMediator
 import com.zpi.slowomir.voice.pipeline.Pipeline
 import com.zpi.slowomir.voice.pipeline.PipelineStage
@@ -31,6 +36,12 @@ class VoiceSessionManager @Inject constructor(
     private val tapCommandFactory: TapCommand.Factory,
     private val notificationsCommandFactory: NotificationsCommand.Factory,
     private val quickSettingsCommandFactory: QuickSettingsCommand.Factory,
+    private val lockScreenCommandFactory: LockScreenCommand.Factory,
+    private val screenshotCommandFactory: ScreenshotCommand.Factory,
+    private val navigateHomeCommandFactory: NavigateHomeCommand.Factory,
+    private val navigateRecentCommandFactory: NavigateRecentCommand.Factory,
+    private val keyboardHideCommandFactory: KeyboardHideCommand.Factory,
+    private val keyboardShowCommandFactory: KeyboardShowCommand.Factory,
 ) {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -110,6 +121,7 @@ class VoiceSessionManager @Inject constructor(
      */
     private fun resolveIntentToCommand(intent: VoiceIntent): Command {
         return when (intent.identifier) {
+            // Navigation commands
             CommandIdentifier.CELL_PRESS -> {
                 val (x, y) = when (val arg = intent.argument) {
                     is CommandArgument.Number -> cellNumberToCoordinates(arg.value)
@@ -122,6 +134,26 @@ class VoiceSessionManager @Inject constructor(
             }
             CommandIdentifier.QUICK_SETTINGS -> {
                 quickSettingsCommandFactory.create()
+            }
+            CommandIdentifier.LOCK_SCREEN -> {
+                lockScreenCommandFactory.create()
+            }
+            CommandIdentifier.SCREENSHOT -> {
+                screenshotCommandFactory.create()
+            }
+            CommandIdentifier.NAVIGATE_HOME -> {
+                navigateHomeCommandFactory.create()
+            }
+            CommandIdentifier.NAVIGATE_RECENT -> {
+                navigateRecentCommandFactory.create()
+            }
+
+            // Text editing commands
+            CommandIdentifier.HIDE_KEYBOARD -> {
+                keyboardHideCommandFactory.create()
+            }
+            CommandIdentifier.SHOW_KEYBOARD -> {
+                keyboardShowCommandFactory.create()
             }
 
             else -> LogCommand(intent.identifier, intent.argument)

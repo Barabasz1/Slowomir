@@ -20,7 +20,7 @@ class NotificationsCommand @AssistedInject constructor(
         val executor = navigationExecutorProvider.get()
             ?: return CommandResult.Failure("Accessibility Service is not enabled")
 
-        val success = executor.notifications()
+        val success = executor.notificationsToggle()
         return if (success) CommandResult.Success() else CommandResult.Failure("Navigation notifications failed")
     }
 
