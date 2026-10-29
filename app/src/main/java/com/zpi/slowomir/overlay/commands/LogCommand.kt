@@ -2,6 +2,7 @@ package com.zpi.slowomir.overlay.commands
 
 import android.util.Log
 import com.zpi.slowomir.overlay.OverlayContext
+import dagger.assisted.AssistedFactory
 
 /**
  * Stub command that logs intent details without performing real actions.
@@ -30,6 +31,12 @@ class LogCommand(
 
     companion object {
         private const val TAG = "LogCommand"
+    }
+
+    @AssistedFactory
+    interface Factory {
+        fun create(
+        ): LogCommand
     }
 }
 

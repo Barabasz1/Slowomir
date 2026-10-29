@@ -3,6 +3,7 @@ package com.zpi.slowomir.overlay.ui.grid
 import android.app.Service
 import android.content.Context.WINDOW_SERVICE
 import android.graphics.PixelFormat
+import android.util.Log
 import android.view.Gravity
 import android.view.WindowManager
 
@@ -38,17 +39,28 @@ class GridService(private val service: Service) {
             x = 0
             y = 0
         }
-        windowManager.addView(grid, params)
-        gridView = grid
+
+        try {
+            windowManager.addView(grid, params)
+            gridView = grid
+        }
+        catch (e: RuntimeException) {
+            Log.e("GridService", "Error enabling grid view", e)
+        }
     }
 
     fun disable(){
-        gridView?.let { windowManager.removeView(it) }
-        gridView = null
+        try {
+            gridView?.let { windowManager.removeView(it) }
+            gridView = null
+        }
+        catch (e: RuntimeException) {
+            Log.e("GridService", "Error disabling grid view", e)
+        }
     }
 
     fun toggle(){
-        if(gridView == null) {
+        if (gridView == null) {
             enable()
         } else {
             disable()

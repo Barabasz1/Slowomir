@@ -1,5 +1,8 @@
 package com.zpi.slowomir.overlay.commands
 
+/**
+ * Represents the identifier of a command.
+ */
 enum class CommandIdentifier {
     GRID_SHOW,
     GRID_HIDE,

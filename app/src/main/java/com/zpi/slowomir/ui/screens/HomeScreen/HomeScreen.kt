@@ -109,7 +109,7 @@ fun HomeScreen(
                 inputText = it
                 viewModel.simulateSpeechInput(it)
             },
-            label = { Text("Wpisz komendę (np. 'Kliknij 5')") },
+            label = { Text("Enter a command (i.e. 'Kliknij 5')") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
@@ -120,7 +120,7 @@ fun HomeScreen(
             onClick = { sendCommand() },
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Wyślij polecenie")
+            Text("Send Command")
         }
 
         Spacer(modifier = Modifier.height(24.dp))
