@@ -16,6 +16,12 @@ class GridExecutor(private val gridManager: GridManager) {
         gridManager.toggle()
     }
 
+    /**
+     * Divides the chosen cell by a certain degree.
+     *
+     * @param cell
+     * @param divisionPower
+     */
     fun divide(cell: Int, divisionPower: Int){
         gridManager.divide(cell, divisionPower)
     }
