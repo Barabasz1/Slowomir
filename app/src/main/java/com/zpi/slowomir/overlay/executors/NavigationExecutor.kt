@@ -1,13 +1,15 @@
 package com.zpi.slowomir.overlay.executors
 
 import android.accessibilityservice.AccessibilityService
+import android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_NOTIFICATIONS
+import android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_QUICK_SETTINGS
 
 /**
  * Executor for navigation commands.
  *
  * @param service The accessibility service.
  */
-class NavigationExecutor(service: AccessibilityService) {
+class NavigationExecutor(private val service: AccessibilityService) {
     /**
      * Swipes up.
      */
@@ -75,14 +77,14 @@ class NavigationExecutor(service: AccessibilityService) {
      * Opens notifications bar.
      */
     fun notifications(): Boolean {
-        return true
+        return service.performGlobalAction(GLOBAL_ACTION_NOTIFICATIONS)
     }
 
     /**
      * Opens quick settings.
      */
     fun quickSettings(): Boolean {
-        return true
+        return service.performGlobalAction(GLOBAL_ACTION_QUICK_SETTINGS)
     }
 
     /**

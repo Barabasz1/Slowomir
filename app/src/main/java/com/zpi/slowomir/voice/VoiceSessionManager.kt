@@ -6,6 +6,8 @@ import com.zpi.slowomir.overlay.commands.CommandArgument
 import com.zpi.slowomir.overlay.commands.CommandIdentifier
 import com.zpi.slowomir.overlay.commands.LogCommand
 import com.zpi.slowomir.overlay.commands.TapCommand
+import com.zpi.slowomir.overlay.commands.navigation.NotificationsCommand
+import com.zpi.slowomir.overlay.commands.navigation.QuickSettingsCommand
 import com.zpi.slowomir.voice.mediator.CommandMediator
 import com.zpi.slowomir.voice.pipeline.Pipeline
 import com.zpi.slowomir.voice.pipeline.PipelineStage
@@ -25,8 +27,10 @@ import javax.inject.Singleton
 @Singleton
 class VoiceSessionManager @Inject constructor(
     private val mediator: CommandMediator,
+    private val intentParser: CommandIntentParser,
     private val tapCommandFactory: TapCommand.Factory,
-    private val intentParser: CommandIntentParser
+    private val notificationsCommandFactory: NotificationsCommand.Factory,
+    private val quickSettingsCommandFactory: QuickSettingsCommand.Factory,
 ) {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -112,6 +116,12 @@ class VoiceSessionManager @Inject constructor(
                     else -> Pair(DEFAULT_TAP_X, DEFAULT_TAP_Y)
                 }
                 tapCommandFactory.create(x, y)
+            }
+            CommandIdentifier.NOTIFICATIONS -> {
+                notificationsCommandFactory.create()
+            }
+            CommandIdentifier.QUICK_SETTINGS -> {
+                quickSettingsCommandFactory.create()
             }
 
             else -> LogCommand(intent.identifier, intent.argument)

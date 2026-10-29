@@ -238,7 +238,7 @@ fun HomeScreen(
             onClick = { viewModel.executeTapAt(x = 500f, y = 500f) },
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Execute Tap at (10f, 10f)")
+            Text("Execute Tap at (500f, 500f)")
         }
 
         Button(
