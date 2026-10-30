@@ -6,8 +6,8 @@ import android.content.Intent
 import android.view.accessibility.AccessibilityEvent
 import com.zpi.slowomir.overlay.executors.GridExecutor
 import com.zpi.slowomir.overlay.executors.TouchExecutor
+import com.zpi.slowomir.overlay.ui.grid.GridManager
 import com.zpi.slowomir.voice.mediator.CommandMediator
-import com.zpi.slowomir.overlay.ui.grid.GridService
 import com.zpi.slowomir.voice.VoiceSessionManager
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -45,7 +45,7 @@ class CommandExecutorService : AccessibilityService() {
     override fun onServiceConnected() {
         super.onServiceConnected()
 
-        gridExecutor = GridExecutor(GridService(this))
+        gridExecutor = GridExecutor(GridManager(this))
         gridExecutor?.toggle()
 
         touchExecutor = TouchExecutor(this)

@@ -14,74 +14,117 @@ class GridView(
     var labelOpacity: Int = 255,
     var overlayOpacity: Int = 0,
     var lineWidthPx: Float = 2f,
-    var labelTextSizePx: Float = 32f,
-    var labels: List<String>? = null
+    var labelTextSizePx: Float = 32f
 ) : View(context) {
     private val linePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
-        color = Color.argb(lineOpacity.coerceIn(0, 255), 255, 255, 255)
+        color = Color.argb(lineOpacity, 0, 0, 0)
         strokeWidth = lineWidthPx
     }
+
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textAlign = Paint.Align.CENTER
         textSize = labelTextSizePx
-        color = Color.argb(labelOpacity.coerceIn(0, 255), 255, 255, 255)
-    }
-    private val backgroundPaint = Paint().apply {
-        style = Paint.Style.FILL
-        color = Color.argb(overlayOpacity.coerceIn(0, 255), 0, 0, 0)
+        color = Color.argb(labelOpacity, 255, 255, 255)
     }
 
-    fun configure(
-        rows: Int = this.rows,
-        cols: Int = this.cols,
-        lineOpacity: Int = this.lineOpacity,
-        labelOpacity: Int = this.labelOpacity,
-        overlayOpacity: Int = this.overlayOpacity,
-        lineWidthPx: Float = this.lineWidthPx,
-        labelTextSizePx: Float = this.labelTextSizePx,
-        labels: List<String>? = this.labels
-    ) {
-        this.rows = rows.coerceAtLeast(1)
-        this.cols = cols.coerceAtLeast(1)
-        this.lineOpacity = lineOpacity.coerceIn(0, 255)
-        this.labelOpacity = labelOpacity.coerceIn(0, 255)
-        this.overlayOpacity = overlayOpacity.coerceIn(0, 255)
-        this.lineWidthPx = lineWidthPx.coerceAtLeast(0f)
-        this.labelTextSizePx = labelTextSizePx.coerceAtLeast(1f)
-        this.labels = labels
-        linePaint.color = Color.argb(this.lineOpacity, 255, 255, 255)
-        linePaint.strokeWidth = this.lineWidthPx
-        textPaint.color = Color.argb(this.labelOpacity, 255, 255, 255)
-        textPaint.textSize = this.labelTextSizePx
-        backgroundPaint.color = Color.argb(this.overlayOpacity, 0, 0, 0)
+    private val dimPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        textAlign = Paint.Align.CENTER
+        textSize = labelTextSizePx
+        color = Color.argb((labelOpacity * 0.1f).toInt(), 255, 255, 255)
+    }
+
+    private val backgroundPaint = Paint().apply {
+        color = Color.argb(overlayOpacity, 0, 0, 0)
+    }
+
+    private var selectedCell: Int? = null
+    private var divisions: List<Pair<Int, Int>> = emptyList()
+
+    fun update(selectedCell: Int?, divisions: List<Pair<Int, Int>>) {
+        this.selectedCell = selectedCell
+        this.divisions = divisions
         invalidate()
     }
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        if (width <= 0 || height <= 0 || rows <= 0 || cols <= 0) return
+        if (width <= 0 || height <= 0) return
 
         canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), backgroundPaint)
-        val cellWidth = width.toFloat() / cols
-        val cellHeight = height.toFloat() / rows
-        for (col in 0..cols) {
-            val x = col * cellWidth
-            canvas.drawLine(x, 0f, x, height.toFloat(), linePaint)
+
+        val cw = width.toFloat() / cols
+        val ch = height.toFloat() / rows
+
+        for (i in 0..cols) {
+            canvas.drawLine(i * cw, 0f, i * cw, height.toFloat(), linePaint)
         }
-        for (row in 0..rows) {
-            val y = row * cellHeight
-            canvas.drawLine(0f, y, width.toFloat(), y, linePaint)
+
+        for (i in 0..rows) {
+            canvas.drawLine(0f, i * ch, width.toFloat(), i * ch, linePaint)
         }
+
         for (row in 0 until rows) {
             for (col in 0 until cols) {
-                val index = row * cols + col
-                val label = labels?.getOrNull(index) ?: "${index + 1}"
-                val centerX = col * cellWidth + cellWidth / 2f
-                val centerY = row * cellHeight + cellHeight / 2f
-                val baseline = centerY - (textPaint.ascent() + textPaint.descent()) / 2f
-                canvas.drawText(label, centerX, baseline, textPaint)
+                val cell = row * cols + col + 1
+                val x = col * cw
+                val y = row * ch
+                val paint = if (selectedCell == null || cell == selectedCell) textPaint else dimPaint
+
+                drawLabel(canvas, cell.toString(), x, y, cw, ch, paint)
+
+                if (divisions.firstOrNull()?.first == cell) {
+                    drawDivision(canvas, x, y, cw, ch, 0)
+                }
             }
         }
+    }
+
+    private fun drawDivision(
+        canvas: Canvas,
+        x: Float,
+        y: Float,
+        w: Float,
+        h: Float,
+        level: Int
+    ) {
+        val division = divisions.getOrNull(level) ?: return
+        val n = division.second
+        val sw = w / n
+        val sh = h / n
+        val next = divisions.getOrNull(level + 1)
+
+        for (i in 0..n) {
+            canvas.drawLine(x, y + i * sh, x + w, y + i * sh, linePaint)
+            canvas.drawLine(x + i * sw, y, x + i * sw, y + h, linePaint)
+        }
+
+        for (row in 0 until n) {
+            for (col in 0 until n) {
+                val cell = row * n + col + 1
+                val cx = x + col * sw
+                val cy = y + row * sh
+                val paint = if (next == null || next.first == cell) textPaint else dimPaint
+
+                drawLabel(canvas, cell.toString(), cx, cy, sw, sh, paint)
+
+                if (next?.first == cell) {
+                    drawDivision(canvas, cx, cy, sw, sh, level + 1)
+                }
+            }
+        }
+    }
+
+    private fun drawLabel(
+        canvas: Canvas,
+        label: String,
+        x: Float,
+        y: Float,
+        w: Float,
+        h: Float,
+        paint: Paint
+    ) {
+        val baseline = y + h / 2f - (paint.ascent() + paint.descent()) / 2f
+        canvas.drawText(label, x + w / 2f, baseline, paint)
     }
 }
