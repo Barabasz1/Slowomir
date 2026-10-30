@@ -44,6 +44,7 @@ import androidx.core.net.toUri
 import com.zpi.slowomir.kws.KeywordTestCard
 import com.zpi.slowomir.overlay.commands.CommandResult
 import com.zpi.slowomir.voice.OverlayState
+import com.zpi.slowomir.voice.stt.VoiceState
 
 @Composable
 fun HomeScreen(
@@ -55,8 +56,8 @@ fun HomeScreen(
     val resultState by viewModel.uiState.collectAsState()
     val mediatorState by viewModel.overlayState.collectAsState()
     var inputText by remember { mutableStateOf("") }
-    val isServiceRunning by viewModel.isVoiceServiceRunning.collectAsState()
-    val liveSpeechState by viewModel.liveSpeechState.collectAsState()
+    val isServiceRunning by viewModel.isVoiceRunning.collectAsState()
+    val voiceState by viewModel.voiceState.collectAsState()
     val kwsState by viewModel.kwsState.collectAsState()
 
     val scrollState = rememberScrollState()
@@ -233,24 +234,42 @@ fun HomeScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-                if (liveSpeechState.text.isBlank()) {
-                    Text(
-                        text = liveSpeechState.statusMessage ?: (if (isServiceRunning) "Waiting for voice..." else "Voice service is stopped"),
+
+                when (val state = voiceState) {
+                    is VoiceState.Listening -> Text(
+                        text = state.partialText.ifBlank { "Waiting for voice command..." },
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = if (state.partialText.isNotBlank()) FontWeight.Normal else FontWeight.Light,
+                        fontStyle = if (state.partialText.isNotBlank()) FontStyle.Italic else FontStyle.Normal,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    is VoiceState.IntentParsing -> Text(
+                        text = state.rawText,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+
+                    is VoiceState.CommandExecuting -> Text(
+                        text = "Executing command...",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.tertiary
+                    )
+
+                    is VoiceState.Failed -> Text(
+                        text = "Error: ${state.reason}",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.error
+                    )
+
+                    VoiceState.KeywordSpotting,
+                    VoiceState.Stopped -> Text(
+                        text = renderVoiceStatus(state),
                         style = MaterialTheme.typography.bodyLarge,
                         fontStyle = FontStyle.Italic,
                         color = MaterialTheme.colorScheme.outline
-                    )
-                } else {
-                    Text(
-                        text = liveSpeechState.text,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = if (liveSpeechState.isPartial) FontWeight.Normal else FontWeight.Bold,
-                        fontStyle = if (liveSpeechState.isPartial) FontStyle.Italic else FontStyle.Normal,
-                        color = if (liveSpeechState.isPartial) {
-                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                        } else {
-                            MaterialTheme.colorScheme.primary
-                        }
                     )
                 }
             }
@@ -325,6 +344,15 @@ fun HomeScreen(
             Text(if (hasCallPermission) "Call Phone: Granted" else "Enable Call Phone")
         }
     }
+}
+
+private fun renderVoiceStatus(state: VoiceState): String = when (state) {
+    is VoiceState.Stopped -> "Voice service is stopped"
+    is VoiceState.KeywordSpotting -> "Listening for wake-word ('Słowomir')..."
+    is VoiceState.Listening -> "Waiting for voice command..."
+    is VoiceState.IntentParsing -> "Parsing intent..."
+    is VoiceState.CommandExecuting -> "Executing command..."
+    is VoiceState.Failed -> "Failed"
 }
 
 private fun renderVoiceStatus(state: OverlayState, isServiceRunning: Boolean): String {

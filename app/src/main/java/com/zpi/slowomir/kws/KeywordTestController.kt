@@ -2,6 +2,8 @@ package com.zpi.slowomir.kws
 
 import android.content.Context
 import com.zpi.slowomir.overlay.services.VoiceRecognitionService
+import com.zpi.slowomir.voice.VoiceSessionManager
+import com.zpi.slowomir.voice.stt.VoiceState
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -12,6 +14,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
@@ -20,12 +23,16 @@ import javax.inject.Singleton
 
 @Singleton
 class KeywordTestController @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val voiceSessionManager: VoiceSessionManager
 ) : KeywordSpotterManager.Callback {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val _state = MutableStateFlow(KeywordUiState())
     val state: StateFlow<KeywordUiState> = _state.asStateFlow()
+
+    private val isVoiceServiceRunning = voiceSessionManager.state
+        .map { it !is VoiceState.Stopped && it !is VoiceState.Failed }
 
     private val manager by lazy { KeywordSpotterManager(context, this) }
 
@@ -34,7 +41,7 @@ class KeywordTestController @Inject constructor(
 
     init {
         scope.launch {
-            VoiceRecognitionService.isRunning.collect { running ->
+            isVoiceServiceRunning.collect { running ->
                 if (running && !switchingFromVosk && _state.value.isListening) stop()
             }
         }
@@ -46,12 +53,12 @@ class KeywordTestController @Inject constructor(
 
         startJob?.cancel()
         startJob = scope.launch {
-            if (VoiceRecognitionService.isRunning.value) {
+            if (isVoiceServiceRunning.first()) {
                 switchingFromVosk = true
                 try {
                     VoiceRecognitionService.stop(context)
                     withTimeoutOrNull(SERVICE_STOP_TIMEOUT_MS) {
-                        VoiceRecognitionService.isRunning.first { !it }
+                        isVoiceServiceRunning.first { !it }
                     }
                     delay(MIC_RELEASE_DELAY_MS)
                 } finally {

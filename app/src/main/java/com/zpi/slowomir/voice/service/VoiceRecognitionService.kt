@@ -18,11 +18,17 @@ import androidx.core.content.ContextCompat
 import com.zpi.slowomir.MainActivity
 import com.zpi.slowomir.R
 import com.zpi.slowomir.overlay.voice.VoskSpeechRecognizer
-import com.zpi.slowomir.voice.VoiceSessionManager
+import com.zpi.slowomir.voice.stt.SttResult
+import com.zpi.slowomir.voice.stt.VoiceInput
+import com.zpi.slowomir.voice.stt.VoiceInputSink
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 import com.zpi.slowomir.overlay.ui.voice.ContactPickerOverlayManager
 
@@ -34,10 +40,15 @@ import com.zpi.slowomir.overlay.ui.voice.ContactPickerOverlayManager
 class VoiceRecognitionService : Service() {
 
     @Inject
-    lateinit var voskSpeechRecognizer: VoskSpeechRecognizer
+    lateinit var recognizer: VoskSpeechRecognizer
 
     @Inject
-    lateinit var voiceSessionManager: VoiceSessionManager
+    lateinit var sink: VoiceInputSink
+
+    private var listenJob: Job? = null
+    private var stopReason: String? = null
+
+    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     @Inject
     lateinit var contactPickerOverlayManager: ContactPickerOverlayManager
@@ -57,20 +68,28 @@ class VoiceRecognitionService : Service() {
             return START_NOT_STICKY
         }
 
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-            Log.e(TAG, "Cannot start VoiceRecognitionService: RECORD_AUDIO permission is not granted.")
+        if (!startForegroundInternal()) {
+            Log.e(TAG, "Failed to start foreground service. Stopping.")
             stopSelf()
             return START_NOT_STICKY
         }
 
-        Log.i(TAG, "Starting VoiceRecognitionService in foreground...")
-        val foregroundStarted = startForegroundInternal()
-        if (foregroundStarted) {
-            startVoiceRecognition()
-        } else {
-            Log.e(TAG, "Failed to start foreground service. Stopping.")
-            stopSelf()
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            Log.e(TAG, "Cannot start VoiceRecognitionService: RECORD_AUDIO permission is not granted.")
+            stopReason = "RECORD_AUDIO permission is not granted"
+            stopServiceInternal()
+            return START_NOT_STICKY
         }
+
+        if (listenJob?.isActive == true) {
+            Log.i(TAG, "VoiceRecognitionService is already running.")
+            return START_NOT_STICKY
+        }
+
+        stopReason = null
+        Log.i(TAG, "Starting VoiceRecognitionService in foreground...")
+        sink.accept(VoiceInput.ServiceStarted)
+        startVoiceRecognition()
 
         return START_NOT_STICKY
     }
@@ -86,59 +105,55 @@ class VoiceRecognitionService : Service() {
                 notification,
                 foregroundServiceType
             )
-            _isRunning.value = true
             true
         } catch (e: SecurityException) {
             Log.e(TAG, "SecurityException while starting foreground service: ${e.message}", e)
-            _isRunning.value = false
             false
         } catch (e: Exception) {
             Log.e(TAG, "Unexpected error starting foreground service: ${e.message}", e)
-            _isRunning.value = false
             false
         }
     }
 
     private fun startVoiceRecognition() {
-        voskSpeechRecognizer.initialize(
-            onReady = {
-                val started = voskSpeechRecognizer.startListening(
-                    onPartialResult = { text ->
-                        voiceSessionManager.onSpeechPartial(text)
-                    },
-                    onFinalResult = { text ->
-                        voiceSessionManager.onSpeechResult(text)
-                    },
-                    onError = { throwable ->
-                        Log.e(TAG, "Voice recognition error: ${throwable.message}", throwable)
-                    }
-                )
-
-                if (started) {
-                    Log.i(TAG, "Voice recognition listener active.")
-                } else {
-                    Log.e(TAG, "Unable to initialize microphone input. Stopping service.")
-                    stopServiceInternal()
-                }
-            },
-            onError = { throwable ->
-                Log.e(TAG, "Failed to load speech model: ${throwable.message}", throwable)
-                stopServiceInternal()
+        listenJob = scope.launch {
+            recognizer.initialize().onFailure {
+                fail(it)
+                return@launch
             }
-        )
+
+            sink.accept(VoiceInput.EnableSpeechRecognition)
+
+            recognizer.startListening()
+                .catch { fail(it) }
+                .collect { result ->
+                    when (result) {
+                        is SttResult.Error -> fail(result.exception)
+                        is SttResult.Final -> sink.accept(VoiceInput.SpeechFinal(result.text))
+                        is SttResult.Partial -> sink.accept(VoiceInput.SpeechPartial(result.text))
+                    }
+                }
+        }
+    }
+
+    private fun fail(t: Throwable) {
+        stopReason = t.message ?: "Speech engine failed"
+        stopServiceInternal()
     }
 
     private fun stopServiceInternal() {
-        voskSpeechRecognizer.stopListening()
-        _isRunning.value = false
+        listenJob?.cancel()
+        listenJob = null
+        recognizer.stopListening()
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        voskSpeechRecognizer.stopListening()
-        _isRunning.value = false
+        recognizer.stopListening()
+        sink.accept(VoiceInput.ServiceStopped(stopReason))
+        scope.cancel()
         Log.i(TAG, "VoiceRecognitionService destroyed.")
     }
 
@@ -189,9 +204,6 @@ class VoiceRecognitionService : Service() {
         const val ACTION_STOP = "com.zpi.slowomir.action.STOP_VOICE_SERVICE"
         private const val CHANNEL_ID = "slowomir_voice_recognition_channel"
         private const val NOTIFICATION_ID = 1002
-
-        private val _isRunning = MutableStateFlow(false)
-        val isRunning: StateFlow<Boolean> = _isRunning.asStateFlow()
 
         fun start(context: Context) {
             val intent = Intent(context, VoiceRecognitionService::class.java).apply {
