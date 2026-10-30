@@ -11,8 +11,8 @@ import com.zpi.slowomir.overlay.executors.NavigationExecutor
 import com.zpi.slowomir.overlay.executors.PredictionExecutor
 import com.zpi.slowomir.overlay.executors.TextEditExecutor
 import com.zpi.slowomir.overlay.executors.TouchExecutor
+import com.zpi.slowomir.overlay.ui.grid.GridManager
 import com.zpi.slowomir.voice.mediator.CommandMediator
-import com.zpi.slowomir.overlay.ui.grid.GridService
 import com.zpi.slowomir.voice.VoiceSessionManager
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -74,7 +74,7 @@ class CommandExecutorService : AccessibilityService() {
         // Ensure soft keyboard mode is restored to AUTO so system input is not globally suppressed
         softKeyboardController.setShowMode(SHOW_MODE_AUTO)
 
-        gridExecutor = GridExecutor(GridService(this))
+        gridExecutor = GridExecutor(GridManager(this))
         gridExecutor?.toggle()
 
         touchExecutor = TouchExecutor(this)
