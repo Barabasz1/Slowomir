@@ -3,6 +3,7 @@ package com.zpi.slowomir.overlay.executors
 import android.content.Context
 import android.content.Intent
 import android.telecom.CallAudioState
+import android.telecom.CallEndpoint
 import android.telecom.TelecomManager
 import android.telecom.VideoProfile
 import android.util.Log
@@ -84,14 +85,13 @@ class PhoneCallExecutor(private val service: PhoneCallService) {
     }
 
     /**
-     * Toggles or turns on the speakerphone.
+     * Toggles the speakerphone.
      *
      * @return `true` if the audio route was changed to speakerphone, `false` otherwise.
      */
-    @Suppress("DEPRECATION")
-    fun speakerOn(): Boolean {
+    fun speakerToggle(): Boolean {
         return try {
-            service.setAudioRoute(CallAudioState.ROUTE_SPEAKER)
+            service.toggleSpeaker()
             Log.i(TAG, "Audio route changed to speakerphone.")
             true
         } catch (e: Exception) {

@@ -71,6 +71,9 @@ class CommandExecutorService : AccessibilityService() {
     override fun onServiceConnected() {
         super.onServiceConnected()
 
+        // Ensure soft keyboard mode is restored to AUTO so system input is not globally suppressed
+        softKeyboardController.setShowMode(SHOW_MODE_AUTO)
+
         gridExecutor = GridExecutor(GridService(this))
         gridExecutor?.toggle()
 

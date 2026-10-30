@@ -6,6 +6,7 @@ import com.zpi.slowomir.overlay.commands.CommandIdentifier
 import com.zpi.slowomir.overlay.commands.LogCommand
 import com.zpi.slowomir.overlay.commands.TapCommand
 import com.zpi.slowomir.overlay.commands.navigation.LockScreenCommand
+import com.zpi.slowomir.overlay.commands.navigation.NavigateBackCommand
 import com.zpi.slowomir.overlay.commands.navigation.NavigateHomeCommand
 import com.zpi.slowomir.overlay.commands.navigation.NavigateRecentCommand
 import com.zpi.slowomir.overlay.commands.navigation.NotificationsCommand
@@ -54,6 +55,7 @@ class VoiceSessionManager @Inject constructor(
     private val speakerCommandFactory: SpeakerCommand.Factory,
     private val callCommandFactory: CallCommand.Factory,
     private val writeSMSCommandFactory: WriteSMSCommand.Factory,
+    private val navigateBackCommandFactory: NavigateBackCommand.Factory,
 ) {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -158,6 +160,9 @@ class VoiceSessionManager @Inject constructor(
             }
             CommandIdentifier.NAVIGATE_RECENT -> {
                 navigateRecentCommandFactory.create()
+            }
+            CommandIdentifier.NAVIGATE_BACK -> {
+                navigateBackCommandFactory.create()
             }
 
             // Text editing commands

@@ -97,7 +97,7 @@ fun HomeScreen(
 
         ) {
         Text(
-            text = "Tap Command Demo",
+            text = "Command Demo",
             style = MaterialTheme.typography.headlineMedium
         )
 

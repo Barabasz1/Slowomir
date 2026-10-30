@@ -20,7 +20,7 @@ class SpeakerCommand @AssistedInject constructor(
         val executor = phoneCallExecutorProvider.get()
             ?: return CommandResult.Failure("Phone call service is not active")
 
-        val success = executor.speakerOn()
+        val success = executor.speakerToggle()
         return if (success) CommandResult.Success() else CommandResult.Failure("Phone call speaker failed")
     }
 

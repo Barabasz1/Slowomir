@@ -1,8 +1,13 @@
 package com.zpi.slowomir.overlay.services
 
+import android.os.Build
+import android.os.OutcomeReceiver
 import android.telecom.Call
+import android.telecom.CallEndpoint
+import android.telecom.CallEndpointException
 import android.telecom.InCallService
 import android.util.Log
+import androidx.annotation.RequiresApi
 import com.zpi.slowomir.overlay.executors.PhoneCallExecutor
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -12,6 +17,8 @@ import dagger.hilt.android.AndroidEntryPoint
  */
 @AndroidEntryPoint
 class PhoneCallService : InCallService() {
+    private var availableEndpoints = emptyList<CallEndpoint>()
+    private var previousEndpoint: CallEndpoint? = null
 
     var activeCall: Call? = null
         private set
@@ -58,6 +65,55 @@ class PhoneCallService : InCallService() {
         activeCall = null
         phoneCallExecutor = null
         instance = null
+    }
+
+    override fun onAvailableCallEndpointsChanged(endpoints: List<CallEndpoint>) {
+        super.onAvailableCallEndpointsChanged(endpoints)
+        availableEndpoints = endpoints
+    }
+
+    @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE) //TOOD: consider upgrading to API 34 as the minimal version
+    override fun onCallEndpointChanged(endpoint: CallEndpoint) {
+        super.onCallEndpointChanged(endpoint)
+
+        if (endpoint.endpointType != CallEndpoint.TYPE_SPEAKER) {
+            previousEndpoint = endpoint
+        }
+    }
+
+    fun toggleSpeaker(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            return false
+        }
+
+        val currentEndpoint = currentCallEndpoint
+        val target = if (currentEndpoint.endpointType == CallEndpoint.TYPE_SPEAKER) {
+            availableEndpoints.firstOrNull {
+                it == previousEndpoint
+            } ?: availableEndpoints.firstOrNull {
+                it.endpointType == CallEndpoint.TYPE_EARPIECE
+            }
+        } else {
+            availableEndpoints.firstOrNull {
+                it.endpointType == CallEndpoint.TYPE_SPEAKER
+            }
+        } ?: return false
+
+        requestCallEndpointChange(
+            target,
+            mainExecutor,
+            object : OutcomeReceiver<Void?, CallEndpointException> {
+                override fun onResult(result: Void?) {
+                    Log.d(TAG, "Audio output changed")
+                }
+
+                override fun onError(error: CallEndpointException) {
+                    Log.d(TAG, "Could not change audio output")
+                }
+            }
+        )
+
+        return true
     }
 
     companion object {

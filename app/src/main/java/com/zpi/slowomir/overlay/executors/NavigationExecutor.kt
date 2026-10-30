@@ -2,6 +2,7 @@ package com.zpi.slowomir.overlay.executors
 
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK
+import android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_HOME
 import android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN
 import android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_NOTIFICATIONS
 import android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_QUICK_SETTINGS
@@ -67,7 +68,7 @@ class NavigationExecutor(private val service: AccessibilityService) {
      * Navigates to home screen.
      */
     fun navigateHome(): Boolean {
-        return true
+        return service.performGlobalAction(GLOBAL_ACTION_HOME)
     }
 
     /**
@@ -78,18 +79,17 @@ class NavigationExecutor(private val service: AccessibilityService) {
     }
 
     /**
-     * Toggles notifications bar.
+     * Opens notifications bar.
      */
-    fun notificationsToggle(): Boolean {
+    fun notifications(): Boolean {
         return service.performGlobalAction(GLOBAL_ACTION_NOTIFICATIONS)
         // GLOBAL_ACTION_DISMISS_NOTIFICATION_SHADE for closing the panel, worth considering
-
     }
 
     /**
-     * Toggles quick settings.
+     * Opens quick settings.
      */
-    fun quickSettingsToggle(): Boolean {
+    fun quickSettings(): Boolean {
         return service.performGlobalAction(GLOBAL_ACTION_QUICK_SETTINGS)
     }
 
