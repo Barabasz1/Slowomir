@@ -1,5 +1,11 @@
 package com.zpi.slowomir.overlay.commands
 
+/**
+ * Represents the unique identifier of a recognized voice intent or overlay action.
+ *
+ * Command identifiers categorize supported operations including grid navigation, screen gestures,
+ * system navigation, media playback, text editing, phone call handling, and macro execution.
+ */
 enum class CommandIdentifier {
     GRID_SHOW,
     GRID_HIDE,
