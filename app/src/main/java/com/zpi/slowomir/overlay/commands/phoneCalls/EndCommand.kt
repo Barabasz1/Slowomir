@@ -18,7 +18,7 @@ class EndCommand @AssistedInject constructor(
 ) : Command {
     override fun execute(): CommandResult {
         val executor = phoneCallExecutorProvider.get()
-            ?: return CommandResult.Failure("Accessibility Service is not enabled")
+            ?: return CommandResult.Failure("Phone call service is not active")
 
         val success = executor.end()
         return if (success) CommandResult.Success() else CommandResult.Failure("Phone call end failed")

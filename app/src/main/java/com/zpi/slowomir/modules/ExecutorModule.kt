@@ -10,6 +10,7 @@ import com.zpi.slowomir.overlay.executors.PredictionExecutor
 import com.zpi.slowomir.overlay.executors.TextEditExecutor
 import com.zpi.slowomir.overlay.executors.TouchExecutor
 import com.zpi.slowomir.overlay.services.CommandExecutorService
+import com.zpi.slowomir.overlay.services.PhoneCallService
 import com.zpi.slowomir.overlay.ui.voice.VoiceOverlayManager
 import com.zpi.slowomir.voice.mediator.CommandMediator
 import dagger.Module
@@ -50,7 +51,7 @@ class ExecutorModule {
 
     @Provides
     fun providePhoneCallExecutor(): PhoneCallExecutor? {
-        return CommandExecutorService.instance?.phoneCallExecutor
+        return PhoneCallService.instance?.phoneCallExecutor
     }
 
     @Provides

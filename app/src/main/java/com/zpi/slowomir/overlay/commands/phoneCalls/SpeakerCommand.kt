@@ -18,7 +18,7 @@ class SpeakerCommand @AssistedInject constructor(
 ) : Command {
     override fun execute(): CommandResult {
         val executor = phoneCallExecutorProvider.get()
-            ?: return CommandResult.Failure("Accessibility Service is not enabled")
+            ?: return CommandResult.Failure("Phone call service is not active")
 
         val success = executor.speakerOn()
         return if (success) CommandResult.Success() else CommandResult.Failure("Phone call speaker failed")

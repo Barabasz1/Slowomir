@@ -8,7 +8,6 @@ import com.zpi.slowomir.overlay.executors.GridExecutor
 import com.zpi.slowomir.overlay.executors.MacroExecutor
 import com.zpi.slowomir.overlay.executors.MediaExecutor
 import com.zpi.slowomir.overlay.executors.NavigationExecutor
-import com.zpi.slowomir.overlay.executors.PhoneCallExecutor
 import com.zpi.slowomir.overlay.executors.PredictionExecutor
 import com.zpi.slowomir.overlay.executors.TextEditExecutor
 import com.zpi.slowomir.overlay.executors.TouchExecutor
@@ -29,7 +28,6 @@ import javax.inject.Inject
  * @see MacroExecutor
  * @see MediaExecutor
  * @see NavigationExecutor
- * @see PhoneCallExecutor
  * @see PredictionExecutor
  * @see TextEditExecutor
  */
@@ -59,9 +57,6 @@ class CommandExecutorService : AccessibilityService() {
     var navigationExecutor: NavigationExecutor? = null
         private set
 
-    var phoneCallExecutor: PhoneCallExecutor? = null
-        private set
-
     var predictionExecutor: PredictionExecutor? = null
         private set
 
@@ -83,7 +78,6 @@ class CommandExecutorService : AccessibilityService() {
         macroExecutor = MacroExecutor(this)
         mediaExecutor = MediaExecutor(this)
         navigationExecutor = NavigationExecutor(this)
-        phoneCallExecutor = PhoneCallExecutor(this)
         predictionExecutor = PredictionExecutor(this)
         textEditExecutor = TextEditExecutor(this)
         instance = this
@@ -111,7 +105,6 @@ class CommandExecutorService : AccessibilityService() {
         macroExecutor = null
         mediaExecutor = null
         navigationExecutor = null
-        phoneCallExecutor = null
         predictionExecutor = null
         textEditExecutor = null
     }

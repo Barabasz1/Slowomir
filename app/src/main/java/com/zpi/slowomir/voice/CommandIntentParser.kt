@@ -43,12 +43,12 @@ class CommandIntentParser @Inject constructor(
     )
 
     private val phoneCallRegex = Regex(
-        pattern = """^(?:zadzwoń(?:\s+do)?|połącz\s+z|wybierz\s+numer\s+do|wykonaj\s+połączenie\s+do)\s+(.+)""",
+        pattern = """^(?:zadzwoń(?:\s+do)?|połącz(?:\s+z)?|wybierz\s+numer(?:\s+do)?|wykonaj\s+połączenie(?:\s+do)?)\s+(.+)""",
         option = RegexOption.IGNORE_CASE
     )
 
     private val smsWriteRegex = Regex(
-        pattern = """^(?:sms|napisz\s+sms\s+do|wyślij\s+wiadomość\s+do|utwórz\s+sms\s+do|napisz\s+wiadomość\s+tekstową\s+do|napisz\s+do)\s+(.+)""",
+        pattern = """^(?:sms(?:\s+do)?|napisz\s+sms(?:\s+do)?|wyślij\s+wiadomość(?:\s+do)?|utwórz\s+sms(?:\s+do)?|napisz\s+wiadomość\s+tekstową(?:\s+do)?|napisz(?:\s+do)?)\s+(.+)""",
         option = RegexOption.IGNORE_CASE
     )
 

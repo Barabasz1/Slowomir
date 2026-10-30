@@ -137,6 +137,16 @@ class CommandIntentParserTest {
         assertEquals(CommandIdentifier.SMS_WRITE, resultSms?.identifier)
         assertEquals(CommandArgument.Text("anna"), resultSms?.argument)
 
+        val resultSmsDo = parser.parse("SMS do Mamy")
+        assertNotNull(resultSmsDo)
+        assertEquals(CommandIdentifier.SMS_WRITE, resultSmsDo?.identifier)
+        assertEquals(CommandArgument.Text("mamy"), resultSmsDo?.argument)
+
+        val resultNapiszDo = parser.parse("Napisz do Mamy")
+        assertNotNull(resultNapiszDo)
+        assertEquals(CommandIdentifier.SMS_WRITE, resultNapiszDo?.identifier)
+        assertEquals(CommandArgument.Text("mamy"), resultNapiszDo?.argument)
+
         val resultNapiszSms = parser.parse("Napisz SMS do Anna")
         assertNotNull(resultNapiszSms)
         assertEquals(CommandIdentifier.SMS_WRITE, resultNapiszSms?.identifier)
