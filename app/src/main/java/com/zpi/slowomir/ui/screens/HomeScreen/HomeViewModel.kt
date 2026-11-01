@@ -3,6 +3,8 @@ package com.zpi.slowomir.ui.screens.HomeScreen
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.zpi.slowomir.kws.KeywordTestController
+import com.zpi.slowomir.kws.KeywordUiState
 import com.zpi.slowomir.overlay.commands.CommandResult
 import com.zpi.slowomir.overlay.commands.TapCommand
 import com.zpi.slowomir.overlay.commands.grid.ToggleGridCommand
@@ -27,7 +29,8 @@ class HomeViewModel @Inject constructor(
     private val toggleGridCommandFactory: ToggleGridCommand.Factory,
     private val voiceSessionManager: VoiceSessionManager,
     private val voiceOverlayManager: VoiceOverlayManager,
-    private val voskSpeechRecognizer: VoskSpeechRecognizer
+    private val voskSpeechRecognizer: VoskSpeechRecognizer,
+    private val keywordTestController: KeywordTestController
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<CommandResult?>(null)
@@ -36,6 +39,13 @@ class HomeViewModel @Inject constructor(
 
     val isVoiceServiceRunning: StateFlow<Boolean> = VoiceRecognitionService.isRunning
     val liveSpeechState: StateFlow<LiveSpeechState> = voskSpeechRecognizer.liveTranscript
+    val kwsState: StateFlow<KeywordUiState> = keywordTestController.state
+
+    fun startKws() = keywordTestController.start()
+
+    fun stopKws() = keywordTestController.stop()
+
+    fun onKwsPermissionDenied() = keywordTestController.onPermissionDenied()
 
     fun startVoiceService(context: Context) {
         VoiceRecognitionService.start(context)

@@ -41,6 +41,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
+import com.zpi.slowomir.kws.KeywordTestCard
 import com.zpi.slowomir.overlay.commands.CommandResult
 import com.zpi.slowomir.voice.OverlayState
 
@@ -56,6 +57,7 @@ fun HomeScreen(
     var inputText by remember { mutableStateOf("") }
     val isServiceRunning by viewModel.isVoiceServiceRunning.collectAsState()
     val liveSpeechState by viewModel.liveSpeechState.collectAsState()
+    val kwsState by viewModel.kwsState.collectAsState()
 
     val scrollState = rememberScrollState()
 
@@ -225,6 +227,13 @@ fun HomeScreen(
                 }
             }
         }
+
+        KeywordTestCard(
+            state = kwsState,
+            onStart = viewModel::startKws,
+            onStop = viewModel::stopKws,
+            onPermissionDenied = viewModel::onKwsPermissionDenied
+        )
 
 
         Button(
