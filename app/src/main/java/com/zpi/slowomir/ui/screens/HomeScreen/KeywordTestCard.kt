@@ -1,4 +1,4 @@
-package com.zpi.slowomir.kws
+package com.zpi.slowomir.ui.screens.HomeScreen
 
 import android.Manifest
 import android.content.pm.PackageManager
@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
+import com.zpi.slowomir.kws.KeywordUiState
 
 @Composable
 fun KeywordTestCard(

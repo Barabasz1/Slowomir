@@ -9,8 +9,8 @@ import com.zpi.slowomir.overlay.commands.CommandResult
 import com.zpi.slowomir.overlay.commands.TapCommand
 import com.zpi.slowomir.overlay.commands.grid.ToggleGridCommand
 import com.zpi.slowomir.overlay.services.VoiceRecognitionService
+import com.zpi.slowomir.overlay.ui.voice.ContactPickerOverlayManager
 import com.zpi.slowomir.overlay.ui.voice.VoiceOverlayManager
-import com.zpi.slowomir.voice.VoiceEvent
 import com.zpi.slowomir.voice.VoiceSessionManager
 import com.zpi.slowomir.voice.mediator.CommandMediator
 import com.zpi.slowomir.voice.mediator.MediatorState

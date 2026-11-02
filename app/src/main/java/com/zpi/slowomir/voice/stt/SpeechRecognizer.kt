@@ -11,4 +11,6 @@ sealed interface SttResult {
 interface SpeechRecognizer {
     suspend fun initialize(): Result<Unit>
     fun startListening(): Flow<SttResult>
+    fun stopListening()
+    fun release()
 }

@@ -41,7 +41,6 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
-import com.zpi.slowomir.kws.KeywordTestCard
 import com.zpi.slowomir.overlay.commands.CommandResult
 import com.zpi.slowomir.voice.OverlayState
 import com.zpi.slowomir.voice.stt.VoiceState

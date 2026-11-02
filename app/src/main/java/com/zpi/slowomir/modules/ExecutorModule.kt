@@ -64,12 +64,5 @@ class ExecutorModule {
         return CommandExecutorService.instance?.textEditExecutor
     }
 
-    @Provides
-    @Singleton
-    fun provideVoiceOverlayManager(
-        commandMediator: CommandMediator,
-        @ApplicationContext context: Context,
-    ): VoiceOverlayManager {
-        return VoiceOverlayManager(commandMediator, context)
-    }
+
 }

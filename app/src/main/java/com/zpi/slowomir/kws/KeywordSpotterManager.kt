@@ -9,52 +9,143 @@ import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
 import android.util.Log
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.withContext
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import javax.inject.Inject
 import kotlin.math.sqrt
 
 
-class KeywordSpotterManager(
-    context: Context,
-    private val callback: Callback
-) {
-    interface Callback {
-        fun onListeningStarted()
-        fun onKeywordDetected()
-        fun onListeningStopped()
-        fun onError(error: KeywordError)
-    }
+class KeywordSpotterManager @Inject constructor(
+    @ApplicationContext context: Context,
+) : KeywordSpotter {
 
     private val appContext = context.applicationContext
     private val ortEnv: OrtEnvironment = OrtEnvironment.getEnvironment()
 
-    @Volatile private var session: OrtSession? = null
-    @Volatile private var inputName: String? = null
-    @Volatile private var running = false
+    @Volatile
+    private var session: OrtSession? = null
+
+    @Volatile
+    private var audioRecord: AudioRecord? = null
+
+    @Volatile
+    private var inputName: String? = null
+
+    private val lifecycleLock = Any()
+
+    @Volatile
+    private var running = false
     private var worker: Thread? = null
     private var frontend: MicroFrontend? = null
 
-    @Synchronized
-    fun start() {
-        worker?.join()
-        running = true
-        worker = Thread({ runLoop() }, "kws-audio").also { it.start() }
+    override suspend fun initialize(): Result<Unit> = withContext(Dispatchers.IO) {
+        synchronized(lifecycleLock) {
+            runCatching {
+                if (session == null) session = loadSession()
+                if (frontend == null) {
+                    frontend = MicroFrontend().also {
+                        check(it.init()) {
+                            "Frontend init failed"
+                        }
+                    }
+                }
+            }.onFailure {
+                Log.e(TAG, "KWS init failed", it)
+            }
+        }
     }
 
-    fun stop() {
-        running = false
+    override fun startListening(): Flow<KwsResult> = callbackFlow {
+        val thread: Thread
+
+        synchronized(lifecycleLock) {
+            val sess = session
+            val fe = frontend
+
+            if (sess == null || fe == null) {
+                trySend(KwsResult.Error(KeywordError.MODEL_LOAD_FAILED))
+                close()
+                return@callbackFlow
+            }
+
+            if (worker?.isAlive == true) {
+                trySend(KwsResult.Error(KeywordError.UNKNOWN))
+                close()
+                return@callbackFlow
+            }
+
+            running = true
+
+            thread = Thread({
+                try {
+                    runLoop(sess, fe) { result ->
+                        trySend(result)
+                    }
+                } finally {
+                    synchronized(lifecycleLock) {
+                        running = false
+                        if (worker === Thread.currentThread()) {
+                            worker = null
+                        }
+                    }
+                    close()
+                }
+            }, "kws-audio")
+
+            worker = thread
+            thread.start()
+        }
+
+        awaitClose {
+            stopListening()
+
+            if (thread !== Thread.currentThread()) {
+                thread.join()
+            }
+        }
+    }.flowOn(Dispatchers.IO)
+
+    override fun stopListening() {
+        synchronized(lifecycleLock) {
+            running = false
+            runCatching {
+                audioRecord?.stop()
+            }
+        }
+
     }
 
-    @Synchronized
-    fun release() {
-        running = false
-        worker?.join()
-        worker = null
-        session?.close()
-        session = null
-        frontend?.close()
-        frontend = null
+    override fun release() {
+        val thread = synchronized(lifecycleLock) {
+            running = false
+            runCatching { audioRecord?.stop() }
+            worker
+        }
+
+        if (thread != null && thread !== Thread.currentThread()) {
+            thread.join()
+        }
+
+        synchronized(lifecycleLock) {
+            worker = null
+
+            session?.close()
+            session = null
+
+            frontend?.close()
+            frontend = null
+
+            inputName = null
+        }
     }
+
 
     private fun loadSession(): OrtSession {
         val bytes = appContext.assets.open(MODEL_FILE).use { it.readBytes() }
@@ -68,33 +159,16 @@ class KeywordSpotterManager(
     }
 
     @SuppressLint("MissingPermission")
-    private fun runLoop() {
+    private fun runLoop(sess: OrtSession, fe: MicroFrontend, emit: (KwsResult) -> Unit) {
         var record: AudioRecord? = null
         try {
-            val sess = session ?: try {
-                loadSession().also { session = it }
-            } catch (t: Throwable) {
-                Log.e(TAG, "Nie udało się załadować modelu", t)
-                callback.onError(KeywordError.MODEL_LOAD_FAILED)
-                return
-            }
             val inName = inputName ?: sess.inputNames.first()
-            val fe = frontend ?: try {
-                MicroFrontend().also {
-                    if (!it.init()) error("Frontend init failed")
-                    frontend = it
-                }
-            } catch (t: Throwable) {
-                Log.e(TAG, "Nie udało się zainicjować frontendu", t)
-                callback.onError(KeywordError.MODEL_LOAD_FAILED)
-                return
-            }
 
             val minBuf = AudioRecord.getMinBufferSize(
                 SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT
             )
             if (minBuf <= 0) {
-                callback.onError(KeywordError.MIC_UNAVAILABLE)
+                emit(KwsResult.Error(KeywordError.MIC_UNAVAILABLE))
                 return
             }
             record = AudioRecord(
@@ -104,13 +178,23 @@ class KeywordSpotterManager(
                 AudioFormat.ENCODING_PCM_16BIT,
                 maxOf(minBuf * 2, SAMPLE_RATE * 2)
             )
+
             if (record.state != AudioRecord.STATE_INITIALIZED) {
-                callback.onError(KeywordError.MIC_UNAVAILABLE)
+                emit(KwsResult.Error(KeywordError.MIC_UNAVAILABLE))
                 return
             }
 
-            record.startRecording()
-            callback.onListeningStarted()
+            val shouldStart = synchronized(lifecycleLock) {
+                if (!running) {
+                    false
+                } else {
+                    audioRecord = record
+                    record.startRecording()
+                    true
+                }
+            }
+
+            if (!shouldStart) return
 
             val window = ShortArray(WINDOW_SAMPLES)
             val chunk = ShortArray(CHUNK_SAMPLES)
@@ -125,7 +209,9 @@ class KeywordSpotterManager(
                 val n = record.read(chunk, 0, chunk.size)
                 if (n < 0) {
                     Log.w(TAG, "AudioRecord.read error: $n")
-                    callback.onError(KeywordError.MIC_UNAVAILABLE)
+                    if (running) {
+                        emit(KwsResult.Error(KeywordError.MIC_UNAVAILABLE))
+                    }
                     break
                 }
                 if (n == 0) continue
@@ -133,11 +219,15 @@ class KeywordSpotterManager(
                 System.arraycopy(window, n, window, 0, WINDOW_SAMPLES - n)
                 System.arraycopy(chunk, 0, window, WINDOW_SAMPLES - n, n)
 
-                if (cooldownChunks > 0) { cooldownChunks--; continue }
+                if (cooldownChunks > 0) {
+                    cooldownChunks--; continue
+                }
                 if (++sinceInfer < INFER_EVERY_CHUNKS) continue
                 sinceInfer = 0
 
-                if (rms(window) < MIN_RMS) { recent.clear(); continue }
+                if (rms(window) < MIN_RMS) {
+                    recent.clear(); continue
+                }
 
                 val features = fe.process(window)
                 inputBuf.rewind()
@@ -160,16 +250,21 @@ class KeywordSpotterManager(
                     recent.clear()
                     window.fill(0)
                     cooldownChunks = COOLDOWN_CHUNKS
-                    callback.onKeywordDetected()
+                    emit(KwsResult.Detected)
                 }
             }
         } catch (t: Throwable) {
             Log.e(TAG, "Błąd w pętli KWS", t)
-            callback.onError(KeywordError.UNKNOWN)
+            emit(KwsResult.Error(KeywordError.UNKNOWN))
         } finally {
+            synchronized(lifecycleLock) {
+                if (audioRecord === record) {
+                    audioRecord = null
+                }
+            }
+
             runCatching { record?.stop() }
             runCatching { record?.release() }
-            callback.onListeningStopped()
         }
     }
 
@@ -182,6 +277,7 @@ class KeywordSpotterManager(
     private companion object {
         const val TAG = "KeywordSpotterManager"
         const val MODEL_FILE = "slowomir_kws.onnx"
+
         /*
         SOURCE ATTRIBUTION:
         Base pretrained model: multilingual_context_73_0.8011

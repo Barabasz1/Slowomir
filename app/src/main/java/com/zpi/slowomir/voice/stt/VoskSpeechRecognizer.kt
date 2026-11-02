@@ -1,15 +1,10 @@
-package com.zpi.slowomir.overlay.voice
+package com.zpi.slowomir.voice.stt
 
 import android.content.Context
 import android.util.Log
-import com.zpi.slowomir.voice.stt.SpeechRecognizer
-import com.zpi.slowomir.voice.stt.SttResult
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.suspendCancellableCoroutine
 import org.json.JSONObject
@@ -167,7 +162,7 @@ class VoskSpeechRecognizer @Inject constructor(
      * Stops the active speech recording service and releases AudioRecord resources.
      */
     @Synchronized
-    fun stopListening() {
+    override fun stopListening() {
         if (!isListening && speechService == null) return
 
         try {
@@ -180,6 +175,15 @@ class VoskSpeechRecognizer @Inject constructor(
             speechService = null
             isListening = false
         }
+    }
+
+    @Synchronized
+    override fun release() {
+        stopListening()
+        runCatching { recognizer?.close() }
+        runCatching { model?.close() }
+        recognizer = null
+        model = null
     }
 
     private fun extractAndEmitPartial(jsonString: String?, callback: (String) -> Unit) {

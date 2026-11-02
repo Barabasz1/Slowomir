@@ -17,10 +17,14 @@ import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import com.zpi.slowomir.MainActivity
 import com.zpi.slowomir.R
-import com.zpi.slowomir.overlay.voice.VoskSpeechRecognizer
+import com.zpi.slowomir.kws.KeywordSpotter
+import com.zpi.slowomir.kws.KwsResult
+import com.zpi.slowomir.voice.stt.SpeechRecognizer
 import com.zpi.slowomir.voice.stt.SttResult
 import com.zpi.slowomir.voice.stt.VoiceInput
 import com.zpi.slowomir.voice.stt.VoiceInputSink
+import com.zpi.slowomir.voice.stt.VoiceState
+import com.zpi.slowomir.voice.stt.VoiceStateSource
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -28,6 +32,11 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.dropWhile
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import com.zpi.slowomir.overlay.ui.voice.ContactPickerOverlayManager
@@ -40,15 +49,34 @@ import com.zpi.slowomir.overlay.ui.voice.ContactPickerOverlayManager
 class VoiceRecognitionService : Service() {
 
     @Inject
-    lateinit var recognizer: VoskSpeechRecognizer
+    lateinit var stt: SpeechRecognizer
+
+    @Inject
+    lateinit var kws: KeywordSpotter
 
     @Inject
     lateinit var sink: VoiceInputSink
 
-    private var listenJob: Job? = null
-    private var stopReason: String? = null
+    @Inject
+    lateinit var stateSource: VoiceStateSource
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private var engineJob: Job? = null
+    private var watchJob: Job? = null
+
+    @Volatile
+    private var stopReason: String? = null
+
+    private enum class Engine { KWS, STT, NONE }
+
+    private fun VoiceState.engine() = when (this) {
+        is VoiceState.KeywordSpotting -> Engine.KWS
+        is VoiceState.Listening,
+        is VoiceState.IntentParsing,
+        is VoiceState.CommandExecuting -> Engine.STT
+
+        is VoiceState.Stopped, is VoiceState.Failed -> Engine.NONE
+    }
 
     @Inject
     lateinit var contactPickerOverlayManager: ContactPickerOverlayManager
@@ -60,39 +88,106 @@ class VoiceRecognitionService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val action = intent?.action
+        when (intent?.action) {
+            ACTION_STOP -> {
+                Log.i(TAG, "Stop requested")
+                stopSelf()
+                return START_NOT_STICKY
+            }
 
-        if (action == ACTION_STOP) {
-            Log.i(TAG, "Stopping VoiceRecognitionService requested.")
-            stopServiceInternal()
+            ACTION_START -> Unit
+            else -> return START_NOT_STICKY
+        }
+
+        if (ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.RECORD_AUDIO
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            fail("RECORD_AUDIO permission is not granted")
             return START_NOT_STICKY
         }
 
         if (!startForegroundInternal()) {
-            Log.e(TAG, "Failed to start foreground service. Stopping.")
+            fail("Failed to start foreground service")
             stopSelf()
             return START_NOT_STICKY
         }
 
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-            Log.e(TAG, "Cannot start VoiceRecognitionService: RECORD_AUDIO permission is not granted.")
-            stopReason = "RECORD_AUDIO permission is not granted"
-            stopServiceInternal()
+        if (engineJob?.isActive == true) {
+            Log.i(TAG, "Already running.")
             return START_NOT_STICKY
         }
 
-        if (listenJob?.isActive == true) {
-            Log.i(TAG, "VoiceRecognitionService is already running.")
-            return START_NOT_STICKY
-        }
+
+        Log.i(TAG, "Starting in foreground")
 
         stopReason = null
-        Log.i(TAG, "Starting VoiceRecognitionService in foreground...")
+        engineJob = scope.launch { superviseEngines() }
+        watchJob = scope.launch {
+            stateSource.state
+                .dropWhile { it is VoiceState.Failed }
+                .first { it is VoiceState.Failed }
+            stopSelf()
+        }
+
+
         sink.accept(VoiceInput.ServiceStarted)
-        startVoiceRecognition()
 
         return START_NOT_STICKY
     }
+
+    private suspend fun superviseEngines() {
+        stateSource.state
+            .map { it.engine() }
+            .distinctUntilChanged()
+            .collectLatest {
+                when (it) {
+                    Engine.KWS -> runKws()
+                    Engine.STT -> runStt()
+                    Engine.NONE -> Unit
+                }
+            }
+    }
+
+    private suspend fun runKws() {
+        kws.initialize().onFailure {
+            sink.accept(VoiceInput.EnableSpeechRecognition)
+            return
+        }
+
+        try {
+            kws.startListening().collect { result ->
+                when (result) {
+                    KwsResult.Detected -> sink.accept(VoiceInput.KeywordDetected)
+                    is KwsResult.Error -> sink.accept(VoiceInput.EnableSpeechRecognition)
+                }
+            }
+        } finally {
+            kws.stopListening()
+        }
+    }
+
+    private suspend fun runStt() {
+        stt.initialize().onFailure {
+            fail(it.message ?: "Speech engine failed to initialize")
+            return
+        }
+        try {
+            stt.startListening()
+                .catch { fail(it.message ?: "Speech engine failed") }
+                .collect { result ->
+                    when (result) {
+                        is SttResult.Partial -> sink.accept(VoiceInput.SpeechPartial(result.text))
+                        is SttResult.Final -> sink.accept(VoiceInput.SpeechFinal(result.text))
+                        is SttResult.Error -> fail(result.exception.message ?: "Speech engine failed")
+                    }
+                }
+        } finally {
+            stt.stopListening()
+        }
+    }
+
 
     private fun startForegroundInternal(): Boolean {
         return try {
@@ -115,46 +210,25 @@ class VoiceRecognitionService : Service() {
         }
     }
 
-    private fun startVoiceRecognition() {
-        listenJob = scope.launch {
-            recognizer.initialize().onFailure {
-                fail(it)
-                return@launch
-            }
-
-            sink.accept(VoiceInput.EnableSpeechRecognition)
-
-            recognizer.startListening()
-                .catch { fail(it) }
-                .collect { result ->
-                    when (result) {
-                        is SttResult.Error -> fail(result.exception)
-                        is SttResult.Final -> sink.accept(VoiceInput.SpeechFinal(result.text))
-                        is SttResult.Partial -> sink.accept(VoiceInput.SpeechPartial(result.text))
-                    }
-                }
-        }
-    }
-
-    private fun fail(t: Throwable) {
-        stopReason = t.message ?: "Speech engine failed"
-        stopServiceInternal()
-    }
-
-    private fun stopServiceInternal() {
-        listenJob?.cancel()
-        listenJob = null
-        recognizer.stopListening()
-        stopForeground(STOP_FOREGROUND_REMOVE)
+    private fun fail(reason: String) {
+        Log.e(TAG, reason)
+        stopReason = reason
         stopSelf()
     }
 
+
     override fun onDestroy() {
         super.onDestroy()
-        recognizer.stopListening()
         sink.accept(VoiceInput.ServiceStopped(stopReason))
+
+        val job = engineJob
         scope.cancel()
-        Log.i(TAG, "VoiceRecognitionService destroyed.")
+        CoroutineScope(Dispatchers.IO).launch {
+            job?.join()
+            kws.release()
+            stt.release()
+        }
+        Log.i(TAG, "Destroyed")
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
