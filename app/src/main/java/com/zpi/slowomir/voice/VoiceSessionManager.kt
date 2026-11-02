@@ -1,5 +1,6 @@
 package com.zpi.slowomir.voice
 
+import android.util.Log
 import com.zpi.slowomir.overlay.commands.Command
 import com.zpi.slowomir.overlay.commands.CommandArgument
 import com.zpi.slowomir.overlay.commands.CommandIdentifier
@@ -20,26 +21,25 @@ import com.zpi.slowomir.overlay.commands.phoneCalls.SpeakerCommand
 import com.zpi.slowomir.overlay.commands.phoneCalls.WriteSMSCommand
 import com.zpi.slowomir.overlay.commands.textEdit.KeyboardHideCommand
 import com.zpi.slowomir.overlay.commands.textEdit.KeyboardShowCommand
+import com.zpi.slowomir.overlay.services.CommandExecutorService
+import com.zpi.slowomir.utils.ContactOption
 import com.zpi.slowomir.voice.mediator.CommandMediator
 import com.zpi.slowomir.voice.pipeline.Pipeline
 import com.zpi.slowomir.voice.pipeline.PipelineStage
-import com.zpi.slowomir.overlay.services.CommandExecutorService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * Voice Session Manager coordinating speech recognition state,
- * routing transcribed text through a [Pipeline], and dispatching resulting commands
- * to the [CommandMediator].
- */
 @Singleton
 class VoiceSessionManager @Inject constructor(
     private val mediator: CommandMediator,
     private val intentParser: CommandIntentParser,
+    private val normalizer: PolishTextNormalizer,
     private val tapCommandFactory: TapCommand.Factory,
     private val notificationsCommandFactory: NotificationsCommand.Factory,
     private val quickSettingsCommandFactory: QuickSettingsCommand.Factory,
@@ -59,6 +59,8 @@ class VoiceSessionManager @Inject constructor(
 ) {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    private val selectionMutex = Mutex()
 
     private val filterStage = PipelineStage<String, String> { text ->
         if (text.isNotBlank()) text else null
@@ -99,13 +101,13 @@ class VoiceSessionManager @Inject constructor(
         }
     }
 
-    /**
-     * Called when speech recognition produces results.
-     *
-     * @param text The transcribed speech string.
-     */
     fun onSpeechResult(text: String) {
         scope.launch {
+            if (mediator.mediatorState.value.contactSelection != null) {
+                handleSelectionSpeech(text)
+                return@launch
+            }
+
             val command = pipeline.process(text)
 
             if (command != null) {
@@ -116,23 +118,67 @@ class VoiceSessionManager @Inject constructor(
         }
     }
 
-    /**
-     * Called when speech recognition produces partial results.
-     *
-     * @param text The transcribed speech string.
-     */
     fun onSpeechPartial(text: String) {
         scope.launch {
             mediator.handleEvent(VoiceEvent.SpeechPartial(text))
         }
     }
+    fun selectContact(index: Int) {
+        scope.launch { selectContactInternal(index) }
+    }
 
-    /**
-     * Resolves a voice intent to an executable command.
-     *
-     * @param intent The voice intent to resolve.
-     * @return The corresponding command.
-     */
+    fun cancelSelection() {
+        scope.launch { cancelSelectionInternal() }
+    }
+
+    private suspend fun handleSelectionSpeech(text: String) {
+        if (isCancel(text)) {
+            cancelSelectionInternal()
+            return
+        }
+
+        val index = parseSelection(text)
+        if (index == null) {
+            Log.d(TAG, "Ignoring speech during contact selection: '$text'")
+            return
+        }
+
+        selectContactInternal(index)
+    }
+
+    private suspend fun selectContactInternal(index: Int) {
+        val option = consumeSelection(index)
+        if (option == null) {
+            Log.d(TAG, "Selection $index ignored (no pending selection or out of range)")
+            return
+        }
+
+        val command = callCommandFactory.create(recipient = option.number)
+        mediator.handleEvent(VoiceEvent.CommandInterpreted(command))
+    }
+
+    private suspend fun cancelSelectionInternal() {
+        selectionMutex.withLock {
+            mediator.handleEvent(VoiceEvent.SelectionCleared)
+        }
+    }
+
+    private suspend fun consumeSelection(index: Int): ContactOption? = selectionMutex.withLock {
+        val options = mediator.mediatorState.value.contactSelection ?: return@withLock null
+        val option = options.getOrNull(index - 1) ?: return@withLock null
+        mediator.handleEvent(VoiceEvent.SelectionCleared)
+        option
+    }
+
+    private fun isCancel(text: String): Boolean = normalizer.normalize(text) in cancelPhrases
+
+    private fun parseSelection(text: String): Int? {
+        val normalized = normalizer.normalize(text)
+            .split(" ")
+            .joinToString(" ") { extraNumberWords[it] ?: it }
+        return selectionRegex.matchEntire(normalized)?.groupValues?.get(1)?.toIntOrNull()
+    }
+
     private fun resolveIntentToCommand(intent: VoiceIntent): Command {
         return when (intent.identifier) {
             // Navigation commands
@@ -232,9 +278,26 @@ class VoiceSessionManager @Inject constructor(
     }
 
     companion object {
+        private const val TAG = "VoiceSessionManager"
         private const val DEFAULT_SCREEN_WIDTH = 1080f
         private const val DEFAULT_SCREEN_HEIGHT = 2400f
         private const val DEFAULT_TAP_X = 540f
         private const val DEFAULT_TAP_Y = 1200f
+
+        private val selectionRegex =
+            Regex("""^(?:(?:numer|opcja|opcję|pozycja|pozycję|kontakt|wybierz|wybieram)\s+)*(\d+)$""")
+
+        private val cancelPhrases = setOf(
+            "anuluj",
+            "zamknij",
+        )
+
+        private val extraNumberWords = mapOf(
+            "jedynkę" to "1",
+            "dwójkę" to "2",
+            "trójkę" to "3",
+            "czwórkę" to "4",
+            "piątkę" to "5",
+        )
     }
 }

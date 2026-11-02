@@ -73,6 +73,27 @@ fun HomeScreen(
         }
     }
 
+    var hasContactsPermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) ==
+                    PackageManager.PERMISSION_GRANTED
+        )
+    }
+    var hasCallPermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(context, Manifest.permission.CALL_PHONE) ==
+                    PackageManager.PERMISSION_GRANTED
+        )
+    }
+
+    val contactsPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted -> hasContactsPermission = isGranted }
+
+    val callPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted -> hasCallPermission = isGranted }
+
     val toggleVoiceService = {
         if (isServiceRunning) {
             viewModel.stopVoiceService(context)
@@ -162,6 +183,13 @@ fun HomeScreen(
                 Text(
                     text = "Last Action: Invalid Context - ${result.reason}",
                     color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+
+            is CommandResult.NeedsSelection -> {
+                Text(
+                    text = "Last Action: Waiting for contact selection",
                     style = MaterialTheme.typography.bodyMedium
                 )
             }
@@ -279,6 +307,22 @@ fun HomeScreen(
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Enable Accessibility Service")
+        }
+
+        Button(
+            onClick = { contactsPermissionLauncher.launch(Manifest.permission.READ_CONTACTS) },
+            enabled = !hasContactsPermission,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(if (hasContactsPermission) "Read Contacts: Granted" else "Enable Read Contacts")
+        }
+
+        Button(
+            onClick = { callPermissionLauncher.launch(Manifest.permission.CALL_PHONE) },
+            enabled = !hasCallPermission,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(if (hasCallPermission) "Call Phone: Granted" else "Enable Call Phone")
         }
     }
 }

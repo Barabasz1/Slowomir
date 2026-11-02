@@ -51,6 +51,9 @@ class DefaultCommandMediator @Inject constructor() : CommandMediator {
 
             is VoiceEvent.CommandInterpreted -> {
                 val result = dispatch(event.command)
+                if (result is CommandResult.NeedsSelection) {
+                    _mediatorState.update { it.copy(contactSelection = result.options) }
+                }
                 formatCommandResult(event.command, result, mediatorState.value.intent)
             }
 
@@ -66,6 +69,12 @@ class DefaultCommandMediator @Inject constructor() : CommandMediator {
                 _mediatorState.update {
                     it.copy(intent = event.intent)
                 }
+
+                null
+            }
+
+            is VoiceEvent.SelectionCleared -> {
+                _mediatorState.update { it.copy(contactSelection = null) }
 
                 null
             }
@@ -119,6 +128,7 @@ class DefaultCommandMediator @Inject constructor() : CommandMediator {
             is CommandResult.Success -> CommandExecuted("$intentDesc via ${command::class.simpleName}")
             is CommandResult.Failure -> Error("${command::class.simpleName} Failed: ${result.reason}")
             is CommandResult.InvalidContext -> Error("Invalid Context: ${result.reason}")
+            is CommandResult.NeedsSelection -> Idle
         }
     }
 

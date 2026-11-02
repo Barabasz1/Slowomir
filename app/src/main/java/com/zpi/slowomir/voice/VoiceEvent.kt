@@ -13,4 +13,7 @@ sealed class VoiceEvent {
     data class IntentParsed(val intent: VoiceIntent) : VoiceEvent()
     data class CommandInterpreted(val command: Command) : VoiceEvent()
     data class InvalidCommand(val text: String) : VoiceEvent()
+
+    /** The contact picker was closed (a contact was chosen, cancelled or timed out). */
+    object SelectionCleared : VoiceEvent()
 }

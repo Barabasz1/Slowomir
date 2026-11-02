@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import javax.inject.Inject
+import com.zpi.slowomir.overlay.ui.voice.ContactPickerOverlayManager
 
 /**
  * Dedicated Foreground Service responsible for recording audio and running the Vosk
@@ -38,9 +39,13 @@ class VoiceRecognitionService : Service() {
     @Inject
     lateinit var voiceSessionManager: VoiceSessionManager
 
+    @Inject
+    lateinit var contactPickerOverlayManager: ContactPickerOverlayManager
+
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
+        contactPickerOverlayManager.start()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
