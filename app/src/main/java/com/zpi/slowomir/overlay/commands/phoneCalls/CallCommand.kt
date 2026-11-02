@@ -9,6 +9,7 @@ import com.zpi.slowomir.overlay.OverlayContext
 import com.zpi.slowomir.overlay.commands.Command
 import com.zpi.slowomir.overlay.commands.CommandResult
 import com.zpi.slowomir.overlay.executors.PhoneCallExecutor
+import com.zpi.slowomir.utils.ContactLookupResult
 import com.zpi.slowomir.utils.ContactUtils
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
@@ -16,13 +17,6 @@ import dagger.assisted.AssistedInject
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Provider
 
-/**
- * A command that initiates an outgoing phone call to a given recipient.
- *
- * @param phoneCallExecutorProvider A provider for the [PhoneCallExecutor].
- * @param appContext The application context used as fallback when no active call is present.
- * @param recipient The optional recipient contact name or phone number.
- */
 class CallCommand @AssistedInject constructor(
     private val phoneCallExecutorProvider: Provider<PhoneCallExecutor?>,
     @ApplicationContext private val appContext: Context,
@@ -30,38 +24,50 @@ class CallCommand @AssistedInject constructor(
 ) : Command {
 
     override fun execute(): CommandResult {
-        val targetRecipient = recipient.orEmpty()
-        val executor = phoneCallExecutorProvider.get()
+        val query = recipient.orEmpty()
 
-        val success = if (executor != null) {
-            executor.call(targetRecipient)
-        } else {
-            fallbackCall(appContext, targetRecipient)
+        val number = when (val result = ContactUtils.lookup(appContext, query)) {
+            is ContactLookupResult.Found -> result.number
+            is ContactLookupResult.Ambiguous ->
+                return CommandResult.NeedsSelection(result.options)
+            ContactLookupResult.NotFound ->
+                return CommandResult.Failure("Nie znaleziono kontaktu: $query")
+            ContactLookupResult.PermissionDenied ->
+                return CommandResult.Failure("Brak uprawnienia do odczytu kontaktów")
+            ContactLookupResult.EmptyQuery ->
+                return CommandResult.Failure("Nie podano, do kogo zadzwonić")
         }
+
+        val executor = phoneCallExecutorProvider.get()
+        /*
+        val success = if (executor != null) {
+            executor.call(number)
+        } else {
+            placeCall(appContext, number)
+        }*/
+        Log.i("CallCommand", "TEST: would call $number")   // <-- TEST
+        val success = true
 
         return if (success) CommandResult.Success() else CommandResult.Failure("Phone call failed")
     }
 
-    override fun canExecute(context: OverlayContext): Boolean {
-        return true
-    }
+    override fun canExecute(context: OverlayContext): Boolean = true
 
-    private fun fallbackCall(context: Context, recipient: String): Boolean {
+    private fun placeCall(context: Context, number: String): Boolean {
         return try {
-            val resolvedNumber = ContactUtils.resolvePhoneNumber(context, recipient)
+            val uri = "tel:$number".toUri()
             val telecomManager = context.getSystemService(Context.TELECOM_SERVICE) as? TelecomManager
-            if ((telecomManager != null) && resolvedNumber.isNotBlank()) {
-                val uri = "tel:$resolvedNumber".toUri()
+            if (telecomManager != null) {
                 telecomManager.placeCall(uri, null)
-                true
             } else {
-                val intent = Intent(Intent.ACTION_CALL).apply {
-                    data = "tel:$resolvedNumber".toUri()
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                }
-                context.startActivity(intent)
-                true
+                context.startActivity(
+                    Intent(Intent.ACTION_CALL).apply {
+                        data = uri
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    },
+                )
             }
+            true
         } catch (e: SecurityException) {
             Log.e("CallCommand", "SecurityException initiating call: ${e.message}", e)
             false

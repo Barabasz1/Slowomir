@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.zpi.slowomir.overlay.ui.voice.ContactPickerOverlayManager
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
@@ -30,7 +31,8 @@ class HomeViewModel @Inject constructor(
     private val voiceSessionManager: VoiceSessionManager,
     private val voiceOverlayManager: VoiceOverlayManager,
     private val voskSpeechRecognizer: VoskSpeechRecognizer,
-    private val keywordTestController: KeywordTestController
+    private val keywordTestController: KeywordTestController,
+    private val contactPickerOverlayManager: ContactPickerOverlayManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<CommandResult?>(null)
@@ -40,6 +42,10 @@ class HomeViewModel @Inject constructor(
     val isVoiceServiceRunning: StateFlow<Boolean> = VoiceRecognitionService.isRunning
     val liveSpeechState: StateFlow<LiveSpeechState> = voskSpeechRecognizer.liveTranscript
     val kwsState: StateFlow<KeywordUiState> = keywordTestController.state
+
+    init {
+        contactPickerOverlayManager.start()
+    }
 
     fun startKws() = keywordTestController.start()
 
