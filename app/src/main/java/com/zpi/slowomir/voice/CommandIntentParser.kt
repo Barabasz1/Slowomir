@@ -121,10 +121,10 @@ class CommandIntentParser @Inject constructor(
             "ukryj siatkę", "schowaj siatkę", "wyłącz siatkę", "usuń siatkę z ekranu", "nie pokazuj siatki" -> CommandIdentifier.GRID_HIDE
             "wyłącz", "wyłącz sterowanie", "uśpij nakładkę", "zatrzymaj sterowanie głosowe", "przejdź w stan uśpienia", "uśpij" -> CommandIdentifier.OVERLAY_STOP
             "słowomirek powstań", "słowomirek obudź się", "słowomirek wstań", "słowomirek aktywuj się", "włącz sterowanie słowomirek", "powstań" -> CommandIdentifier.OVERLAY_START
-            "przewiń w górę", "przesuń w górę", "przewijaj w górę", "w górę", "przesuń ekran do góry", "do góry" -> CommandIdentifier.SWIPE_UP
-            "przewiń w dół", "przesuń w dół", "przewijaj w dół", "w dół", "przesuń ekran na dół", "do dołu" -> CommandIdentifier.SWIPE_DOWN
-            "przewiń w prawo", "przesuń w prawo", "przewijaj w prawo", "w prawo", "przesuń ekran w prawo" -> CommandIdentifier.SWIPE_RIGHT
-            "przewiń w lewo", "przesuń w lewo", "przewijaj w lewo", "w lewo", "przesuń ekran w lewo" -> CommandIdentifier.SWIPE_LEFT
+            "przewiń w górę", "przesuń w górę", "przewijaj w górę", "w górę", "przesuń ekran do góry", "do góry", "przesuń góra", "góra" -> CommandIdentifier.SWIPE_UP
+            "przewiń w dół", "przesuń w dół", "przewijaj w dół", "w dół", "przesuń ekran na dół", "do dołu", "przesuń dół", "dół" -> CommandIdentifier.SWIPE_DOWN
+            "przewiń w prawo", "przesuń w prawo", "przewijaj w prawo", "w prawo", "przesuń ekran w prawo", "przesuń prawo", "prawo" -> CommandIdentifier.SWIPE_RIGHT
+            "przewiń w lewo", "przesuń w lewo", "przewijaj w lewo", "w lewo", "przesuń ekran w lewo", "przesuń lewo", "lewo" -> CommandIdentifier.SWIPE_LEFT
             "przybliżyć", "przybliż", "powiększ", "zwiększ powiększenie", "zbliż widok" -> CommandIdentifier.ZOOM_IN
             "oddalić", "oddal", "pomniejsz", "zmniejsz powiększenie", "oddal widok" -> CommandIdentifier.ZOOM_OUT
             "cofnij", "wróć", "wstecz", "wróć do poprzedniego ekranu", "przejdź wstecz" -> CommandIdentifier.NAVIGATE_BACK
