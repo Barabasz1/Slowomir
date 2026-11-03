@@ -1,24 +1,28 @@
 package com.zpi.slowomir.overlay.ui.grid
 
-import android.app.Service
-import android.content.Context.WINDOW_SERVICE
+import android.content.Context
 import android.graphics.PixelFormat
+import android.util.Log
 import android.view.Gravity
+import android.view.View
 import android.view.WindowManager
+import com.zpi.slowomir.overlay.ui.common.OverlayHostProvider
+import com.zpi.slowomir.overlay.ui.common.OverlayWindowManager
+import javax.inject.Inject
+import javax.inject.Singleton
 
-class GridManager(private val service: Service) {
-    private val windowManager =
-        service.getSystemService(WINDOW_SERVICE) as WindowManager
-
+@Singleton
+class GridManager @Inject constructor(
+    hostProvider: OverlayHostProvider
+) : OverlayWindowManager(hostProvider) {
+    override val tag = "GridManager"
     private var gridView: GridView? = null
     private var selectedCell: Int? = null
     private val divisions = mutableListOf<Pair<Int, Int>>()
 
-    fun enable() {
-        if (gridView != null) return
-
-        val grid = GridView(
-            context = service,
+    override fun onCreateView(context: Context): View {
+        return GridView(
+            context = context,
             rows = 10,
             cols = 6,
             lineOpacity = 180,
@@ -27,11 +31,13 @@ class GridManager(private val service: Service) {
             lineWidthPx = 2f,
             labelTextSizePx = 32f
         )
+    }
 
-        val params = WindowManager.LayoutParams(
+    override fun onCreateLayoutParams(windowType: Int): WindowManager.LayoutParams {
+        return WindowManager.LayoutParams(
             WindowManager.LayoutParams.MATCH_PARENT,
             WindowManager.LayoutParams.MATCH_PARENT,
-            WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+            windowType,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                     WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
                     WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
@@ -40,21 +46,34 @@ class GridManager(private val service: Service) {
         ).apply {
             gravity = Gravity.TOP or Gravity.START
         }
+    }
 
-        windowManager.addView(grid, params)
-        gridView = grid
+    override fun onViewAttached(view: View) {
+        gridView = view as GridView
         redraw()
     }
 
-    fun disable() {
-        gridView?.let { windowManager.removeView(it) }
-        gridView = null
-        selectedCell = null
-        divisions.clear()
+    override fun onViewDetached(view: View) {
+        if (gridView === view) {
+            gridView = null
+        }
     }
 
-    fun toggle() {
-        if (gridView == null) enable() else disable()
+    fun enable() {
+        show()
+        Log.i(tag, "Grid overlay enabled")
+    }
+
+    fun disable() {
+        hide()
+        selectedCell = null
+        divisions.clear()
+        Log.i(tag, "Grid overlay disabled")
+    }
+
+    override fun toggle(): Boolean {
+        if (isShowing) disable() else enable()
+        return isShowing
     }
 
     fun selectCell(cell: Int) {

@@ -9,19 +9,22 @@ import com.zpi.slowomir.overlay.commands.CommandResult
 import com.zpi.slowomir.overlay.commands.TapCommand
 import com.zpi.slowomir.overlay.commands.grid.ToggleGridCommand
 import com.zpi.slowomir.overlay.services.VoiceRecognitionService
-import com.zpi.slowomir.overlay.voice.LiveSpeechState
+import com.zpi.slowomir.overlay.ui.voice.ContactPickerOverlayManager
 import com.zpi.slowomir.overlay.ui.voice.VoiceOverlayManager
 import com.zpi.slowomir.voice.VoiceSessionManager
 import com.zpi.slowomir.voice.mediator.CommandMediator
 import com.zpi.slowomir.voice.mediator.MediatorState
-import com.zpi.slowomir.overlay.voice.VoskSpeechRecognizer
+import com.zpi.slowomir.voice.stt.VoiceInput
+import com.zpi.slowomir.voice.stt.VoiceState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import com.zpi.slowomir.overlay.ui.voice.ContactPickerOverlayManager
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
@@ -30,7 +33,6 @@ class HomeViewModel @Inject constructor(
     private val toggleGridCommandFactory: ToggleGridCommand.Factory,
     private val voiceSessionManager: VoiceSessionManager,
     private val voiceOverlayManager: VoiceOverlayManager,
-    private val voskSpeechRecognizer: VoskSpeechRecognizer,
     private val keywordTestController: KeywordTestController,
     private val contactPickerOverlayManager: ContactPickerOverlayManager
 ) : ViewModel() {
@@ -39,8 +41,11 @@ class HomeViewModel @Inject constructor(
     val uiState: StateFlow<CommandResult?> = _uiState.asStateFlow()
     val overlayState: StateFlow<MediatorState> = mediator.mediatorState
 
-    val isVoiceServiceRunning: StateFlow<Boolean> = VoiceRecognitionService.isRunning
-    val liveSpeechState: StateFlow<LiveSpeechState> = voskSpeechRecognizer.liveTranscript
+    val voiceState: StateFlow<VoiceState> = voiceSessionManager.state
+
+    val isVoiceRunning: StateFlow<Boolean> = voiceState
+        .map { it !is VoiceState.Stopped && it !is VoiceState.Failed }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
     val kwsState: StateFlow<KeywordUiState> = keywordTestController.state
 
     init {
@@ -76,11 +81,11 @@ class HomeViewModel @Inject constructor(
     }
 
     fun simulateSpeechInput(speechText: String) {
-        voiceSessionManager.onSpeechPartial(speechText)
+        voiceSessionManager.accept(VoiceInput.SpeechPartial(speechText))
     }
 
     fun simulateSpeechCompletion(input: String) {
-        voiceSessionManager.onSpeechResult(input)
+        voiceSessionManager.accept(VoiceInput.SpeechFinal(input))
     }
 
     fun toggleGrid() {

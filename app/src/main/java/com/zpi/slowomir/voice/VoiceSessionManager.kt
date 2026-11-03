@@ -32,9 +32,20 @@ import com.zpi.slowomir.utils.ContactOption
 import com.zpi.slowomir.voice.mediator.CommandMediator
 import com.zpi.slowomir.voice.pipeline.Pipeline
 import com.zpi.slowomir.voice.pipeline.PipelineStage
+import com.zpi.slowomir.voice.stt.InternalEvent
+import com.zpi.slowomir.voice.stt.SessionEvent
+import com.zpi.slowomir.voice.stt.VoiceInput
+import com.zpi.slowomir.voice.stt.VoiceInputSink
+import com.zpi.slowomir.voice.stt.VoiceState
+import com.zpi.slowomir.voice.stt.VoiceStateMachine
+import com.zpi.slowomir.voice.stt.VoiceStateSource
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -68,11 +79,22 @@ class VoiceSessionManager @Inject constructor(
     private val swipeRightCommandFactory: SwipeRightCommand.Factory,
     private val zoomInCommandFactory: ZoomInCommand.Factory,
     private val zoomOutCommandFactory: ZoomOutCommand.Factory,
-) {
+) : VoiceInputSink, VoiceStateSource {
 
+    private val _state = MutableStateFlow<VoiceState>(VoiceState.Stopped)
+    override val state: StateFlow<VoiceState> = _state.asStateFlow()
+
+    private val inbox = Channel<SessionEvent>(Channel.UNLIMITED)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     private val selectionMutex = Mutex()
+
+    init {
+        scope.launch {
+            for (input in inbox) handle(input)
+        }
+    }
+
 
     private val filterStage = PipelineStage<String, String> { text ->
         if (text.isNotBlank()) text else null
@@ -104,37 +126,76 @@ class VoiceSessionManager @Inject constructor(
         .addStage(commandStage)
         .build()
 
-    /**
-     * Called when a wake word is detected.
-     */
-    fun onWakeWordDetected() {
-        scope.launch {
-            mediator.handleEvent(VoiceEvent.WakeWordDetected)
+
+    private suspend fun handle(input: SessionEvent) {
+        when (input) {
+            is VoiceInput.SpeechPartial -> {
+                mediator.handleEvent(VoiceEvent.SpeechPartial(input.text))
+            }
+
+            is VoiceInput.KeywordDetected -> {
+                mediator.handleEvent(VoiceEvent.WakeWordDetected)
+            }
+
+            else -> {}
+        }
+
+        val oldState = _state.value
+        val newState = VoiceStateMachine.reduce(oldState, input)
+        _state.value = newState
+
+        if (oldState != newState) {
+            Log.d(TAG, "State transition: $oldState + $input -> $newState")
+            onStateChanged(newState)
         }
     }
 
-    fun onSpeechResult(text: String) {
+    private fun onStateChanged(newState: VoiceState) {
+        when (newState) {
+            is VoiceState.IntentParsing -> {
+                parseIntent(newState.rawText)
+            }
+
+            is VoiceState.CommandExecuting -> {
+                executeCommand(newState.intent, newState.command)
+            }
+
+            else -> {}
+        }
+    }
+
+    private fun parseIntent(text: String) {
         scope.launch {
+            mediator.handleEvent(VoiceEvent.ProcessingCommand(text))
+
             if (mediator.mediatorState.value.contactSelection != null) {
                 handleSelectionSpeech(text)
                 return@launch
             }
 
             val command = pipeline.process(text)
+            val intent = intentParser.parse(text)
 
-            if (command != null) {
-                mediator.handleEvent(VoiceEvent.CommandInterpreted(command))
+            if (command != null && intent != null) {
+                inbox.send(InternalEvent.IntentParsed(intent, command))
             } else {
                 mediator.handleEvent(VoiceEvent.InvalidCommand(text))
+                inbox.send(InternalEvent.IntentFailed(text))
             }
         }
     }
 
-    fun onSpeechPartial(text: String) {
+    private fun executeCommand(intent: VoiceIntent, command: Command) {
         scope.launch {
-            mediator.handleEvent(VoiceEvent.SpeechPartial(text))
+            mediator.handleEvent(VoiceEvent.CommandInterpreted(command))
+
+            val result = mediator.dispatch(command)
+            val returnToKws = intent.identifier == CommandIdentifier.OVERLAY_STOP
+
+            inbox.send(InternalEvent.CommandFinished(result, returnToKws = returnToKws))
         }
     }
+
     fun selectContact(index: Int) {
         scope.launch { selectContactInternal(index) }
     }
@@ -201,24 +262,31 @@ class VoiceSessionManager @Inject constructor(
                 }
                 tapCommandFactory.create(x, y)
             }
+
             CommandIdentifier.NOTIFICATIONS -> {
                 notificationsCommandFactory.create()
             }
+
             CommandIdentifier.QUICK_SETTINGS -> {
                 quickSettingsCommandFactory.create()
             }
+
             CommandIdentifier.LOCK_SCREEN -> {
                 lockScreenCommandFactory.create()
             }
+
             CommandIdentifier.SCREENSHOT -> {
                 screenshotCommandFactory.create()
             }
+
             CommandIdentifier.NAVIGATE_HOME -> {
                 navigateHomeCommandFactory.create()
             }
+
             CommandIdentifier.NAVIGATE_RECENT -> {
                 navigateRecentCommandFactory.create()
             }
+
             CommandIdentifier.NAVIGATE_BACK -> {
                 navigateBackCommandFactory.create()
             }
@@ -275,6 +343,7 @@ class VoiceSessionManager @Inject constructor(
             CommandIdentifier.HIDE_KEYBOARD -> {
                 keyboardHideCommandFactory.create()
             }
+
             CommandIdentifier.SHOW_KEYBOARD -> {
                 keyboardShowCommandFactory.create()
             }
@@ -283,15 +352,19 @@ class VoiceSessionManager @Inject constructor(
             CommandIdentifier.PHONE_PICK_UP -> {
                 pickUpCommandFactory.create()
             }
+
             CommandIdentifier.PHONE_DECLINE -> {
                 declineCommandFactory.create()
             }
+
             CommandIdentifier.PHONE_END_CALL -> {
                 endCommandFactory.create()
             }
+
             CommandIdentifier.PHONE_SPEAKER -> {
                 speakerCommandFactory.create()
             }
+
             CommandIdentifier.PHONE_CALL -> {
                 val recipient = when (val arg = intent.argument) {
                     is CommandArgument.Text -> arg.value
@@ -299,6 +372,7 @@ class VoiceSessionManager @Inject constructor(
                 }
                 callCommandFactory.create(recipient = recipient)
             }
+
             CommandIdentifier.SMS_WRITE -> {
                 val recipient = when (val arg = intent.argument) {
                     is CommandArgument.Text -> arg.value
@@ -337,8 +411,13 @@ class VoiceSessionManager @Inject constructor(
         return Pair(x.coerceIn(0f, screenWidth), y.coerceIn(0f, screenHeight))
     }
 
+    override fun accept(input: VoiceInput) {
+        inbox.trySend(input)
+    }
+
     companion object {
         private const val TAG = "VoiceSessionManager"
+
         private const val DEFAULT_SCREEN_WIDTH = 1080f
         private const val DEFAULT_SCREEN_HEIGHT = 2400f
         private const val DEFAULT_TAP_X = 540f

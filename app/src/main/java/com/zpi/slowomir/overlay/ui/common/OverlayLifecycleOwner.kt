@@ -1,4 +1,4 @@
-package com.zpi.slowomir.overlay.ui.lifecycle
+package com.zpi.slowomir.overlay.ui.common
 
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
