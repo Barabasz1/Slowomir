@@ -13,6 +13,7 @@ import com.zpi.slowomir.overlay.executors.PredictionExecutor
 import com.zpi.slowomir.overlay.executors.TextEditExecutor
 import com.zpi.slowomir.overlay.executors.TouchExecutor
 import com.zpi.slowomir.overlay.ui.common.OverlayHostProvider
+import com.zpi.slowomir.touch.TouchExecutor
 import com.zpi.slowomir.overlay.ui.voice.VoiceOverlayManager
 import com.zpi.slowomir.voice.mediator.CommandMediator
 import com.zpi.slowomir.voice.VoiceSessionManager
@@ -88,7 +89,7 @@ class CommandExecutorService : AccessibilityService() {
         touchExecutor = touch
         macroExecutor = MacroExecutor(this)
         mediaExecutor = MediaExecutor(this)
-        navigationExecutor = NavigationExecutor(this)
+        navigationExecutor = NavigationExecutor(this, touchExecutor)
         predictionExecutor = PredictionExecutor(this)
         textEditExecutor = TextEditExecutor(this)
         phoneCallExecutor = PhoneCallExecutor(this, touch)

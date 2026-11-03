@@ -1,7 +1,7 @@
 package com.zpi.slowomir.overlay.commands
 
 import com.zpi.slowomir.overlay.OverlayContext
-import com.zpi.slowomir.overlay.executors.TouchExecutor
+import com.zpi.slowomir.touch.TouchExecutor
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -24,7 +24,7 @@ class TapCommand @AssistedInject constructor(
         val executor = touchExecutorProvider.get()
             ?: return CommandResult.Failure("Accessibility Service is not enabled")
 
-        val success = executor.tapAt(x, y)
+        val success = executor.shortTap(x, y)
         return if (success) CommandResult.Success() else CommandResult.Failure("Tap failed")
     }
 

@@ -7,8 +7,11 @@ import com.zpi.slowomir.overlay.executors.NavigationExecutor
 import com.zpi.slowomir.overlay.executors.PhoneCallExecutor
 import com.zpi.slowomir.overlay.executors.PredictionExecutor
 import com.zpi.slowomir.overlay.executors.TextEditExecutor
-import com.zpi.slowomir.overlay.executors.TouchExecutor
 import com.zpi.slowomir.overlay.services.CommandExecutorService
+import com.zpi.slowomir.overlay.services.PhoneCallService
+import com.zpi.slowomir.overlay.ui.voice.VoiceOverlayManager
+import com.zpi.slowomir.touch.TouchExecutor
+import com.zpi.slowomir.voice.mediator.CommandMediator
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -21,6 +24,11 @@ class ExecutorModule {
     @Provides
     fun provideTouchExecutor(): TouchExecutor? {
         return CommandExecutorService.instance?.touchExecutor
+    }
+
+    @Provides
+    fun provideGridExecutor(): GridExecutor? {
+        return CommandExecutorService.instance?.gridExecutor
     }
 
     @Provides

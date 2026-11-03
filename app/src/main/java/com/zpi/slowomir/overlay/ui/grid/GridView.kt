@@ -8,34 +8,46 @@ import android.view.View
 
 class GridView(
     context: Context,
-    var rows: Int = 10,
-    var cols: Int = 6,
-    var lineOpacity: Int = 255,
-    var labelOpacity: Int = 255,
-    var overlayOpacity: Int = 0,
-    var lineWidthPx: Float = 2f,
-    var labelTextSizePx: Float = 32f
+    var rows: Int = GridManager.DEFAULT_ROWS,
+    var cols: Int = GridManager.DEFAULT_COLS,
+    var lineOpacity: Int = GridManager.DEFAULT_LINE_OPACITY,
+    var labelOpacity: Int = GridManager.DEFAULT_LABEL_OPACITY,
+    var overlayOpacity: Int = GridManager.DEFAULT_OVERLAY_OPACITY,
+    var lineWidthPx: Float = GridManager.DEFAULT_LINE_WIDTH_PX,
+    var labelTextSizePx: Float = GridManager.DEFAULT_LABEL_TEXT_SIZE_PX
 ) : View(context) {
+
+    companion object {
+        private const val DIM_ALPHA_FACTOR = 0.1f
+        private const val COLOR_BLACK = 0
+        private const val COLOR_WHITE_RGB = 255
+    }
+
     private val linePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
-        color = Color.argb(lineOpacity, 0, 0, 0)
+        color = Color.argb(lineOpacity, COLOR_BLACK, COLOR_BLACK, COLOR_BLACK)
         strokeWidth = lineWidthPx
     }
 
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textAlign = Paint.Align.CENTER
         textSize = labelTextSizePx
-        color = Color.argb(labelOpacity, 255, 255, 255)
+        color = Color.argb(labelOpacity, COLOR_WHITE_RGB, COLOR_WHITE_RGB, COLOR_WHITE_RGB)
     }
 
     private val dimPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textAlign = Paint.Align.CENTER
         textSize = labelTextSizePx
-        color = Color.argb((labelOpacity * 0.1f).toInt(), 255, 255, 255)
+        color = Color.argb(
+            (labelOpacity * DIM_ALPHA_FACTOR).toInt(),
+            COLOR_WHITE_RGB,
+            COLOR_WHITE_RGB,
+            COLOR_WHITE_RGB
+        )
     }
 
     private val backgroundPaint = Paint().apply {
-        color = Color.argb(overlayOpacity, 0, 0, 0)
+        color = Color.argb(overlayOpacity, COLOR_BLACK, COLOR_BLACK, COLOR_BLACK)
     }
 
     private var selectedCell: Int? = null
