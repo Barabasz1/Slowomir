@@ -8,6 +8,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -23,6 +24,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -58,6 +60,7 @@ fun HomeScreen(
     val isServiceRunning by viewModel.isVoiceRunning.collectAsState()
     val voiceState by viewModel.voiceState.collectAsState()
     val kwsState by viewModel.kwsState.collectAsState()
+    val isOverlayEnabled by viewModel.isOverlayEnabled.collectAsState()
 
     val scrollState = rememberScrollState()
 
@@ -156,7 +159,12 @@ fun HomeScreen(
         Spacer(modifier = Modifier.height(24.dp))
 
         Text(
-            text = "Voice Status: ${renderVoiceStatus(mediatorState.overlayState, isServiceRunning)}",
+            text = "Voice Status: ${
+                renderVoiceStatus(
+                    mediatorState.overlayState,
+                    isServiceRunning
+                )
+            }",
             style = MaterialTheme.typography.bodyLarge
         )
 
@@ -282,18 +290,33 @@ fun HomeScreen(
         )
 
 
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "Show Voice Overlay",
+                )
+
+                Switch(
+                    checked = isOverlayEnabled,
+                    onCheckedChange = { viewModel.setOverlayEnabled(it) }
+                )
+            }
+        }
+
         Button(
             onClick = { viewModel.toggleGrid() },
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Turn On Grid")
-        }
-
-        Button(
-            onClick = { viewModel.toggleVoiceOverlay() },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Toggle Overlay")
         }
 
         Button(
@@ -355,13 +378,12 @@ private fun renderVoiceStatus(state: VoiceState): String = when (state) {
 }
 
 private fun renderVoiceStatus(state: OverlayState, isServiceRunning: Boolean): String {
-    if (!isServiceRunning && state is OverlayState.Idle) {
-        return "Stopped"
-    }
+    if (!isServiceRunning) return "Stopped"
     return when (state) {
-        is OverlayState.Idle -> if (isServiceRunning) "Listening..." else "Stopped"
-        is OverlayState.ListeningForWakeWord -> "Listening for wake-word..."
-        is OverlayState.ListeningToSpeech -> "Listening..."
+        is OverlayState.Idle -> "Idle"
+        is OverlayState.ListeningForKeyword -> "Listening for wake-word ('Słowomir')..."
+        is OverlayState.ListeningForCommand -> "Listening for command..."
+        is OverlayState.ListeningToSpeech -> "Listening to speech..."
         is OverlayState.ProcessingCommand -> "Processing..."
         is OverlayState.CommandExecuted -> "Executed: ${state.resultName}"
         is OverlayState.Error -> "Error: ${state.message}"

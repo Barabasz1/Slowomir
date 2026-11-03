@@ -5,7 +5,7 @@ import com.zpi.slowomir.overlay.commands.Command
 import com.zpi.slowomir.overlay.commands.CommandResult
 import com.zpi.slowomir.utils.ContactOption
 import com.zpi.slowomir.voice.OverlayState
-import com.zpi.slowomir.voice.VoiceEvent
+import com.zpi.slowomir.voice.OverlayEvent
 import com.zpi.slowomir.voice.VoiceIntent
 import kotlinx.coroutines.flow.StateFlow
 
@@ -44,7 +44,7 @@ interface CommandMediator {
     /**
      * Receives and mediates incoming events from colleague modules (e.g. voice session).
      */
-    suspend fun handleEvent(event: VoiceEvent)
+    suspend fun handleEvent(event: OverlayEvent)
 
     /**
      * Dispatches and executes a command after validating against [currentContext].

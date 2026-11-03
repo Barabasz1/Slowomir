@@ -102,14 +102,14 @@ class VoiceSessionManager @Inject constructor(
 
     private val intentStage = PipelineStage<String, VoiceIntent> { text ->
         scope.launch {
-            mediator.handleEvent(VoiceEvent.ProcessingCommand(text))
+            mediator.handleEvent(OverlayEvent.ProcessingCommand(text))
         }
 
         val intent = intentParser.parse(text)
 
         if (intent != null) {
             scope.launch {
-                mediator.handleEvent(VoiceEvent.IntentParsed(intent))
+                mediator.handleEvent(OverlayEvent.IntentParsed(intent))
             }
         }
 
@@ -130,11 +130,11 @@ class VoiceSessionManager @Inject constructor(
     private suspend fun handle(input: SessionEvent) {
         when (input) {
             is VoiceInput.SpeechPartial -> {
-                mediator.handleEvent(VoiceEvent.SpeechPartial(input.text))
+                mediator.handleEvent(OverlayEvent.SpeechPartial(input.text))
             }
 
             is VoiceInput.KeywordDetected -> {
-                mediator.handleEvent(VoiceEvent.WakeWordDetected)
+                mediator.handleEvent(OverlayEvent.WakeWordDetected)
             }
 
             else -> {}
@@ -166,7 +166,7 @@ class VoiceSessionManager @Inject constructor(
 
     private fun parseIntent(text: String) {
         scope.launch {
-            mediator.handleEvent(VoiceEvent.ProcessingCommand(text))
+            mediator.handleEvent(OverlayEvent.ProcessingCommand(text))
 
             if (mediator.mediatorState.value.contactSelection != null) {
                 handleSelectionSpeech(text)
@@ -179,7 +179,7 @@ class VoiceSessionManager @Inject constructor(
             if (command != null && intent != null) {
                 inbox.send(InternalEvent.IntentParsed(intent, command))
             } else {
-                mediator.handleEvent(VoiceEvent.InvalidCommand(text))
+                mediator.handleEvent(OverlayEvent.InvalidCommand(text))
                 inbox.send(InternalEvent.IntentFailed(text))
             }
         }
@@ -187,7 +187,7 @@ class VoiceSessionManager @Inject constructor(
 
     private fun executeCommand(intent: VoiceIntent, command: Command) {
         scope.launch {
-            mediator.handleEvent(VoiceEvent.CommandInterpreted(command))
+            mediator.handleEvent(OverlayEvent.CommandInterpreted(command))
 
             val result = mediator.dispatch(command)
             val returnToKws = intent.identifier == CommandIdentifier.OVERLAY_STOP
@@ -227,19 +227,19 @@ class VoiceSessionManager @Inject constructor(
         }
 
         val command = callCommandFactory.create(recipient = option.number)
-        mediator.handleEvent(VoiceEvent.CommandInterpreted(command))
+        mediator.handleEvent(OverlayEvent.CommandInterpreted(command))
     }
 
     private suspend fun cancelSelectionInternal() {
         selectionMutex.withLock {
-            mediator.handleEvent(VoiceEvent.SelectionCleared)
+            mediator.handleEvent(OverlayEvent.SelectionCleared)
         }
     }
 
     private suspend fun consumeSelection(index: Int): ContactOption? = selectionMutex.withLock {
         val options = mediator.mediatorState.value.contactSelection ?: return@withLock null
         val option = options.getOrNull(index - 1) ?: return@withLock null
-        mediator.handleEvent(VoiceEvent.SelectionCleared)
+        mediator.handleEvent(OverlayEvent.SelectionCleared)
         option
     }
 

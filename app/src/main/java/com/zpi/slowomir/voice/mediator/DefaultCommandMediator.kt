@@ -7,7 +7,7 @@ import com.zpi.slowomir.overlay.commands.CommandArgument
 import com.zpi.slowomir.overlay.commands.CommandResult
 import com.zpi.slowomir.voice.OverlayState
 import com.zpi.slowomir.voice.OverlayState.*
-import com.zpi.slowomir.voice.VoiceEvent
+import com.zpi.slowomir.voice.OverlayEvent
 import com.zpi.slowomir.voice.VoiceIntent
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -33,23 +33,23 @@ class DefaultCommandMediator @Inject constructor() : CommandMediator {
         }
     }
 
-    override suspend fun handleEvent(event: VoiceEvent) {
+    override suspend fun handleEvent(event: OverlayEvent) {
         Log.i(TAG, "Handling event: $event")
 
         val state = when (event) {
-            is VoiceEvent.WakeWordDetected -> {
-                ListeningForWakeWord
+            is OverlayEvent.WakeWordDetected -> {
+                ListeningForCommand
             }
 
-            is VoiceEvent.SpeechPartial -> {
+            is OverlayEvent.SpeechPartial -> {
                 ListeningToSpeech(event.text)
             }
 
-            is VoiceEvent.SpeechRecognized -> {
+            is OverlayEvent.SpeechRecognized -> {
                 ListeningToSpeech(event.text)
             }
 
-            is VoiceEvent.CommandInterpreted -> {
+            is OverlayEvent.CommandInterpreted -> {
                 val result = dispatch(event.command)
                 if (result is CommandResult.NeedsSelection) {
                     _mediatorState.update { it.copy(contactSelection = result.options) }
@@ -57,15 +57,15 @@ class DefaultCommandMediator @Inject constructor() : CommandMediator {
                 formatCommandResult(event.command, result, mediatorState.value.intent)
             }
 
-            is VoiceEvent.InvalidCommand -> {
+            is OverlayEvent.InvalidCommand -> {
                 Error("Invalid command: ${event.text}")
             }
 
-            is VoiceEvent.ProcessingCommand -> {
+            is OverlayEvent.ProcessingCommand -> {
                 ProcessingCommand(event.text)
             }
 
-            is VoiceEvent.IntentParsed -> {
+            is OverlayEvent.IntentParsed -> {
                 _mediatorState.update {
                     it.copy(intent = event.intent)
                 }
@@ -73,7 +73,7 @@ class DefaultCommandMediator @Inject constructor() : CommandMediator {
                 null
             }
 
-            is VoiceEvent.SelectionCleared -> {
+            is OverlayEvent.SelectionCleared -> {
                 _mediatorState.update { it.copy(contactSelection = null) }
 
                 null
