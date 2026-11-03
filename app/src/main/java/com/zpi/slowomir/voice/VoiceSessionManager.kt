@@ -32,7 +32,6 @@ import com.zpi.slowomir.utils.ContactOption
 import com.zpi.slowomir.voice.mediator.CommandMediator
 import com.zpi.slowomir.voice.pipeline.Pipeline
 import com.zpi.slowomir.voice.pipeline.PipelineStage
-import com.zpi.slowomir.overlay.services.CommandExecutorService
 import com.zpi.slowomir.voice.stt.InternalEvent
 import com.zpi.slowomir.voice.stt.SessionEvent
 import com.zpi.slowomir.voice.stt.VoiceInput
@@ -97,7 +96,6 @@ class VoiceSessionManager @Inject constructor(
     }
 
 
-
     private val filterStage = PipelineStage<String, String> { text ->
         if (text.isNotBlank()) text else null
     }
@@ -134,9 +132,11 @@ class VoiceSessionManager @Inject constructor(
             is VoiceInput.SpeechPartial -> {
                 mediator.handleEvent(VoiceEvent.SpeechPartial(input.text))
             }
+
             is VoiceInput.KeywordDetected -> {
                 mediator.handleEvent(VoiceEvent.WakeWordDetected)
             }
+
             else -> {}
         }
 
@@ -155,9 +155,11 @@ class VoiceSessionManager @Inject constructor(
             is VoiceState.IntentParsing -> {
                 parseIntent(newState.rawText)
             }
+
             is VoiceState.CommandExecuting -> {
                 executeCommand(newState.intent, newState.command)
             }
+
             else -> {}
         }
     }
@@ -260,24 +262,31 @@ class VoiceSessionManager @Inject constructor(
                 }
                 tapCommandFactory.create(x, y)
             }
+
             CommandIdentifier.NOTIFICATIONS -> {
                 notificationsCommandFactory.create()
             }
+
             CommandIdentifier.QUICK_SETTINGS -> {
                 quickSettingsCommandFactory.create()
             }
+
             CommandIdentifier.LOCK_SCREEN -> {
                 lockScreenCommandFactory.create()
             }
+
             CommandIdentifier.SCREENSHOT -> {
                 screenshotCommandFactory.create()
             }
+
             CommandIdentifier.NAVIGATE_HOME -> {
                 navigateHomeCommandFactory.create()
             }
+
             CommandIdentifier.NAVIGATE_RECENT -> {
                 navigateRecentCommandFactory.create()
             }
+
             CommandIdentifier.NAVIGATE_BACK -> {
                 navigateBackCommandFactory.create()
             }
@@ -334,6 +343,7 @@ class VoiceSessionManager @Inject constructor(
             CommandIdentifier.HIDE_KEYBOARD -> {
                 keyboardHideCommandFactory.create()
             }
+
             CommandIdentifier.SHOW_KEYBOARD -> {
                 keyboardShowCommandFactory.create()
             }
@@ -342,15 +352,19 @@ class VoiceSessionManager @Inject constructor(
             CommandIdentifier.PHONE_PICK_UP -> {
                 pickUpCommandFactory.create()
             }
+
             CommandIdentifier.PHONE_DECLINE -> {
                 declineCommandFactory.create()
             }
+
             CommandIdentifier.PHONE_END_CALL -> {
                 endCommandFactory.create()
             }
+
             CommandIdentifier.PHONE_SPEAKER -> {
                 speakerCommandFactory.create()
             }
+
             CommandIdentifier.PHONE_CALL -> {
                 val recipient = when (val arg = intent.argument) {
                     is CommandArgument.Text -> arg.value
@@ -358,6 +372,7 @@ class VoiceSessionManager @Inject constructor(
                 }
                 callCommandFactory.create(recipient = recipient)
             }
+
             CommandIdentifier.SMS_WRITE -> {
                 val recipient = when (val arg = intent.argument) {
                     is CommandArgument.Text -> arg.value

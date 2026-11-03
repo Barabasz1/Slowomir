@@ -11,7 +11,9 @@ import com.zpi.slowomir.overlay.executors.NavigationExecutor
 import com.zpi.slowomir.overlay.executors.PredictionExecutor
 import com.zpi.slowomir.overlay.executors.TextEditExecutor
 import com.zpi.slowomir.overlay.executors.TouchExecutor
+import com.zpi.slowomir.overlay.ui.common.OverlayHostProvider
 import com.zpi.slowomir.overlay.ui.grid.GridManager
+import com.zpi.slowomir.overlay.ui.voice.VoiceOverlayManager
 import com.zpi.slowomir.voice.mediator.CommandMediator
 import com.zpi.slowomir.voice.VoiceSessionManager
 import dagger.hilt.android.AndroidEntryPoint
@@ -41,11 +43,15 @@ class CommandExecutorService : AccessibilityService() {
     @Inject
     lateinit var voiceSessionManager: VoiceSessionManager
 
+    @Inject
+    lateinit var overlayHostProvider: OverlayHostProvider
+    @Inject
+    lateinit var gridExecutor: GridExecutor
+    @Inject
+    lateinit var voiceOverlayManager: VoiceOverlayManager
+
     // Executors for different modules
     var touchExecutor: TouchExecutor? = null
-        private set
-
-    var gridExecutor: GridExecutor? = null
         private set
 
     var macroExecutor: MacroExecutor? = null
@@ -71,8 +77,7 @@ class CommandExecutorService : AccessibilityService() {
     override fun onServiceConnected() {
         super.onServiceConnected()
 
-        gridExecutor = GridExecutor(GridManager(this))
-        gridExecutor?.toggle()
+        overlayHostProvider.useAccessibility(this)
 
         // Ensure soft keyboard mode is restored to AUTO so system input is not globally suppressed
         softKeyboardController.setShowMode(SHOW_MODE_AUTO)
@@ -90,20 +95,23 @@ class CommandExecutorService : AccessibilityService() {
     override fun onInterrupt() {}
 
     override fun onDestroy() {
+        release()
         super.onDestroy()
-        clearExecutors()
-        instance = null
     }
 
     override fun onUnbind(intent: Intent?): Boolean {
+        release()
+        return super.onUnbind(intent)
+    }
+
+    private fun release() {
+        overlayHostProvider.useApplication()
         clearExecutors()
         instance = null
-        return super.onUnbind(intent)
     }
 
     private fun clearExecutors() {
         touchExecutor = null
-        gridExecutor = null
         macroExecutor = null
         mediaExecutor = null
         navigationExecutor = null
