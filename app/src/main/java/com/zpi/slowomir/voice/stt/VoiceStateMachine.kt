@@ -9,7 +9,13 @@ internal object VoiceStateMachine {
 
         return when (state) {
             VoiceState.Stopped, is VoiceState.Failed -> {
-                if (event is VoiceInput.ServiceStarted) VoiceState.KeywordSpotting else state
+                if (event is VoiceInput.ServiceStarted) VoiceState.KeywordSpotting
+                // TODO: Added only for testing the command input in the current version of HomeScreen (03.11.2026), remove afterwards
+                else if (event is VoiceInput.SpeechFinal) {
+                    if (event.text.isNotBlank()) VoiceState.IntentParsing(rawText = event.text)
+                    else state
+                }
+                else state
             }
 
             VoiceState.KeywordSpotting -> when (event) {
