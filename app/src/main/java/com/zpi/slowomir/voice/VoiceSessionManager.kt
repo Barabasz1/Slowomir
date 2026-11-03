@@ -12,6 +12,12 @@ import com.zpi.slowomir.overlay.commands.navigation.NavigateRecentCommand
 import com.zpi.slowomir.overlay.commands.navigation.NotificationsCommand
 import com.zpi.slowomir.overlay.commands.navigation.QuickSettingsCommand
 import com.zpi.slowomir.overlay.commands.navigation.ScreenshotCommand
+import com.zpi.slowomir.overlay.commands.navigation.SwipeDownCommand
+import com.zpi.slowomir.overlay.commands.navigation.SwipeLeftCommand
+import com.zpi.slowomir.overlay.commands.navigation.SwipeRightCommand
+import com.zpi.slowomir.overlay.commands.navigation.SwipeUpCommand
+import com.zpi.slowomir.overlay.commands.navigation.ZoomInCommand
+import com.zpi.slowomir.overlay.commands.navigation.ZoomOutCommand
 import com.zpi.slowomir.overlay.commands.phoneCalls.CallCommand
 import com.zpi.slowomir.overlay.commands.phoneCalls.DeclineCommand
 import com.zpi.slowomir.overlay.commands.phoneCalls.EndCommand
@@ -56,6 +62,12 @@ class VoiceSessionManager @Inject constructor(
     private val callCommandFactory: CallCommand.Factory,
     private val writeSMSCommandFactory: WriteSMSCommand.Factory,
     private val navigateBackCommandFactory: NavigateBackCommand.Factory,
+    private val swipeUpCommandFactory: SwipeUpCommand.Factory,
+    private val swipeDownCommandFactory: SwipeDownCommand.Factory,
+    private val swipeLeftCommandFactory: SwipeLeftCommand.Factory,
+    private val swipeRightCommandFactory: SwipeRightCommand.Factory,
+    private val zoomInCommandFactory: ZoomInCommand.Factory,
+    private val zoomOutCommandFactory: ZoomOutCommand.Factory,
 ) {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -163,6 +175,54 @@ class VoiceSessionManager @Inject constructor(
             }
             CommandIdentifier.NAVIGATE_BACK -> {
                 navigateBackCommandFactory.create()
+            }
+            CommandIdentifier.SWIPE_UP -> {
+                val displayMetrics = CommandExecutorService.instance?.resources?.displayMetrics
+                val screenWidth = displayMetrics?.widthPixels?.toFloat() ?: DEFAULT_SCREEN_WIDTH
+                val screenHeight = displayMetrics?.heightPixels?.toFloat() ?: DEFAULT_SCREEN_HEIGHT
+                val x = screenWidth / 2f
+                val y = screenHeight * 0.8f
+                swipeUpCommandFactory.create(x, y)
+            }
+            CommandIdentifier.SWIPE_DOWN -> {
+                val displayMetrics = CommandExecutorService.instance?.resources?.displayMetrics
+                val screenWidth = displayMetrics?.widthPixels?.toFloat() ?: DEFAULT_SCREEN_WIDTH
+                val screenHeight = displayMetrics?.heightPixels?.toFloat() ?: DEFAULT_SCREEN_HEIGHT
+                val x = screenWidth / 2f
+                val y = screenHeight * 0.2f
+                swipeDownCommandFactory.create(x, y)
+            }
+            CommandIdentifier.SWIPE_LEFT -> {
+                val displayMetrics = CommandExecutorService.instance?.resources?.displayMetrics
+                val screenWidth = displayMetrics?.widthPixels?.toFloat() ?: DEFAULT_SCREEN_WIDTH
+                val screenHeight = displayMetrics?.heightPixels?.toFloat() ?: DEFAULT_SCREEN_HEIGHT
+                val x = screenWidth * 0.8f
+                val y = screenHeight / 2f
+                swipeLeftCommandFactory.create(x, y)
+            }
+            CommandIdentifier.SWIPE_RIGHT -> {
+                val displayMetrics = CommandExecutorService.instance?.resources?.displayMetrics
+                val screenWidth = displayMetrics?.widthPixels?.toFloat() ?: DEFAULT_SCREEN_WIDTH
+                val screenHeight = displayMetrics?.heightPixels?.toFloat() ?: DEFAULT_SCREEN_HEIGHT
+                val x = screenWidth * 0.2f
+                val y = screenHeight / 2f
+                swipeRightCommandFactory.create(x, y)
+            }
+            CommandIdentifier.ZOOM_IN -> {
+                val displayMetrics = CommandExecutorService.instance?.resources?.displayMetrics
+                val screenWidth = displayMetrics?.widthPixels?.toFloat() ?: DEFAULT_SCREEN_WIDTH
+                val screenHeight = displayMetrics?.heightPixels?.toFloat() ?: DEFAULT_SCREEN_HEIGHT
+                val x = screenWidth / 2f
+                val y = screenHeight / 2f
+                zoomInCommandFactory.create(x, y)
+            }
+            CommandIdentifier.ZOOM_OUT -> {
+                val displayMetrics = CommandExecutorService.instance?.resources?.displayMetrics
+                val screenWidth = displayMetrics?.widthPixels?.toFloat() ?: DEFAULT_SCREEN_WIDTH
+                val screenHeight = displayMetrics?.heightPixels?.toFloat() ?: DEFAULT_SCREEN_HEIGHT
+                val x = screenWidth / 2f
+                val y = screenHeight / 2f
+                zoomOutCommandFactory.create(x, y)
             }
 
             // Text editing commands
