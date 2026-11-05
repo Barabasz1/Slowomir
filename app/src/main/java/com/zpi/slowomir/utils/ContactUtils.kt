@@ -6,8 +6,11 @@ import android.content.pm.PackageManager
 import android.provider.ContactsContract.CommonDataKinds.Phone
 import android.util.Log
 import androidx.core.content.ContextCompat
+import com.zpi.slowomir.overlay.commands.CommandResult
 import java.text.Normalizer
 import java.util.Locale
+import javax.inject.Inject
+import javax.inject.Singleton
 
 data class ContactOption(val name: String, val number: String)
 
@@ -19,13 +22,14 @@ sealed class ContactLookupResult {
     object EmptyQuery : ContactLookupResult()
 }
 
-object ContactUtils {
+@Singleton
+class ContactUtils @Inject constructor() {
 
-    private const val TAG = "ContactUtils"
-    private const val MAX_OPTIONS = 5
+    private val TAG = "ContactUtils"
+    private val MAX_OPTIONS = 5
 
     // TODO
-    private const val USE_TEST_CONTACTS = true
+    private val USE_TEST_CONTACTS = true
     private val TEST_CONTACTS = listOf(
         "Mama Ania" to "600100001",
         "Mama Basia" to "600100002",
@@ -93,13 +97,6 @@ object ContactUtils {
         Log.i(TAG, "Resolved '$query' to '${pick.name}'")
         return ContactLookupResult.Found(pick.name, pick.number)
     }
-
-    fun resolvePhoneNumber(context: Context, input: String): String =
-        when (val r = lookup(context, input)) {
-            is ContactLookupResult.Found -> r.number
-            else -> input.trim()
-        }
-
 
     private fun preferredNumber(entries: List<Entry>): String =
         (entries.firstOrNull { it.isMobile } ?: entries.first()).number

@@ -52,7 +52,12 @@ class DefaultCommandMediator @Inject constructor() : CommandMediator {
             is OverlayEvent.CommandInterpreted -> {
                 val result = dispatch(event.command)
                 if (result is CommandResult.NeedsSelection) {
-                    _mediatorState.update { it.copy(contactSelection = result.options) }
+                    _mediatorState.update {
+                        it.copy(
+                            contactSelection = result.options,
+                            contactSelectionAction = it.intent?.identifier
+                        )
+                    }
                 }
                 formatCommandResult(event.command, result, mediatorState.value.intent)
             }
@@ -74,7 +79,12 @@ class DefaultCommandMediator @Inject constructor() : CommandMediator {
             }
 
             is OverlayEvent.SelectionCleared -> {
-                _mediatorState.update { it.copy(contactSelection = null) }
+                _mediatorState.update {
+                    it.copy(
+                        contactSelection = null,
+                        contactSelectionAction = null
+                    )
+                }
 
                 null
             }

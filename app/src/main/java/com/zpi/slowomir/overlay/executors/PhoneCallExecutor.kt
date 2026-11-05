@@ -108,15 +108,14 @@ class PhoneCallExecutor(private val service: PhoneCallService) {
      */
     fun call(phoneNumber: String = ""): Boolean {
         return try {
-            val resolvedNumber = ContactUtils.resolvePhoneNumber(service, phoneNumber)
             val telecomManager = service.getSystemService(Context.TELECOM_SERVICE) as? TelecomManager
-            if ((telecomManager != null) && resolvedNumber.isNotBlank()) {
-                val uri = "tel:$resolvedNumber".toUri()
+            if ((telecomManager != null) && phoneNumber.isNotBlank()) {
+                val uri = "tel:$phoneNumber".toUri()
                 telecomManager.placeCall(uri, null)
                 true
             } else {
                 val intent = Intent(Intent.ACTION_CALL).apply {
-                    data = "tel:$resolvedNumber".toUri()
+                    data = "tel:$phoneNumber".toUri()
                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 }
                 service.startActivity(intent)
@@ -139,9 +138,8 @@ class PhoneCallExecutor(private val service: PhoneCallService) {
      */
     fun writeSMS(phoneNumber: String = ""): Boolean {
         return try {
-            val resolvedNumber = ContactUtils.resolvePhoneNumber(service, phoneNumber)
             val intent = Intent(Intent.ACTION_SENDTO).apply {
-                data = "smsto:$resolvedNumber".toUri()
+                data = "smsto:$phoneNumber".toUri()
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
             service.startActivity(intent)

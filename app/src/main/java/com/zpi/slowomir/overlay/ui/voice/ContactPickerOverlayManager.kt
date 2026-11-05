@@ -3,7 +3,6 @@ package com.zpi.slowomir.overlay.ui.voice
 import android.content.Context
 import android.content.res.Resources
 import android.graphics.PixelFormat
-import android.provider.Settings
 import android.util.Log
 import android.view.Gravity
 import android.view.View
@@ -30,6 +29,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.time.Duration.Companion.milliseconds
 
 @Singleton
 class ContactPickerOverlayManager @Inject constructor(
@@ -79,7 +79,7 @@ class ContactPickerOverlayManager @Inject constructor(
         }
 
         timeoutJob = scope.launch {
-            delay(TIMEOUT_MS)
+            delay(TIMEOUT_MS.milliseconds)
             Log.i(tag, "Contact selection timed out")
             voiceSessionManager.cancelSelection()
         }
@@ -126,7 +126,7 @@ class ContactPickerOverlayManager @Inject constructor(
     override fun onViewAttached(view: View) {
         timeoutJob?.cancel()
         timeoutJob = scope.launch {
-            delay(TIMEOUT_MS)
+            delay(TIMEOUT_MS.milliseconds)
             Log.i(tag, "Contact selection timed out")
             voiceSessionManager.cancelSelection()
         }

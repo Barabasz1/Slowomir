@@ -17,8 +17,16 @@ import dagger.assisted.AssistedInject
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Provider
 
+/**
+ * A command that initiates a phone call to a given recipient.
+ *
+ * @param phoneCallExecutorProvider A provider for the [PhoneCallExecutor].
+ * @param appContext The application context used as fallback when no active call is present.
+ * @param recipient The optional recipient contact name or phone number.
+ */
 class CallCommand @AssistedInject constructor(
     private val phoneCallExecutorProvider: Provider<PhoneCallExecutor?>,
+    private val contactUtils: ContactUtils,
     @ApplicationContext private val appContext: Context,
     @Assisted("recipient") private val recipient: String? = null,
 ) : Command {
@@ -26,27 +34,22 @@ class CallCommand @AssistedInject constructor(
     override fun execute(): CommandResult {
         val query = recipient.orEmpty()
 
-        val number = when (val result = ContactUtils.lookup(appContext, query)) {
+        val number = when (val result = contactUtils.lookup(appContext, query)) {
             is ContactLookupResult.Found -> result.number
             is ContactLookupResult.Ambiguous ->
                 return CommandResult.NeedsSelection(result.options)
             ContactLookupResult.NotFound ->
-                return CommandResult.Failure("Nie znaleziono kontaktu: $query")
+                return CommandResult.Failure("Could not find a contact: $query")
             ContactLookupResult.PermissionDenied ->
-                return CommandResult.Failure("Brak uprawnienia do odczytu kontaktów")
+                return CommandResult.Failure("No access to reading contacts")
             ContactLookupResult.EmptyQuery ->
-                return CommandResult.Failure("Nie podano, do kogo zadzwonić")
+                return CommandResult.Failure("No contact was given.")
         }
 
         val executor = phoneCallExecutorProvider.get()
-        /*
-        val success = if (executor != null) {
-            executor.call(number)
-        } else {
-            placeCall(appContext, number)
-        }*/
-        Log.i("CallCommand", "TEST: would call $number")   // <-- TEST
+        //val success = executor?.call(number) ?: placeCall(appContext, number)
         val success = true
+        Log.i("CallCommand", "TEST: would call $number")  // <-- TEST
 
         return if (success) CommandResult.Success() else CommandResult.Failure("Phone call failed")
     }

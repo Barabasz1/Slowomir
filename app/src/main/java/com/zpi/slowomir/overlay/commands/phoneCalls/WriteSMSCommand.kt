@@ -8,6 +8,7 @@ import com.zpi.slowomir.overlay.OverlayContext
 import com.zpi.slowomir.overlay.commands.Command
 import com.zpi.slowomir.overlay.commands.CommandResult
 import com.zpi.slowomir.overlay.executors.PhoneCallExecutor
+import com.zpi.slowomir.utils.ContactLookupResult
 import com.zpi.slowomir.utils.ContactUtils
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
@@ -24,19 +25,29 @@ import javax.inject.Provider
  */
 class WriteSMSCommand @AssistedInject constructor(
     private val phoneCallExecutorProvider: Provider<PhoneCallExecutor?>,
+    private val contactUtils: ContactUtils,
     @ApplicationContext private val appContext: Context,
     @Assisted("recipient") private val recipient: String? = null,
 ) : Command {
 
     override fun execute(): CommandResult {
-        val targetRecipient = recipient.orEmpty()
+        val query = recipient.orEmpty()
+
+        val number = when (val result = contactUtils.lookup(appContext, query)) {
+            is ContactLookupResult.Found -> result.number
+            is ContactLookupResult.Ambiguous ->
+                return CommandResult.NeedsSelection(result.options)
+            ContactLookupResult.NotFound ->
+                return CommandResult.Failure("Could not find a contact: $query")
+            ContactLookupResult.PermissionDenied ->
+                return CommandResult.Failure("No access to reading contacts")
+            ContactLookupResult.EmptyQuery ->
+                return CommandResult.Failure("No contact was given.")
+        }
+
         val executor = phoneCallExecutorProvider.get()
 
-        val success = if (executor != null) {
-            executor.writeSMS(targetRecipient)
-        } else {
-            fallbackWriteSMS(appContext, targetRecipient)
-        }
+        val success = executor?.writeSMS(number) ?: fallbackWriteSMS(appContext, number)
 
         return if (success) CommandResult.Success() else CommandResult.Failure("Write SMS failed")
     }
@@ -45,9 +56,8 @@ class WriteSMSCommand @AssistedInject constructor(
         return true
     }
 
-    private fun fallbackWriteSMS(context: Context, recipient: String): Boolean {
+    private fun fallbackWriteSMS(context: Context, resolvedNumber: String): Boolean {
         return try {
-            val resolvedNumber = ContactUtils.resolvePhoneNumber(context, recipient)
             val intent = Intent(Intent.ACTION_SENDTO).apply {
                 data = "smsto:$resolvedNumber".toUri()
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)

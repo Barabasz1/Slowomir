@@ -145,8 +145,7 @@ class VoiceSessionManager @Inject constructor(
     }
 
     private suspend fun selectContactInternal(index: Int) {
-        val option = consumeSelection(index)
-        if (option == null) {
+        val option = consumeSelection(index) ?: run {
             Log.d(TAG, "Selection $index ignored (no pending selection or out of range)")
             return
         }
