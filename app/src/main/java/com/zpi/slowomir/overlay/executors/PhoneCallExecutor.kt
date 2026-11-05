@@ -10,8 +10,6 @@ import android.view.accessibility.AccessibilityNodeInfo
 import androidx.core.net.toUri
 
 /**
- * Handles phone call operations using Accessibility Service and Telecom APIs.
- *
  * Designed to act as an accessibility overlay on top of the native system dialer.
  *
  * @param service The active [AccessibilityService] instance.
