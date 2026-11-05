@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.provider.ContactsContract.CommonDataKinds.Phone
 import android.util.Log
 import androidx.core.content.ContextCompat
+import com.zpi.slowomir.overlay.commands.CommandResult
 import java.text.Normalizer
 import java.util.Locale
 import javax.inject.Inject
