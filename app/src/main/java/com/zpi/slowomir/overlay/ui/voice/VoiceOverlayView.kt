@@ -51,7 +51,10 @@ private data class Content(val text: String, val kind: Kind)
 
 private fun OverlayState.toContent(): Content? = when (this) {
     is OverlayState.Idle,
-    is OverlayState.ListeningForWakeWord -> null
+    is OverlayState.ListeningForKeyword -> null
+
+    is OverlayState.ListeningForCommand ->
+        Content("Listening…", Kind.LISTENING)
 
     is OverlayState.ListeningToSpeech ->
         Content(partialText.ifBlank { "Listening…" }, Kind.LISTENING)

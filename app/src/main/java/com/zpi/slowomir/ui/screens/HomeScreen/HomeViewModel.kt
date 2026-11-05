@@ -48,8 +48,16 @@ class HomeViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
     val kwsState: StateFlow<KeywordUiState> = keywordTestController.state
 
+    private val _isOverlayEnabled = MutableStateFlow(true)
+    val isOverlayEnabled: StateFlow<Boolean> = _isOverlayEnabled.asStateFlow()
+
     init {
         contactPickerOverlayManager.start()
+        viewModelScope.launch {
+            if (_isOverlayEnabled.value) {
+                voiceOverlayManager.showOverlay()
+            }
+        }
     }
 
     fun startKws() = keywordTestController.start()
@@ -58,8 +66,24 @@ class HomeViewModel @Inject constructor(
 
     fun onKwsPermissionDenied() = keywordTestController.onPermissionDenied()
 
+    fun setOverlayEnabled(enabled: Boolean) {
+        _isOverlayEnabled.value = enabled
+        viewModelScope.launch {
+            if (enabled) {
+                voiceOverlayManager.showOverlay()
+            } else {
+                voiceOverlayManager.hideOverlay()
+            }
+        }
+    }
+
     fun startVoiceService(context: Context) {
         VoiceRecognitionService.start(context)
+        if (_isOverlayEnabled.value) {
+            viewModelScope.launch {
+                voiceOverlayManager.showOverlay()
+            }
+        }
     }
 
     fun stopVoiceService(context: Context) {
@@ -71,12 +95,6 @@ class HomeViewModel @Inject constructor(
             val tapCommand = tapCommandFactory.create(x, y)
             val result = mediator.dispatch(tapCommand)
             _uiState.value = result
-        }
-    }
-
-    fun toggleVoiceOverlay() {
-        viewModelScope.launch {
-            voiceOverlayManager.toggleOverlay()
         }
     }
 

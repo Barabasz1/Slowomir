@@ -5,7 +5,8 @@ package com.zpi.slowomir.voice
  */
 sealed class OverlayState {
     object Idle : OverlayState()
-    object ListeningForWakeWord : OverlayState()
+    object ListeningForKeyword : OverlayState()
+    object ListeningForCommand : OverlayState()
     data class ListeningToSpeech(val partialText: String) : OverlayState()
     data class ProcessingCommand(val text: String) : OverlayState()
     data class CommandExecuted(val resultName: String) : OverlayState()
