@@ -11,26 +11,24 @@ import javax.inject.Provider
 
 
 class LongTapCellCommand @AssistedInject constructor(
-    private val gridExcecutorProvider: Provider<GridExecutor?>,
-    @Assisted("cell") private val cell: Int,
+    private val gridExecutorProvider: Provider<GridExecutor?>,
     @Assisted("duration") private val duration: Long,
     ) : Command {
 
     override fun execute(): CommandResult {
-        val gridExecutor = gridExcecutorProvider.get()
+        val gridExecutor = gridExecutorProvider.get()
             ?: return CommandResult.Failure("Grid executor is null")
-        gridExecutor.longTapCell(cell, duration)
+        gridExecutor.longTapCell(duration)
         return CommandResult.Success()
     }
 
     override fun canExecute(context: OverlayContext): Boolean {
-        return true
+        return gridExecutorProvider.get()?.canExecuteActionOnCell() ?: false
     }
 
     @AssistedFactory
     interface Factory {
         fun create(
-            @Assisted("cell") cell: Int,
             @Assisted("duration") duration: Long
         ): LongTapCellCommand
     }

@@ -8,31 +8,34 @@ import android.view.View
 
 class GridView(
     context: Context,
-    var rows: Int = GridManager.DEFAULT_ROWS,
-    var cols: Int = GridManager.DEFAULT_COLS,
-    var lineOpacity: Int = GridManager.DEFAULT_LINE_OPACITY,
-    var labelOpacity: Int = GridManager.DEFAULT_LABEL_OPACITY,
-    var overlayOpacity: Int = GridManager.DEFAULT_OVERLAY_OPACITY,
-    var lineWidthPx: Float = GridManager.DEFAULT_LINE_WIDTH_PX,
-    var labelTextSizePx: Float = GridManager.DEFAULT_LABEL_TEXT_SIZE_PX
+    var rows: Int,
+    var cols: Int,
+    var lineOpacity: Int = DEFAULT_LINE_OPACITY,
+    var labelOpacity: Int = DEFAULT_LABEL_OPACITY,
+    var overlayOpacity: Int = DEFAULT_OVERLAY_OPACITY,
+    var lineWidthPx: Float = DEFAULT_LINE_WIDTH_PX,
+    var labelTextSizePx: Float = DEFAULT_LABEL_TEXT_SIZE_PX
 ) : View(context) {
 
     companion object {
         private const val DIM_ALPHA_FACTOR = 0.1f
-        private const val COLOR_BLACK = 0
-        private const val COLOR_WHITE_RGB = 255
+        private const val DEFAULT_LINE_OPACITY = 180
+        private const val DEFAULT_LABEL_OPACITY = 220
+        private const val DEFAULT_OVERLAY_OPACITY = 0
+        private const val DEFAULT_LINE_WIDTH_PX = 2f
+        private const val DEFAULT_LABEL_TEXT_SIZE_PX = 32f
     }
 
     private val linePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
-        color = Color.argb(lineOpacity, COLOR_BLACK, COLOR_BLACK, COLOR_BLACK)
+        color = Color.argb(lineOpacity, 0 ,0, 0)
         strokeWidth = lineWidthPx
     }
 
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textAlign = Paint.Align.CENTER
         textSize = labelTextSizePx
-        color = Color.argb(labelOpacity, COLOR_WHITE_RGB, COLOR_WHITE_RGB, COLOR_WHITE_RGB)
+        color = Color.argb(labelOpacity, 0, 0, 0)
     }
 
     private val dimPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -40,21 +43,34 @@ class GridView(
         textSize = labelTextSizePx
         color = Color.argb(
             (labelOpacity * DIM_ALPHA_FACTOR).toInt(),
-            COLOR_WHITE_RGB,
-            COLOR_WHITE_RGB,
-            COLOR_WHITE_RGB
+            255,
+            255,
+            255
+        )
+    }
+    private val highlightPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        textAlign = Paint.Align.CENTER
+        textSize = labelTextSizePx
+        color = Color.argb(
+            (labelOpacity * DIM_ALPHA_FACTOR).toInt(),
+            0,
+            255,
+            0
         )
     }
 
+
     private val backgroundPaint = Paint().apply {
-        color = Color.argb(overlayOpacity, COLOR_BLACK, COLOR_BLACK, COLOR_BLACK)
+        color = Color.argb(overlayOpacity, 0, 0, 0)
     }
 
     private var selectedCell: Int? = null
+    private var parentCell: Int? = null
     private var divisions: List<Pair<Int, Int>> = emptyList()
 
-    fun update(selectedCell: Int?, divisions: List<Pair<Int, Int>>) {
+    fun update(selectedCell: Int?, parentCell: Int?, divisions: List<Pair<Int, Int>>) {
         this.selectedCell = selectedCell
+        this.parentCell = parentCell
         this.divisions = divisions
         invalidate()
     }
@@ -81,7 +97,15 @@ class GridView(
                 val cell = row * cols + col + 1
                 val x = col * cw
                 val y = row * ch
-                val paint = if (selectedCell == null || cell == selectedCell) textPaint else dimPaint
+
+
+                val paint = if (cell == selectedCell) highlightPaint else
+                    if (cell == parentCell || parentCell == null) {
+                        textPaint
+                    } else {
+                        dimPaint
+                    }
+
 
                 drawLabel(canvas, cell.toString(), x, y, cw, ch, paint)
 
