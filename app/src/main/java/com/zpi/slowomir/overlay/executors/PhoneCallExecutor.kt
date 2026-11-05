@@ -2,14 +2,11 @@ package com.zpi.slowomir.overlay.executors
 
 import android.content.Context
 import android.content.Intent
-import android.telecom.CallAudioState
-import android.telecom.CallEndpoint
 import android.telecom.TelecomManager
 import android.telecom.VideoProfile
 import android.util.Log
 import androidx.core.net.toUri
 import com.zpi.slowomir.overlay.services.PhoneCallService
-import com.zpi.slowomir.utils.ContactUtils
 
 /**
  * Handles phone call operations using Android Telecom APIs and [PhoneCallService].

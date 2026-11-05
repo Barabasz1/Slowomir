@@ -25,6 +25,9 @@ import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/**
+ * Voice session manager. Manages the state of the voice session and dispatches commands.
+ */
 @Singleton
 class VoiceSessionManager @Inject constructor(
     private val mediator: CommandMediator,
@@ -70,6 +73,11 @@ class VoiceSessionManager @Inject constructor(
         }
     }
 
+    /**
+     * Handles a state transition.
+     *
+     * @param newState The new state.
+     */
     private fun onStateChanged(newState: VoiceState) {
         when (newState) {
             is VoiceState.IntentParsing -> {
@@ -84,6 +92,11 @@ class VoiceSessionManager @Inject constructor(
         }
     }
 
+    /**
+     * Parses a command intent.
+     *
+     * @param text The text to parse.
+     */
     private fun parseIntent(text: String) {
         if (text.isBlank()) {
             return
@@ -110,6 +123,12 @@ class VoiceSessionManager @Inject constructor(
         }
     }
 
+    /**
+     * Executes a command.
+     *
+     * @param intent The command intent.
+     * @param command The command to execute.
+     */
     private fun dispatchCommand(intent: VoiceIntent, command: Command) {
         scope.launch {
             mediator.handleEvent(OverlayEvent.CommandInterpreted(command))
@@ -121,14 +140,27 @@ class VoiceSessionManager @Inject constructor(
         }
     }
 
+    /**
+     * Selects a contact.
+     *
+     * @param index The index of the contact to select.
+     */
     fun selectContact(index: Int) {
         scope.launch { selectContactInternal(index) }
     }
 
+    /**
+     * Cancels the current contact selection.
+     */
     fun cancelSelection() {
         scope.launch { cancelSelectionInternal() }
     }
 
+    /**
+     * Handles speech during contact selection.
+     *
+     * @param text The speech text.
+     */
     private suspend fun handleSelectionSpeech(text: String) {
         if (isCancel(text)) {
             cancelSelectionInternal()
@@ -144,6 +176,11 @@ class VoiceSessionManager @Inject constructor(
         selectContactInternal(index)
     }
 
+    /**
+     * Selects a contact. Internal implementation.
+     *
+     * @param index The index of the contact to select.
+     */
     private suspend fun selectContactInternal(index: Int) {
         val option = consumeSelection(index) ?: run {
             Log.d(TAG, "Selection $index ignored (no pending selection or out of range)")
@@ -154,12 +191,21 @@ class VoiceSessionManager @Inject constructor(
         mediator.handleEvent(OverlayEvent.CommandInterpreted(command))
     }
 
+    /**
+     * Cancels the current contact selection. Internal implementation.
+     */
     private suspend fun cancelSelectionInternal() {
         selectionMutex.withLock {
             mediator.handleEvent(OverlayEvent.SelectionCleared)
         }
     }
 
+    /**
+     * Consumes a contact selection.
+     *
+     * @param index The index of the contact to consume.
+     * @return The consumed contact option, or null if no selection is pending.
+     */
     private suspend fun consumeSelection(index: Int): ContactOption? = selectionMutex.withLock {
         val options = mediator.mediatorState.value.contactSelection ?: return@withLock null
         val option = options.getOrNull(index - 1) ?: return@withLock null
@@ -167,8 +213,20 @@ class VoiceSessionManager @Inject constructor(
         option
     }
 
+    /**
+     * Checks if the given text is a cancel command.
+     *
+     * @param text The text to check.
+     * @return True if the text is a cancel command, false otherwise.
+     */
     private fun isCancel(text: String): Boolean = normalizer.normalize(text) in cancelPhrases
 
+    /**
+     * Parses a selection from the given text.
+     *
+     * @param text The text to parse.
+     * @return The parsed selection, or null if no selection could be parsed.
+     */
     private fun parseSelection(text: String): Int? {
         val normalized = normalizer.normalize(text)
             .split(" ")

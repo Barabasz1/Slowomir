@@ -41,13 +41,10 @@ class NavigationExecutor(private val service: AccessibilityService) {
         val displayMetrics = service.resources.displayMetrics
         val height = displayMetrics.heightPixels.toFloat()
 
-        val startX = x
-        val startY = y
-        val endX = startX
         val swipeDistance = height * SWIPE_RATIO
-        val endY = (startY - swipeDistance).coerceAtLeast(0f)
+        val endY = (y - swipeDistance).coerceAtLeast(0f)
 
-        return performSwipeWithHold(startX, startY, endX, endY)
+        return performSwipeWithHold(x, y, x, endY)
     }
 
     /**
@@ -63,13 +60,10 @@ class NavigationExecutor(private val service: AccessibilityService) {
         val displayMetrics = service.resources.displayMetrics
         val height = displayMetrics.heightPixels.toFloat()
 
-        val startX = x
-        val startY = y
-        val endX = startX
         val swipeDistance = height * SWIPE_RATIO
-        val endY = (startY + swipeDistance).coerceAtMost(height)
+        val endY = (y + swipeDistance).coerceAtMost(height)
 
-        return performSwipeWithHold(startX, startY, endX, endY)
+        return performSwipeWithHold(x, y, x, endY)
     }
 
     /**
@@ -85,13 +79,10 @@ class NavigationExecutor(private val service: AccessibilityService) {
         val displayMetrics = service.resources.displayMetrics
         val width = displayMetrics.widthPixels.toFloat()
 
-        val startX = x
-        val startY = y
         val swipeDistance = width * SWIPE_RATIO
-        val endX = (startX - swipeDistance).coerceAtLeast(0f)
-        val endY = startY
+        val endX = (x - swipeDistance).coerceAtLeast(0f)
 
-        return performSwipeWithHold(startX, startY, endX, endY)
+        return performSwipeWithHold(x, y, endX, y)
     }
 
     /**
@@ -107,13 +98,10 @@ class NavigationExecutor(private val service: AccessibilityService) {
         val displayMetrics = service.resources.displayMetrics
         val width = displayMetrics.widthPixels.toFloat()
 
-        val startX = x
-        val startY = y
         val swipeDistance = width * SWIPE_RATIO
-        val endX = (startX + swipeDistance).coerceAtMost(width)
-        val endY = startY
+        val endX = (x + swipeDistance).coerceAtMost(width)
 
-        return performSwipeWithHold(startX, startY, endX, endY)
+        return performSwipeWithHold(x, y, endX, y)
     }
 
     /**
@@ -235,6 +223,18 @@ class NavigationExecutor(private val service: AccessibilityService) {
     /**
      * Dispatches a two-finger pinch gesture followed by a stationary hold on both fingers
      * to eliminate fling momentum / zoom inertia upon release.
+     *
+     * @param start1X Starting X coordinate of first finger in pixels.
+     * @param start1Y Starting Y coordinate of first finger in pixels.
+     * @param end1X Ending X coordinate of first finger in pixels.
+     * @param end1Y Ending Y coordinate of first finger in pixels.
+     * @param start2X Starting X coordinate of second finger in pixels.
+     * @param start2Y Starting Y coordinate of second finger in pixels.
+     * @param end2X Ending X coordinate of second finger in pixels.
+     * @param end2Y Ending Y coordinate of second finger in pixels.
+     * @param moveDuration Movement duration in milliseconds.
+     * @param holdDuration Stationary hold duration in milliseconds.
+     * @return `true` if the initial gesture was successfully dispatched to the OS.
      */
     private fun performPinchWithHold(
         start1X: Float, start1Y: Float, end1X: Float, end1Y: Float,
@@ -304,6 +304,8 @@ class NavigationExecutor(private val service: AccessibilityService) {
 
     /**
      * Navigates back.
+     *
+     * @return `true` if the back navigation was successful.
      */
     fun navigateBack(): Boolean {
         return service.performGlobalAction(GLOBAL_ACTION_BACK)
@@ -311,6 +313,8 @@ class NavigationExecutor(private val service: AccessibilityService) {
 
     /**
      * Navigates to home screen.
+     *
+     * @return `true` if the home screen was successfully opened.
      */
     fun navigateHome(): Boolean {
         return service.performGlobalAction(GLOBAL_ACTION_HOME)
@@ -318,6 +322,8 @@ class NavigationExecutor(private val service: AccessibilityService) {
 
     /**
      * Shows recent apps.
+     *
+     * @return `true` if the recent apps were successfully opened.
      */
     fun navigateRecent(): Boolean {
         return service.performGlobalAction(GLOBAL_ACTION_RECENTS)
@@ -325,6 +331,8 @@ class NavigationExecutor(private val service: AccessibilityService) {
 
     /**
      * Opens notifications bar.
+     *
+     * @return `true` if the notifications were successfully opened.
      */
     fun notifications(): Boolean {
         return service.performGlobalAction(GLOBAL_ACTION_NOTIFICATIONS)
@@ -333,6 +341,8 @@ class NavigationExecutor(private val service: AccessibilityService) {
 
     /**
      * Opens quick settings.
+     *
+     * @return `true` if the quick settings were successfully opened.
      */
     fun quickSettings(): Boolean {
         return service.performGlobalAction(GLOBAL_ACTION_QUICK_SETTINGS)
@@ -340,6 +350,8 @@ class NavigationExecutor(private val service: AccessibilityService) {
 
     /**
      * Opens an app.
+     *
+     * @return `true` if the app was successfully opened.
      */
     fun openApp(): Boolean {
         return true
@@ -347,6 +359,8 @@ class NavigationExecutor(private val service: AccessibilityService) {
 
     /**
      * Locks the screen.
+     *
+     * @return `true` if the screen was successfully locked.
      */
     fun lockScreen(): Boolean {
         return service.performGlobalAction(GLOBAL_ACTION_LOCK_SCREEN)
@@ -354,6 +368,8 @@ class NavigationExecutor(private val service: AccessibilityService) {
 
     /**
      * Takes a screenshot.
+     *
+     * @return `true` if the screenshot was successfully taken.
      */
     fun screenshot(): Boolean {
         return service.performGlobalAction(GLOBAL_ACTION_TAKE_SCREENSHOT)

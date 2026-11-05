@@ -56,6 +56,13 @@ class WriteSMSCommand @AssistedInject constructor(
         return true
     }
 
+    /**
+     * Fallback implementation to open the SMS composer.
+     *
+     * @param context The application context.
+     * @param resolvedNumber The resolved phone number.
+     * @return `true` if the SMS composer was successfully opened, `false` otherwise.
+     */
     private fun fallbackWriteSMS(context: Context, resolvedNumber: String): Boolean {
         return try {
             val intent = Intent(Intent.ACTION_SENDTO).apply {

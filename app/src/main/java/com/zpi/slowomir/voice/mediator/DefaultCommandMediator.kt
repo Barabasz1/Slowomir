@@ -118,6 +118,14 @@ class DefaultCommandMediator @Inject constructor() : CommandMediator {
         return result
     }
 
+    /**
+     * Formats a [CommandResult] into an [OverlayState] for display.
+     *
+     * @param command The command that was executed.
+     * @param result The result of the command execution.
+     * @param intent The voice intent associated with the command.
+     * @return The formatted [OverlayState] for display.
+     */
     fun formatCommandResult(
         command: Command,
         result: CommandResult,

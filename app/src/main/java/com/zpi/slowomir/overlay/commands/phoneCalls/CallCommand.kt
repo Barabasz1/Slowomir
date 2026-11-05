@@ -56,6 +56,13 @@ class CallCommand @AssistedInject constructor(
 
     override fun canExecute(context: OverlayContext): Boolean = true
 
+    /**
+     * Fallback implementation to initiate a phone call.
+     *
+     * @param context The application context.
+     * @param number The resolved phone number.
+     * @return `true` if the phone call was successfully initiated, `false` otherwise.
+     */
     private fun placeCall(context: Context, number: String): Boolean {
         return try {
             val uri = "tel:$number".toUri()
