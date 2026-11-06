@@ -4,7 +4,7 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.zpi.slowomir.overlay.commands.CommandResult
-import com.zpi.slowomir.overlay.commands.TapCommand
+import com.zpi.slowomir.overlay.commands.touch.TapCommand
 import com.zpi.slowomir.overlay.commands.grid.ToggleGridCommand
 import com.zpi.slowomir.overlay.services.VoiceRecognitionService
 import com.zpi.slowomir.overlay.ui.voice.ContactPickerOverlayManager

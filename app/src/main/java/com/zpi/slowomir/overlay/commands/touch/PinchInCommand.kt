@@ -1,6 +1,8 @@
-package com.zpi.slowomir.overlay.commands
+package com.zpi.slowomir.overlay.commands.touch
 
 import com.zpi.slowomir.overlay.OverlayContext
+import com.zpi.slowomir.overlay.commands.Command
+import com.zpi.slowomir.overlay.commands.CommandResult
 import com.zpi.slowomir.touch.TouchExecutor
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
