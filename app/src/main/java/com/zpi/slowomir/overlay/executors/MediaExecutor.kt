@@ -1,11 +1,18 @@
 package com.zpi.slowomir.overlay.executors
 
 import android.accessibilityservice.AccessibilityService
+import android.content.Context
+import android.media.AudioManager
+import android.util.Log
 
 /**
  * Handles injection of performing media-related actions using the Accessibility API.
  */
-class MediaExecutor(service: AccessibilityService) {
+class MediaExecutor(private val service: AccessibilityService) {
+
+    private val audioManager: AudioManager?
+        get() = service.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+
     /**
      * Pauses the media.
      */
@@ -24,14 +31,44 @@ class MediaExecutor(service: AccessibilityService) {
      * Turns the media volume up.
      */
     fun volumeUp(): Boolean {
-        return true // TODO: implementation needed
+        val am = audioManager ?: run {
+            Log.w(TAG, "AudioManager not available, cannot raise volume")
+            return false
+        }
+        return try {
+            am.adjustStreamVolume(
+                AudioManager.STREAM_MUSIC,
+                AudioManager.ADJUST_RAISE,
+                AudioManager.FLAG_SHOW_UI
+            )
+            Log.i(TAG, "Media volume raised")
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to raise media volume", e)
+            false
+        }
     }
 
     /**
      * Turns the media volume down.
      */
     fun volumeDown(): Boolean {
-        return true // TODO: implementation needed
+        val am = audioManager ?: run {
+            Log.w(TAG, "AudioManager not available, cannot lower volume")
+            return false
+        }
+        return try {
+            am.adjustStreamVolume(
+                AudioManager.STREAM_MUSIC,
+                AudioManager.ADJUST_LOWER,
+                AudioManager.FLAG_SHOW_UI
+            )
+            Log.i(TAG, "Media volume lowered")
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to lower media volume", e)
+            false
+        }
     }
 
     /**
@@ -60,5 +97,9 @@ class MediaExecutor(service: AccessibilityService) {
      */
     fun previousTrack(): Boolean {
         return true // TODO: implementation needed
+    }
+
+    companion object {
+        private const val TAG = "MediaExecutor"
     }
 }

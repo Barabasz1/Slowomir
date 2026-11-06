@@ -6,6 +6,8 @@ import com.zpi.slowomir.overlay.commands.CommandArgument
 import com.zpi.slowomir.overlay.commands.CommandIdentifier
 import com.zpi.slowomir.overlay.commands.LogCommand
 import com.zpi.slowomir.overlay.commands.TapCommand
+import com.zpi.slowomir.overlay.commands.media.VolumeDownCommand
+import com.zpi.slowomir.overlay.commands.media.VolumeUpCommand
 import com.zpi.slowomir.overlay.commands.navigation.LockScreenCommand
 import com.zpi.slowomir.overlay.commands.navigation.NavigateBackCommand
 import com.zpi.slowomir.overlay.commands.navigation.NavigateHomeCommand
@@ -79,6 +81,8 @@ class VoiceSessionManager @Inject constructor(
     private val swipeRightCommandFactory: SwipeRightCommand.Factory,
     private val zoomInCommandFactory: ZoomInCommand.Factory,
     private val zoomOutCommandFactory: ZoomOutCommand.Factory,
+    private val volumeUpCommandFactory: VolumeUpCommand.Factory,
+    private val volumeDownCommandFactory: VolumeDownCommand.Factory,
 ) : VoiceInputSink, VoiceStateSource {
 
     private val _state = MutableStateFlow<VoiceState>(VoiceState.Stopped)
@@ -379,6 +383,15 @@ class VoiceSessionManager @Inject constructor(
                     else -> null
                 }
                 writeSMSCommandFactory.create(recipient = recipient)
+            }
+
+            // Media commands
+            CommandIdentifier.VOLUME_UP -> {
+                volumeUpCommandFactory.create()
+            }
+
+            CommandIdentifier.VOLUME_DOWN -> {
+                volumeDownCommandFactory.create()
             }
 
             else -> LogCommand(intent.identifier, intent.argument)
