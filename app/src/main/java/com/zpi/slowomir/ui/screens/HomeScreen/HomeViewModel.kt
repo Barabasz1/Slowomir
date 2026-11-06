@@ -102,6 +102,10 @@ class HomeViewModel @Inject constructor(
         voiceSessionManager.accept(VoiceInput.SpeechPartial(speechText))
     }
 
+    fun simulateWakeWord() {
+        voiceSessionManager.accept(VoiceInput.KeywordDetected)
+    }
+
     fun simulateSpeechCompletion(input: String) {
         voiceSessionManager.accept(VoiceInput.SpeechFinal(input))
     }
