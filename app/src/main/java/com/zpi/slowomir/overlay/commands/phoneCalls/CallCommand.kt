@@ -47,8 +47,8 @@ class CallCommand @AssistedInject constructor(
         }
 
         val executor = phoneCallExecutorProvider.get()
-        //val success = executor?.call(number) ?: placeCall(appContext, number)
-        val success = true
+        val success = executor?.call(number) ?: placeCall(appContext, number)
+//        val success = true
         Log.i("CallCommand", "TEST: would call $number")  // <-- TEST
 
         return if (success) CommandResult.Success() else CommandResult.Failure("Phone call failed")
