@@ -156,6 +156,13 @@ fun HomeScreen(
             Text("Send Command")
         }
 
+        Button(
+            onClick = { viewModel.simulateWakeWord() },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Simulate Wake Word")
+        }
+
         Spacer(modifier = Modifier.height(24.dp))
 
         Text(
