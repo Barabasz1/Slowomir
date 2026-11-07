@@ -27,11 +27,6 @@ class ExecutorModule {
     }
 
     @Provides
-    fun provideGridExecutor(): GridExecutor? {
-        return CommandExecutorService.instance?.gridExecutor
-    }
-
-    @Provides
     fun provideMacroExecutor(): MacroExecutor? {
         return CommandExecutorService.instance?.macroExecutor
     }

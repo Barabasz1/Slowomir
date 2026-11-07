@@ -45,8 +45,13 @@ class CommandExecutorService : AccessibilityService() {
 
     @Inject
     lateinit var overlayHostProvider: OverlayHostProvider
+
     @Inject
     lateinit var voiceOverlayManager: VoiceOverlayManager
+
+
+    @Inject
+    lateinit var gridExecutor: GridExecutor
 
     // Executors for different modules
 
@@ -67,8 +72,6 @@ class CommandExecutorService : AccessibilityService() {
     var touchExecutor: TouchExecutor? = null
         private set
 
-    var gridExecutor: GridExecutor? = null
-        private set
 
     var phoneCallExecutor: PhoneCallExecutor? = null
         private set
@@ -82,9 +85,9 @@ class CommandExecutorService : AccessibilityService() {
         super.onServiceConnected()
 
         touchExecutor = TouchExecutor(this)
-        gridExecutor = GridExecutor(this,touchExecutor!!)
         overlayHostProvider.useAccessibility(this)
 
+        gridExecutor.attachService(this)
         // Ensure soft keyboard mode is restored to AUTO so system input is not globally suppressed
         softKeyboardController.setShowMode(SHOW_MODE_AUTO)
         val touch = TouchExecutor(this)
@@ -120,12 +123,12 @@ class CommandExecutorService : AccessibilityService() {
 
     private fun clearExecutors() {
         touchExecutor = null
-        gridExecutor = null
         macroExecutor = null
         mediaExecutor = null
         navigationExecutor = null
         predictionExecutor = null
         textEditExecutor = null
+        gridExecutor.detachService()
         phoneCallExecutor = null
     }
 }

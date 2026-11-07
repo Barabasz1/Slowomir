@@ -4,39 +4,71 @@ import com.zpi.slowomir.overlay.ui.grid.GridView
 import android.accessibilityservice.AccessibilityService
 import android.content.Context.WINDOW_SERVICE
 import android.graphics.PixelFormat
-import android.text.BoringLayout
 import android.view.Gravity
 import android.view.WindowManager
-import com.zpi.slowomir.touch.TouchExecutor
+import com.zpi.slowomir.overlay.commands.Command
+import com.zpi.slowomir.overlay.commands.touch.LongTapCommand
+import com.zpi.slowomir.overlay.commands.touch.PinchInCommand
+import com.zpi.slowomir.overlay.commands.touch.PinchOutCommand
+import com.zpi.slowomir.overlay.commands.touch.SwipeDownCommand
+import com.zpi.slowomir.overlay.commands.touch.SwipeLeftCommand
+import com.zpi.slowomir.overlay.commands.touch.SwipeRightCommand
+import com.zpi.slowomir.overlay.commands.touch.SwipeUpCommand
+import com.zpi.slowomir.overlay.commands.touch.TapCommand
+import com.zpi.slowomir.touch.TouchExecutor.Companion.DEFAULT_HOLD_DURATION
+import com.zpi.slowomir.touch.TouchExecutor.Companion.DEFAULT_PINCH_POWER
+import com.zpi.slowomir.touch.TouchExecutor.Companion.DEFAULT_SWIPE_DISTANCE
 import com.zpi.slowomir.utils.ScreenPoint
+import com.zpi.slowomir.voice.mediator.CommandMediator
+import javax.inject.Inject
+import javax.inject.Singleton
 
-
-class GridExecutor (
-    private val service: AccessibilityService,
-    private val touchExecutor: TouchExecutor
+@Singleton
+class GridExecutor @Inject constructor(
+    private val mediator: CommandMediator,
+    private val tapCommandFactory: TapCommand.Factory,
+    private val longTapCommandFactory: LongTapCommand.Factory,
+    private val swipeLeftCommandFactory: SwipeLeftCommand.Factory,
+    private val swipeRightCommandFactory: SwipeRightCommand.Factory,
+    private val swipeDownCommandFactory: SwipeDownCommand.Factory,
+    private val swipeUpCommandFactory: SwipeUpCommand.Factory,
+    private val pinchInCommandFactory: PinchInCommand.Factory,
+    private val pinchOutCommandFactory: PinchOutCommand.Factory,
 ) {
     companion object {
         const val DEFAULT_ROWS = 10
         const val DEFAULT_COLS = 6
     }
+
+    private var accessibilityService: AccessibilityService? = null
     private var gridView: GridView? = null
     private var parentCell: Int? = null
     private val divisions = mutableListOf<Pair<Int, Int>>()
-    private var selectedCell: Int? = 15
+    private var selectedCell: Int? = null
 
-    fun isEnabled() : Boolean {
+    fun attachService(accessibilityService: AccessibilityService) {
+        this.accessibilityService = accessibilityService
+    }
+
+    fun detachService() {
+        this.accessibilityService = null
+    }
+
+    fun isEnabled(): Boolean {
         return gridView != null
     }
 
-    fun isCellSelected() : Boolean {
+    fun isCellSelected(): Boolean {
         return selectedCell != null
     }
 
-    fun canExecuteActionOnCell() : Boolean {
+    fun canExecuteActionOnCell(): Boolean {
         return isCellSelected() && isEnabled()
     }
+
     fun enable() {
         if (gridView != null) return
+        val service = accessibilityService ?: return
 
         val windowManager =
             service.getSystemService(WINDOW_SERVICE) as WindowManager
@@ -62,14 +94,18 @@ class GridExecutor (
 
         windowManager.addView(grid, params)
         gridView = grid
-        selectedCell = 15
+        selectedCell = null
         redraw()
     }
 
     fun disable() {
-        val windowManager =
-            service.getSystemService(WINDOW_SERVICE) as WindowManager
-        gridView?.let { windowManager.removeView(it) }
+        val service = accessibilityService
+        if (service != null) {
+            val windowManager =
+                service.getSystemService(WINDOW_SERVICE) as WindowManager
+            gridView?.let { windowManager.removeView(it) }
+        }
+
         gridView = null
         parentCell = null
         selectedCell = null
@@ -80,15 +116,30 @@ class GridExecutor (
         if (gridView == null) enable() else disable()
     }
 
+    fun reset() {
+        selectedCell = null
+        parentCell = null
+        divisions.clear()
+        redraw()
+    }
+
     private fun redraw() {
         gridView?.update(selectedCell, parentCell, divisions.toList())
     }
 
-    //TODO check if cell is in grid
     fun selectCell(cell: Int) {
-        selectedCell = cell
+        val maxCell = if (divisions.isEmpty()) {
+            (gridView?.cols ?: DEFAULT_COLS) * (gridView?.rows ?: DEFAULT_ROWS)
+        } else {
+            divisions.last().second * divisions.last().second
+        }
+        if (cell in 1..maxCell) {
+            selectedCell = cell
+            redraw()
+        }
     }
-    private fun divide(cell: Int, n: Int) : Boolean {
+
+    private fun divide(cell: Int, n: Int): Boolean {
         if (gridView == null) return false
 
         require(n >= 2)
@@ -98,17 +149,17 @@ class GridExecutor (
 
         require(cell in 1..maxCell)
 
-        if (parentCell != cell) {
-            divisions.clear()
+        if (divisions.isEmpty()) {
+            parentCell = cell
         }
 
-        parentCell = cell
         selectedCell = null
         divisions.add(cell to n)
         redraw()
         return true
     }
-    fun divide(n: Int) : Boolean {
+
+    fun divide(n: Int): Boolean {
         return selectedCell != null && divide(selectedCell!!, n)
     }
 
@@ -116,6 +167,13 @@ class GridExecutor (
         val view = gridView ?: return ScreenPoint(0f, 0f)
         val cols = view.cols
         val rows = view.rows
+
+        val maxCell = if (divisions.isEmpty()) {
+            cols * rows
+        } else {
+            divisions.last().second * divisions.last().second
+        }
+        if (cell !in 1..maxCell) return ScreenPoint(0f, 0f)
 
         if (divisions.isEmpty()) {
             val cellIndex = cell - 1
@@ -164,83 +222,99 @@ class GridExecutor (
         return ScreenPoint(finalX, finalY)
     }
 
-    private fun tapCell(cell: Int): Boolean {
+    private inline fun dispatchCellCommand(
+        cell: Int,
+        commandFactory: (x: Float, y: Float) -> Command
+    ): Boolean {
         if (gridView == null) return false
-
         val (x, y) = getTouchCoords(cell)
-        return touchExecutor.shortTap(x,y)
+        mediator.dispatchScoped(commandFactory(x, y))
+        reset()
+        return true
     }
-    fun tapCell() : Boolean {
+
+    private fun tapCell(cell: Int): Boolean {
+        return dispatchCellCommand(cell) { x, y ->
+            tapCommandFactory.create(x, y)
+        }
+    }
+
+    fun tapCell(): Boolean {
         return selectedCell != null && tapCell(selectedCell!!)
     }
 
-    private fun longTapCell(cell: Int, duration: Long = 1000): Boolean {
-        if (gridView == null) return false
-
-        val (x, y) = getTouchCoords(cell)
-        return touchExecutor.longTap(x,y, duration)
+    private fun longTapCell(cell: Int, duration: Long = DEFAULT_HOLD_DURATION): Boolean {
+        return dispatchCellCommand(cell) { x, y ->
+            longTapCommandFactory.create(x, y, duration)
+        }
     }
-    fun longTapCell(duration: Long = 1000) : Boolean {
+
+    fun longTapCell(duration: Long = DEFAULT_HOLD_DURATION): Boolean {
         return selectedCell != null && longTapCell(selectedCell!!, duration)
     }
 
-    private fun swipeUpCell(cell: Int, distance: Float = 500f): Boolean {
-        if (gridView == null) return false
-
-        val (x, y) = getTouchCoords(cell)
-        return touchExecutor.swipeUp(x, y, distance)
+    private fun swipeUpCell(cell: Int, distance: Float = DEFAULT_SWIPE_DISTANCE): Boolean {
+        return dispatchCellCommand(cell) { x, y ->
+            swipeUpCommandFactory.create(x, y, distance)
+        }
     }
-    fun swipeUpCell(distance: Float = 500f) : Boolean {
+
+    fun swipeUpCell(distance: Float = DEFAULT_SWIPE_DISTANCE): Boolean {
         return selectedCell != null && swipeUpCell(selectedCell!!, distance)
     }
 
-    private fun swipeDownCell(cell: Int, distance: Float = 500f): Boolean {
-        if (gridView == null) return false
-
-        val (x, y) = getTouchCoords(cell)
-        return touchExecutor.swipeDown(x, y, distance)
+    private fun swipeDownCell(cell: Int, distance: Float = DEFAULT_SWIPE_DISTANCE): Boolean {
+        return dispatchCellCommand(cell) { x, y ->
+            swipeDownCommandFactory.create(x, y, distance)
+        }
     }
-    fun swipeDownCell(distance: Float = 500f) : Boolean {
+
+    fun swipeDownCell(distance: Float = DEFAULT_SWIPE_DISTANCE): Boolean {
         return selectedCell != null && swipeDownCell(selectedCell!!, distance)
     }
 
-    private fun swipeRightCell(cell: Int, distance: Float = 500f): Boolean {
-        if (gridView == null) return false
-
-        val (x, y) = getTouchCoords(cell)
-        return touchExecutor.swipeRight(x, y, distance)
+    private fun swipeRightCell(cell: Int, distance: Float = DEFAULT_SWIPE_DISTANCE): Boolean {
+        return dispatchCellCommand(cell) { x, y ->
+            swipeRightCommandFactory.create(x, y, distance)
+        }
     }
-    fun swipeRightCell(distance: Float = 500f) : Boolean {
+
+    fun swipeRightCell(distance: Float = DEFAULT_SWIPE_DISTANCE): Boolean {
         return selectedCell != null && swipeRightCell(selectedCell!!, distance)
     }
 
-    private fun swipeLeftCell(cell: Int, distance: Float = 500f): Boolean {
-        if (gridView == null) return false
-
-        val (x, y) = getTouchCoords(cell)
-        return touchExecutor.swipeLeft(x, y, distance)
+    private fun swipeLeftCell(cell: Int, distance: Float = DEFAULT_SWIPE_DISTANCE): Boolean {
+        return dispatchCellCommand(cell) { x, y ->
+            swipeLeftCommandFactory.create(x, y, distance)
+        }
     }
-    fun swipeLeftCell(distance: Float = 500f) : Boolean {
+
+    fun swipeLeftCell(distance: Float = DEFAULT_SWIPE_DISTANCE): Boolean {
         return selectedCell != null && swipeLeftCell(selectedCell!!, distance)
     }
 
-    private fun pinchInCell(cell: Int, power: Float = 1f): Boolean {
-        if (gridView == null) return false
-
-        val screenPoint: ScreenPoint = getTouchCoords(cell)
-        return touchExecutor.pinchIn(screenPoint.x,screenPoint.y, power)
+    //TODO
+    fun swipe(cell0: Int, cell1: Int): Boolean {
+        return true
     }
-    fun pinchInCell(power: Float = 1f) : Boolean {
+
+    private fun pinchInCell(cell: Int, power: Float = DEFAULT_PINCH_POWER): Boolean {
+        return dispatchCellCommand(cell) { x, y ->
+            pinchInCommandFactory.create(x, y, power)
+        }
+    }
+
+    fun pinchInCell(power: Float = DEFAULT_PINCH_POWER): Boolean {
         return selectedCell != null && pinchInCell(selectedCell!!, power)
     }
 
-    private fun pinchOutCell(cell: Int, power: Float = 1f): Boolean {
-        if (gridView == null) return false
-
-        val screenPoint: ScreenPoint = getTouchCoords(cell)
-        return touchExecutor.pinchOut(screenPoint.x,screenPoint.y, power)
+    private fun pinchOutCell(cell: Int, power: Float = DEFAULT_PINCH_POWER): Boolean {
+        return dispatchCellCommand(cell) { x, y ->
+            pinchOutCommandFactory.create(x, y, power)
+        }
     }
-    fun pinchOutCell(power: Float = 1f) : Boolean {
+
+    fun pinchOutCell(power: Float = DEFAULT_PINCH_POWER): Boolean {
         return selectedCell != null && pinchOutCell(selectedCell!!, power)
     }
 }

@@ -13,10 +13,15 @@ class TouchExecutor(
 ) {
     companion object {
         private const val TAG = "TouchExecutor"
-        private const val DEFAULT_START_TIME: Long = 100
-
-        private const val MOVE_DURATION_MS = 350L
-        private const val HOLD_DURATION_MS = 150L
+        const val DEFAULT_START_TIME: Long = 100L
+        const val DEFAULT_HOLD_DURATION: Long = 1000L
+        const val DEFAULT_SWIPE_HOLD_DURATION: Long = 200L
+        const val DEFAULT_PINCH_HOLD_DURATION: Long = 200L
+        const val DEFAULT_SWIPE_DISTANCE: Float = 50f
+        const val DEFAULT_PINCH_POWER: Float = 10f
+        private const val SHORT_TAP_DURATION: Long = 20L
+        private const val MOVE_DURATION_MS: Long = 350L
+        private const val HOLD_DURATION_MS: Long = 150L
     }
 
     fun doGesture(gesture: GestureDescription): Boolean {
@@ -36,11 +41,20 @@ class TouchExecutor(
         )
     }
 
-    private fun getStroke(path: Path, duration: Long, startTime: Long): GestureDescription.StrokeDescription {
+    private fun getStroke(
+        path: Path,
+        duration: Long,
+        startTime: Long
+    ): GestureDescription.StrokeDescription {
         return GestureDescription.StrokeDescription(path, startTime, duration)
     }
 
-    private fun tap(x: Float, y: Float, duration: Long, startTime: Long = DEFAULT_START_TIME): Boolean {
+    private fun tap(
+        x: Float,
+        y: Float,
+        duration: Long,
+        startTime: Long = DEFAULT_START_TIME
+    ): Boolean {
         val path = Path().apply { moveTo(x, y) }
         val stroke = getStroke(path, duration, startTime)
         val gesture = GestureDescription.Builder().addStroke(stroke).build()
@@ -48,20 +62,38 @@ class TouchExecutor(
     }
 
     fun shortTap(x: Float, y: Float, startTime: Long = DEFAULT_START_TIME): Boolean {
-        return tap(x, y, 50, startTime)
-    }
-    fun shortTap(screenPoint: ScreenPoint, startTime: Long = DEFAULT_START_TIME): Boolean {
-        return tap(screenPoint.x, screenPoint.y, 50, startTime)
+        return tap(x, y, SHORT_TAP_DURATION, startTime)
     }
 
-    fun longTap(x: Float, y: Float, duration: Long = 1000, startTime: Long = DEFAULT_START_TIME): Boolean {
+    fun shortTap(screenPoint: ScreenPoint, startTime: Long = DEFAULT_START_TIME): Boolean {
+        return tap(screenPoint.x, screenPoint.y, SHORT_TAP_DURATION, startTime)
+    }
+
+    fun longTap(
+        x: Float,
+        y: Float,
+        duration: Long = DEFAULT_HOLD_DURATION,
+        startTime: Long = DEFAULT_START_TIME
+    ): Boolean {
         return tap(x, y, duration, startTime)
     }
-    fun longTap(screenPoint: ScreenPoint, duration: Long = 1000, startTime: Long = DEFAULT_START_TIME): Boolean {
-        return tap(screenPoint.x,screenPoint.y, duration, startTime)
+
+    fun longTap(
+        screenPoint: ScreenPoint,
+        duration: Long = DEFAULT_HOLD_DURATION,
+        startTime: Long = DEFAULT_START_TIME
+    ): Boolean {
+        return tap(screenPoint.x, screenPoint.y, duration, startTime)
     }
 
-    fun swipe(startX: Float, startY: Float, destX: Float, destY: Float, duration: Long = 300, startTime: Long = DEFAULT_START_TIME): Boolean {
+    fun swipe(
+        startX: Float,
+        startY: Float,
+        destX: Float,
+        destY: Float,
+        duration: Long = DEFAULT_SWIPE_HOLD_DURATION,
+        startTime: Long = DEFAULT_START_TIME
+    ): Boolean {
         val path = Path().apply {
             moveTo(startX, startY)
             lineTo(destX, destY)
@@ -71,35 +103,79 @@ class TouchExecutor(
         return doGesture(gesture)
     }
 
-    fun swipeUp(startX: Float, startY: Float, distance: Float = 500f, duration: Long = 300, startTime: Long = DEFAULT_START_TIME): Boolean {
+    fun swipeUp(
+        startX: Float,
+        startY: Float,
+        distance: Float = DEFAULT_SWIPE_DISTANCE,
+        duration: Long = DEFAULT_SWIPE_HOLD_DURATION,
+        startTime: Long = DEFAULT_START_TIME
+    ): Boolean {
         return swipe(startX, startY, startX, startY - distance, duration, startTime)
     }
 
-    fun swipeUp(point: ScreenPoint, distance: Float = 500f, duration: Long = 300, startTime: Long = DEFAULT_START_TIME): Boolean {
+    fun swipeUp(
+        point: ScreenPoint,
+        distance: Float = DEFAULT_SWIPE_DISTANCE,
+        duration: Long = DEFAULT_SWIPE_HOLD_DURATION,
+        startTime: Long = DEFAULT_START_TIME
+    ): Boolean {
         return swipeUp(point.x, point.y, distance, duration, startTime)
     }
 
-    fun swipeDown(startX: Float, startY: Float, distance: Float = 500f, duration: Long = 300, startTime: Long = DEFAULT_START_TIME): Boolean {
+    fun swipeDown(
+        startX: Float,
+        startY: Float,
+        distance: Float = DEFAULT_SWIPE_DISTANCE,
+        duration: Long = DEFAULT_SWIPE_HOLD_DURATION,
+        startTime: Long = DEFAULT_START_TIME
+    ): Boolean {
         return swipe(startX, startY, startX, startY + distance, duration, startTime)
     }
 
-    fun swipeDown(point: ScreenPoint, distance: Float = 500f, duration: Long = 300, startTime: Long = DEFAULT_START_TIME): Boolean {
+    fun swipeDown(
+        point: ScreenPoint,
+        distance: Float = DEFAULT_SWIPE_DISTANCE,
+        duration: Long = DEFAULT_SWIPE_HOLD_DURATION,
+        startTime: Long = DEFAULT_START_TIME
+    ): Boolean {
         return swipeDown(point.x, point.y, distance, duration, startTime)
     }
 
-    fun swipeRight(startX: Float, startY: Float, distance: Float = 500f, duration: Long = 300, startTime: Long = DEFAULT_START_TIME): Boolean {
+    fun swipeRight(
+        startX: Float,
+        startY: Float,
+        distance: Float = DEFAULT_SWIPE_DISTANCE,
+        duration: Long = DEFAULT_SWIPE_HOLD_DURATION,
+        startTime: Long = DEFAULT_START_TIME
+    ): Boolean {
         return swipe(startX, startY, startX + distance, startY, duration, startTime)
     }
 
-    fun swipeRight(point: ScreenPoint, distance: Float = 500f, duration: Long = 300, startTime: Long = DEFAULT_START_TIME): Boolean {
+    fun swipeRight(
+        point: ScreenPoint,
+        distance: Float = DEFAULT_SWIPE_DISTANCE,
+        duration: Long = DEFAULT_SWIPE_HOLD_DURATION,
+        startTime: Long = DEFAULT_START_TIME
+    ): Boolean {
         return swipeRight(point.x, point.y, distance, duration, startTime)
     }
 
-    fun swipeLeft(startX: Float, startY: Float, distance: Float = 500f, duration: Long = 300, startTime: Long = DEFAULT_START_TIME): Boolean {
+    fun swipeLeft(
+        startX: Float,
+        startY: Float,
+        distance: Float = DEFAULT_SWIPE_DISTANCE,
+        duration: Long = DEFAULT_SWIPE_HOLD_DURATION,
+        startTime: Long = DEFAULT_START_TIME
+    ): Boolean {
         return swipe(startX, startY, startX - distance, startY, duration, startTime)
     }
 
-    fun swipeLeft(point: ScreenPoint, distance: Float = 500f, duration: Long = 300, startTime: Long = DEFAULT_START_TIME): Boolean {
+    fun swipeLeft(
+        point: ScreenPoint,
+        distance: Float = DEFAULT_SWIPE_DISTANCE,
+        duration: Long = DEFAULT_SWIPE_HOLD_DURATION,
+        startTime: Long = DEFAULT_START_TIME
+    ): Boolean {
         return swipeLeft(point.x, point.y, distance, duration, startTime)
     }
 
@@ -108,7 +184,8 @@ class TouchExecutor(
         destX1: Float, destY1: Float,
         startX2: Float, startY2: Float,
         destX2: Float, destY2: Float,
-        duration: Long = 400, startTime: Long = DEFAULT_START_TIME
+        duration: Long = DEFAULT_PINCH_HOLD_DURATION,
+        startTime: Long = DEFAULT_START_TIME
     ): Boolean {
         val path1 = Path().apply {
             moveTo(startX1, startY1)
@@ -123,26 +200,29 @@ class TouchExecutor(
         val gesture = GestureDescription.Builder().addStroke(stroke1).addStroke(stroke2).build()
         return doGesture(gesture)
     }
+
     private fun pinch(
         start1: ScreenPoint,
         dest1: ScreenPoint,
         start2: ScreenPoint,
         dest2: ScreenPoint,
-        duration: Long = 400, startTime: Long = DEFAULT_START_TIME
+        duration: Long = DEFAULT_PINCH_HOLD_DURATION,
+        startTime: Long = DEFAULT_START_TIME
     ): Boolean {
         return pinch(
             start1.x, start1.y,
             dest1.x, dest1.y,
             start2.x, start2.y,
             dest2.x, dest2.y,
-            duration, startTime)
+            duration, startTime
+        )
     }
 
     fun pinchIn(
         centerX: Float,
         centerY: Float,
-        power: Float = 1f,
-        duration: Long = 400,
+        power: Float = DEFAULT_PINCH_POWER,
+        duration: Long = DEFAULT_PINCH_HOLD_DURATION,
         startTime: Long = DEFAULT_START_TIME
     ): Boolean {
         val distance = 300f * power
@@ -155,10 +235,11 @@ class TouchExecutor(
             startTime = startTime
         )
     }
+
     fun pinchIn(
         center: ScreenPoint,
-        power: Float = 1f,
-        duration: Long = 400,
+        power: Float = DEFAULT_PINCH_POWER,
+        duration: Long = DEFAULT_PINCH_HOLD_DURATION,
         startTime: Long = DEFAULT_START_TIME
     ): Boolean {
         return pinchIn(center.x, center.y, power, duration, startTime)
@@ -167,8 +248,8 @@ class TouchExecutor(
     fun pinchOut(
         centerX: Float,
         centerY: Float,
-        power: Float = 1f,
-        duration: Long = 400,
+        power: Float = DEFAULT_PINCH_POWER,
+        duration: Long = DEFAULT_PINCH_HOLD_DURATION,
         startTime: Long = DEFAULT_START_TIME
     ): Boolean {
         val distance = 300f * power
@@ -181,15 +262,15 @@ class TouchExecutor(
             startTime = startTime
         )
     }
+
     fun pinchOut(
         center: ScreenPoint,
-        power: Float = 1f,
-        duration: Long = 400,
+        power: Float = DEFAULT_PINCH_POWER,
+        duration: Long = DEFAULT_PINCH_HOLD_DURATION,
         startTime: Long = DEFAULT_START_TIME
     ): Boolean {
         return pinchOut(center.x, center.y, power, duration, startTime)
     }
-
 
 
     private fun performSwipeWithHold(
@@ -216,28 +297,36 @@ class TouchExecutor(
         val holdStroke = moveStroke.continueStroke(holdPath, 0, holdDuration, false)
         val holdGesture = GestureDescription.Builder().addStroke(holdStroke).build()
 
-        return service.dispatchGesture(moveGesture, object : AccessibilityService.GestureResultCallback() {
-            override fun onCompleted(gestureDescription: GestureDescription?) {
-                super.onCompleted(gestureDescription)
-                Log.i(TAG, "Drag movement complete, dispatching stationary hold")
-                service.dispatchGesture(holdGesture, object : AccessibilityService.GestureResultCallback() {
-                    override fun onCompleted(gestureDescription: GestureDescription?) {
-                        super.onCompleted(gestureDescription)
-                        Log.i(TAG, "Hold complete, gesture finished with zero velocity")
-                    }
+        return service.dispatchGesture(
+            moveGesture,
+            object : AccessibilityService.GestureResultCallback() {
+                override fun onCompleted(gestureDescription: GestureDescription?) {
+                    super.onCompleted(gestureDescription)
+                    Log.i(TAG, "Drag movement complete, dispatching stationary hold")
+                    service.dispatchGesture(
+                        holdGesture,
+                        object : AccessibilityService.GestureResultCallback() {
+                            override fun onCompleted(gestureDescription: GestureDescription?) {
+                                super.onCompleted(gestureDescription)
+                                Log.i(TAG, "Hold complete, gesture finished with zero velocity")
+                            }
 
-                    override fun onCancelled(gestureDescription: GestureDescription?) {
-                        super.onCancelled(gestureDescription)
-                        Log.w(TAG, "Hold gesture cancelled")
-                    }
-                }, null)
-            }
+                            override fun onCancelled(gestureDescription: GestureDescription?) {
+                                super.onCancelled(gestureDescription)
+                                Log.w(TAG, "Hold gesture cancelled")
+                            }
+                        },
+                        null
+                    )
+                }
 
-            override fun onCancelled(gestureDescription: GestureDescription?) {
-                super.onCancelled(gestureDescription)
-                Log.w(TAG, "Drag gesture cancelled")
-            }
-        }, null)
+                override fun onCancelled(gestureDescription: GestureDescription?) {
+                    super.onCancelled(gestureDescription)
+                    Log.w(TAG, "Drag gesture cancelled")
+                }
+            },
+            null
+        )
     }
 
 
@@ -247,7 +336,10 @@ class TouchExecutor(
         moveDuration: Long = MOVE_DURATION_MS,
         holdDuration: Long = HOLD_DURATION_MS,
     ): Boolean {
-        Log.i(TAG, "Pinching with hold: finger1 ($start1X, $start1Y)->($end1X, $end1Y), finger2 ($start2X, $start2Y)->($end2X, $end2Y)")
+        Log.i(
+            TAG,
+            "Pinching with hold: finger1 ($start1X, $start1Y)->($end1X, $end1Y), finger2 ($start2X, $start2Y)->($end2X, $end2Y)"
+        )
 
         val movePath1 = Path().apply {
             moveTo(start1X, start1Y)
@@ -283,27 +375,35 @@ class TouchExecutor(
             .addStroke(holdStroke2)
             .build()
 
-        return service.dispatchGesture(moveGesture, object : AccessibilityService.GestureResultCallback() {
-            override fun onCompleted(gestureDescription: GestureDescription?) {
-                super.onCompleted(gestureDescription)
-                Log.i(TAG, "Pinch movement complete, dispatching stationary hold")
-                service.dispatchGesture(holdGesture, object : AccessibilityService.GestureResultCallback() {
-                    override fun onCompleted(gestureDescription: GestureDescription?) {
-                        super.onCompleted(gestureDescription)
-                        Log.i(TAG, "Pinch complete with zero velocity")
-                    }
+        return service.dispatchGesture(
+            moveGesture,
+            object : AccessibilityService.GestureResultCallback() {
+                override fun onCompleted(gestureDescription: GestureDescription?) {
+                    super.onCompleted(gestureDescription)
+                    Log.i(TAG, "Pinch movement complete, dispatching stationary hold")
+                    service.dispatchGesture(
+                        holdGesture,
+                        object : AccessibilityService.GestureResultCallback() {
+                            override fun onCompleted(gestureDescription: GestureDescription?) {
+                                super.onCompleted(gestureDescription)
+                                Log.i(TAG, "Pinch complete with zero velocity")
+                            }
 
-                    override fun onCancelled(gestureDescription: GestureDescription?) {
-                        super.onCancelled(gestureDescription)
-                        Log.w(TAG, "Pinch hold cancelled")
-                    }
-                }, null)
-            }
+                            override fun onCancelled(gestureDescription: GestureDescription?) {
+                                super.onCancelled(gestureDescription)
+                                Log.w(TAG, "Pinch hold cancelled")
+                            }
+                        },
+                        null
+                    )
+                }
 
-            override fun onCancelled(gestureDescription: GestureDescription?) {
-                super.onCancelled(gestureDescription)
-                Log.w(TAG, "Pinch movement cancelled")
-            }
-        }, null)
+                override fun onCancelled(gestureDescription: GestureDescription?) {
+                    super.onCancelled(gestureDescription)
+                    Log.w(TAG, "Pinch movement cancelled")
+                }
+            },
+            null
+        )
     }
 }

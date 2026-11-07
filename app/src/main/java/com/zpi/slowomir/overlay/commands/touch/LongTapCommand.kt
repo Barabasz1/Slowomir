@@ -4,6 +4,7 @@ import com.zpi.slowomir.overlay.OverlayContext
 import com.zpi.slowomir.overlay.commands.Command
 import com.zpi.slowomir.overlay.commands.CommandResult
 import com.zpi.slowomir.touch.TouchExecutor
+import com.zpi.slowomir.touch.TouchExecutor.Companion.DEFAULT_HOLD_DURATION
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -13,7 +14,7 @@ class LongTapCommand @AssistedInject constructor(
     private val touchExecutorProvider: Provider<TouchExecutor?>,
     @Assisted("x") private val x: Float,
     @Assisted("y") private val y: Float,
-    @Assisted("duration") private val duration: Long
+    @Assisted("duration") private val duration: Long = DEFAULT_HOLD_DURATION
 ) : Command {
 
     override fun execute(): CommandResult {
@@ -33,7 +34,7 @@ class LongTapCommand @AssistedInject constructor(
         fun create(
             @Assisted("x") x: Float,
             @Assisted("y") y: Float,
-            @Assisted("duration") duration: Long
+            @Assisted("duration") duration: Long = DEFAULT_HOLD_DURATION
         ): LongTapCommand
     }
 }
