@@ -3,6 +3,7 @@ package com.zpi.slowomir.overlay.executors
 import android.accessibilityservice.AccessibilityService
 import android.content.Context
 import android.content.Intent
+import android.media.AudioDeviceInfo
 import android.media.AudioManager
 import android.telecom.TelecomManager
 import android.util.Log
@@ -75,23 +76,31 @@ class PhoneCallExecutor(
     }
 
     /**
-     * Toggles the speakerphone using the AudioManager system API.
+     * Toggles the speakerphone using system audio APIs.
      *
-     * @return `true` if the speakerphone state was toggled, `false` otherwise.
+     * @param enable Optional explicit state to set. If null, the current state is inverted.
+     * @return `true` if the speakerphone state was updated, `false` otherwise.
      */
     @Suppress("DEPRECATION")
-    fun speakerToggle(): Boolean {
+    fun speakerToggle(enable: Boolean? = null): Boolean {
         return try {
-            val audioManager = service.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
-            if (audioManager != null) {
-                val newState = !audioManager.isSpeakerphoneOn
-                audioManager.isSpeakerphoneOn = newState
-                Log.i(TAG, "Speaker toggled via AudioManager to $newState.")
-                true
+            val audioManager = service.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return false
+
+            val targetState = enable ?: !audioManager.isSpeakerphoneOn
+
+            if (targetState) {
+                val speakerDevice = audioManager.availableCommunicationDevices
+                    .firstOrNull { it.type == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER }
+                if (speakerDevice != null) {
+                    audioManager.setCommunicationDevice(speakerDevice)
+                }
             } else {
-                Log.w(TAG, "AudioManager not available.")
-                false
+                audioManager.clearCommunicationDevice()
             }
+
+            audioManager.isSpeakerphoneOn = targetState
+            Log.i(TAG, "Speaker updated to: $targetState")
+            true
         } catch (e: Exception) {
             Log.e(TAG, "Failed to toggle speakerphone", e)
             false
