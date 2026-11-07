@@ -2,38 +2,9 @@ package com.zpi.slowomir.voice
 
 import android.util.Log
 import com.zpi.slowomir.overlay.commands.Command
-import com.zpi.slowomir.overlay.commands.CommandArgument
 import com.zpi.slowomir.overlay.commands.CommandIdentifier
-import com.zpi.slowomir.overlay.commands.LogCommand
-import com.zpi.slowomir.overlay.commands.TapCommand
-import com.zpi.slowomir.overlay.commands.media.VolumeDownCommand
-import com.zpi.slowomir.overlay.commands.media.VolumeUpCommand
-import com.zpi.slowomir.overlay.commands.navigation.LockScreenCommand
-import com.zpi.slowomir.overlay.commands.navigation.NavigateBackCommand
-import com.zpi.slowomir.overlay.commands.navigation.NavigateHomeCommand
-import com.zpi.slowomir.overlay.commands.navigation.NavigateRecentCommand
-import com.zpi.slowomir.overlay.commands.navigation.NotificationsCommand
-import com.zpi.slowomir.overlay.commands.navigation.QuickSettingsCommand
-import com.zpi.slowomir.overlay.commands.navigation.ScreenshotCommand
-import com.zpi.slowomir.overlay.commands.navigation.SwipeDownCommand
-import com.zpi.slowomir.overlay.commands.navigation.SwipeLeftCommand
-import com.zpi.slowomir.overlay.commands.navigation.SwipeRightCommand
-import com.zpi.slowomir.overlay.commands.navigation.SwipeUpCommand
-import com.zpi.slowomir.overlay.commands.navigation.ZoomInCommand
-import com.zpi.slowomir.overlay.commands.navigation.ZoomOutCommand
-import com.zpi.slowomir.overlay.commands.phoneCalls.CallCommand
-import com.zpi.slowomir.overlay.commands.phoneCalls.DeclineCommand
-import com.zpi.slowomir.overlay.commands.phoneCalls.EndCommand
-import com.zpi.slowomir.overlay.commands.phoneCalls.PickUpCommand
-import com.zpi.slowomir.overlay.commands.phoneCalls.SpeakerCommand
-import com.zpi.slowomir.overlay.commands.phoneCalls.WriteSMSCommand
-import com.zpi.slowomir.overlay.commands.textEdit.KeyboardHideCommand
-import com.zpi.slowomir.overlay.commands.textEdit.KeyboardShowCommand
-import com.zpi.slowomir.overlay.services.CommandExecutorService
 import com.zpi.slowomir.utils.ContactOption
 import com.zpi.slowomir.voice.mediator.CommandMediator
-import com.zpi.slowomir.voice.pipeline.Pipeline
-import com.zpi.slowomir.voice.pipeline.PipelineStage
 import com.zpi.slowomir.voice.stt.InternalEvent
 import com.zpi.slowomir.voice.stt.SessionEvent
 import com.zpi.slowomir.voice.stt.VoiceInput
@@ -59,7 +30,6 @@ class VoiceSessionManager @Inject constructor(
     private val mediator: CommandMediator,
     private val intentParser: CommandIntentParser,
     private val normalizer: PolishTextNormalizer,
-    private val callCommandFactory: CallCommand.Factory,
     private val commandResolver: CommandResolver,
 ) : VoiceInputSink, VoiceStateSource {
 
@@ -76,38 +46,6 @@ class VoiceSessionManager @Inject constructor(
             for (input in inbox) handle(input)
         }
     }
-
-
-    private val filterStage = PipelineStage<String, String> { text ->
-        if (text.isNotBlank()) text else null
-    }
-
-    private val intentStage = PipelineStage<String, VoiceIntent> { text ->
-        scope.launch {
-            mediator.handleEvent(OverlayEvent.ProcessingCommand(text))
-        }
-
-        val intent = intentParser.parse(text)
-
-        if (intent != null) {
-            scope.launch {
-                mediator.handleEvent(OverlayEvent.IntentParsed(intent))
-            }
-        }
-
-        intent
-    }
-
-    private val commandStage = PipelineStage<VoiceIntent, Command> { intent ->
-        commandResolver.resolve(intent)
-    }
-
-    private val pipeline = Pipeline.Builder.create<String>()
-        .addStage(filterStage)
-        .addStage(intentStage)
-        .addStage(commandStage)
-        .build()
-
 
     private suspend fun handle(input: SessionEvent) {
         when (input) {
@@ -139,7 +77,7 @@ class VoiceSessionManager @Inject constructor(
             }
 
             is VoiceState.CommandExecuting -> {
-                executeCommand(newState.intent, newState.command)
+                dispatchCommand(newState.intent, newState.command)
             }
 
             else -> {}
@@ -147,6 +85,10 @@ class VoiceSessionManager @Inject constructor(
     }
 
     private fun parseIntent(text: String) {
+        if (text.isBlank()) {
+            return
+        }
+
         scope.launch {
             mediator.handleEvent(OverlayEvent.ProcessingCommand(text))
 
@@ -155,19 +97,20 @@ class VoiceSessionManager @Inject constructor(
                 return@launch
             }
 
-            val command = pipeline.process(text)
             val intent = intentParser.parse(text)
 
-            if (command != null && intent != null) {
-                inbox.send(InternalEvent.IntentParsed(intent, command))
-            } else {
+            if (intent == null) {
                 mediator.handleEvent(OverlayEvent.InvalidCommand(text))
                 inbox.send(InternalEvent.IntentFailed(text))
+                return@launch
             }
+
+            val command = commandResolver.resolve(intent)
+            inbox.send(InternalEvent.IntentParsed(intent, command))
         }
     }
 
-    private fun executeCommand(intent: VoiceIntent, command: Command) {
+    private fun dispatchCommand(intent: VoiceIntent, command: Command) {
         scope.launch {
             mediator.handleEvent(OverlayEvent.CommandInterpreted(command))
 
@@ -234,7 +177,7 @@ class VoiceSessionManager @Inject constructor(
         return selectionRegex.matchEntire(normalized)?.groupValues?.get(1)?.toIntOrNull()
     }
 
-        override fun accept(input: VoiceInput) {
+    override fun accept(input: VoiceInput) {
         inbox.trySend(input)
     }
 
