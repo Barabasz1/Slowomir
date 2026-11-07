@@ -147,7 +147,7 @@ class CommandIntentParser @Inject constructor(
             "następna piosenka", "następny utwór", "przejdź do następnej piosenki", "włącz następny utwór", "kolejna piosenka" -> CommandIdentifier.MEDIA_NEXT_TRACK
             "poprzednia piosenka", "poprzedni utwór", "przejdź do poprzedniej piosenki", "włącz poprzedni utwór", "wcześniejsza piosenka" -> CommandIdentifier.MEDIA_PREVIOUS_TRACK
             "potwierdź", "zaakceptuj propozycję", "wykonaj sugerowaną akcję", "potwierdź sugestię", "zgadzam się na propozycję" -> CommandIdentifier.PREDICTION_CONFIRM
-            "odrzuć", "odrzuć propozycję", "nie wykonuj sugestii", "anuluj sugerowaną akcję", "pomiń sugestię" -> CommandIdentifier.PREDICTION_DISMISS
+            "odrzuć propozycję", "nie wykonuj sugestii", "anuluj sugerowaną akcję", "pomiń sugestię" -> CommandIdentifier.PREDICTION_DISMISS
             "pisz", "dyktuj", "rozpocznij dyktowanie", "wpisz tekst głosem", "zacznij pisać" -> CommandIdentifier.TEXT_ENTER
             "do przodu", "przesuń kursor do przodu", "kursor w prawo", "jeden znak w prawo", "przesuń o znak do przodu" -> CommandIdentifier.TEXT_CURSOR_FORWARD
             "do tyłu", "przesuń kursor do tyłu", "kursor w lewo", "jeden znak w lewo", "przesuń o znak wstecz" -> CommandIdentifier.TEXT_CURSOR_BACKWARD
@@ -159,9 +159,9 @@ class CommandIntentParser @Inject constructor(
             "schowaj klawiaturę", "ukryj klawiaturę", "zamknij klawiaturę", "wyłącz klawiaturę ekranową", "schowaj klawiaturę ekranową" -> CommandIdentifier.HIDE_KEYBOARD
             "pokaż klawiaturę", "wyświetl klawiaturę", "otwórz klawiaturę", "włącz klawiaturę ekranową", "pokaż klawiaturę ekranową" -> CommandIdentifier.SHOW_KEYBOARD
             "odbierz", "odbierz telefon", "odbierz połączenie", "przyjmij połączenie", "odbierz rozmowę" -> CommandIdentifier.PHONE_PICK_UP
-            "odrzuć połączenie", "nie odbieraj", "odmów połączenia", "odrzuć rozmowę" -> CommandIdentifier.PHONE_DECLINE
+            "odrzuć", "odrzuć połączenie", "nie odbieraj", "odmów połączenia", "odrzuć rozmowę" -> CommandIdentifier.PHONE_DECLINE
             "rozłącz", "zakończ połączenie", "rozłącz się", "zakończ rozmowę", "odłóż słuchawkę" -> CommandIdentifier.PHONE_END_CALL
-            "głośnomówiący", "przełącz tryb głośnomówiący", "przełącz głośnik rozmowy", "włącz lub wyłącz głośnik rozmowy", "zmień tryb głośnomówiący" -> CommandIdentifier.PHONE_SPEAKER
+            "głośnomówiący", "przełącz tryb głośnomówiący", "przełącz głośnik rozmowy", "włącz lub wyłącz głośnik rozmowy", "zmień tryb głośnomówiący", "włącz głośnomówiący", "wyłącz głośnomówiący", "włącz tryb głośnomówiący", "wyłącz tryb głośnomówiący", "włącz głośnik", "wyłącz głośnik", "przełącz na głośnik", "przełącz na słuchawkę", "przełącz głośnik", "słuchawka" -> CommandIdentifier.PHONE_SPEAKER
             "sms" -> CommandIdentifier.SMS_WRITE
             "nagraj makro", "rozpocznij nagrywanie makra", "zacznij nagrywać makro", "utwórz nowe makro", "zapisuj czynności jako makro" -> CommandIdentifier.MACRO_RECORD
             "zakończ makro", "zakończ nagrywanie makra", "zatrzymaj nagrywanie makra", "zapisz makro", "skończ nagrywać makro" -> CommandIdentifier.MACRO_FINISH

@@ -164,26 +164,35 @@ class VoiceSessionManager @Inject constructor(
     private suspend fun handleSelectionSpeech(text: String) {
         if (isCancel(text)) {
             cancelSelectionInternal()
+            inbox.send(InternalEvent.IntentFailed(text))
             return
         }
 
         val index = parseSelection(text)
         if (index == null) {
             Log.d(TAG, "Ignoring speech during contact selection: '$text'")
+            inbox.send(InternalEvent.IntentFailed(text))
             return
         }
 
-        selectContactInternal(index)
+        selectContactInternal(index, fromSpeech = true, rawText = text)
     }
 
     /**
      * Selects a contact. Internal implementation.
      *
      * @param index The index of the contact to select.
+     * @param fromSpeech Whether the selection was initiated by speech.
+     * @param rawText The raw speech text when initiated by speech.
      */
-    private suspend fun selectContactInternal(index: Int) {
-        val option = consumeSelection(index) ?: run {
+    private suspend fun selectContactInternal(
+        index: Int,
+        fromSpeech: Boolean = false,
+        rawText: String = "",
+    ) {
+        val (option, action) = consumeSelection(index) ?: run {
             Log.d(TAG, "Selection $index ignored (no pending selection or out of range)")
+            if (fromSpeech) inbox.send(InternalEvent.IntentFailed(rawText))
             return
         }
 
@@ -204,13 +213,14 @@ class VoiceSessionManager @Inject constructor(
      * Consumes a contact selection.
      *
      * @param index The index of the contact to consume.
-     * @return The consumed contact option, or null if no selection is pending.
+     * @return The consumed contact option and the associated action, or null if no selection is pending or out of range.
      */
-    private suspend fun consumeSelection(index: Int): ContactOption? = selectionMutex.withLock {
+    private suspend fun consumeSelection(index: Int): Pair<ContactOption, CommandIdentifier?>? = selectionMutex.withLock {
         val options = mediator.mediatorState.value.contactSelection ?: return@withLock null
         val option = options.getOrNull(index - 1) ?: return@withLock null
+        val action = mediator.mediatorState.value.contactSelectionAction
         mediator.handleEvent(OverlayEvent.SelectionCleared)
-        option
+        Pair(option, action)
     }
 
     /**
@@ -246,14 +256,84 @@ class VoiceSessionManager @Inject constructor(
         private val cancelPhrases = setOf(
             "anuluj",
             "zamknij",
+            "nie",
+            "wróć",
+            "cofnij",
+            "stop",
+            "wyjdź",
         )
 
         private val extraNumberWords = mapOf(
             "jedynkę" to "1",
+            "jedynka" to "1",
+            "pierwszy" to "1",
+            "pierwsza" to "1",
+            "pierwsze" to "1",
+            "pierwszego" to "1",
+            "pierwszą" to "1",
             "dwójkę" to "2",
+            "dwójka" to "2",
+            "drugi" to "2",
+            "druga" to "2",
+            "drugie" to "2",
+            "drugiego" to "2",
+            "drugą" to "2",
             "trójkę" to "3",
+            "trójka" to "3",
+            "trzeci" to "3",
+            "trzecia" to "3",
+            "trzecie" to "3",
+            "trzeciego" to "3",
+            "trzecią" to "3",
             "czwórkę" to "4",
+            "czwórka" to "4",
+            "czwarty" to "4",
+            "czwarta" to "4",
+            "czwarte" to "4",
+            "czwartego" to "4",
+            "czwartą" to "4",
             "piątkę" to "5",
+            "piątka" to "5",
+            "piąty" to "5",
+            "piąta" to "5",
+            "piąte" to "5",
+            "piątego" to "5",
+            "piątą" to "5",
+            "szóstkę" to "6",
+            "szóstka" to "6",
+            "szósty" to "6",
+            "szósta" to "6",
+            "szóste" to "6",
+            "szóstego" to "6",
+            "szóstą" to "6",
+            "siódemkę" to "7",
+            "siódemka" to "7",
+            "siódmy" to "7",
+            "siódma" to "7",
+            "siódme" to "7",
+            "siódmego" to "7",
+            "siódmą" to "7",
+            "ósemkę" to "8",
+            "ósemka" to "8",
+            "ósmy" to "8",
+            "ósma" to "8",
+            "ósme" to "8",
+            "ósmego" to "8",
+            "ósmą" to "8",
+            "dziewiątkę" to "9",
+            "dziewiątka" to "9",
+            "dziewiąty" to "9",
+            "dziewiąta" to "9",
+            "dziewiąte" to "9",
+            "dziewiątego" to "9",
+            "dziewiątą" to "9",
+            "dziesiątkę" to "10",
+            "dziesiątka" to "10",
+            "dziesiąty" to "10",
+            "dziesiąta" to "10",
+            "dziesiąte" to "10",
+            "dziesiątego" to "10",
+            "dziesiątą" to "10",
         )
     }
 }

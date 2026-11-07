@@ -18,7 +18,7 @@ class PickUpCommand @AssistedInject constructor(
 ) : Command {
     override fun execute(): CommandResult {
         val executor = phoneCallExecutorProvider.get()
-            ?: return CommandResult.Failure("Phone call service is not active")
+            ?: return CommandResult.Failure("Accessibility Service is not enabled")
 
         val success = executor.pickUp()
         return if (success) CommandResult.Success() else CommandResult.Failure("Phone call pick up failed")

@@ -7,10 +7,13 @@ import android.util.Log
 import android.view.Gravity
 import android.view.View
 import android.view.WindowManager
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.ComposeView
 import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.lifecycle.setViewTreeViewModelStoreOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
+import com.zpi.slowomir.overlay.commands.CommandIdentifier
 import com.zpi.slowomir.overlay.ui.ContactPickerView
 import com.zpi.slowomir.overlay.ui.common.OverlayHostProvider
 import com.zpi.slowomir.overlay.ui.common.OverlayLifecycleOwner
@@ -24,6 +27,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -45,19 +49,24 @@ class ContactPickerOverlayManager @Inject constructor(
     private var timeoutJob: Job? = null
     private var lifecycleOwner: OverlayLifecycleOwner? = null
 
-    private var options: List<ContactOption> = emptyList()
+    private data class PickerState(
+        val options: List<ContactOption> = emptyList(),
+        val action: CommandIdentifier? = null,
+    )
+
+    private val _pickerState = MutableStateFlow(PickerState())
 
     fun start() {
         if (observeJob != null) return
         observeJob = scope.launch {
             mediator.mediatorState
-                .map { it.contactSelection }
+                .map { it.contactSelection to it.contactSelectionAction }
                 .distinctUntilChanged()
-                .collect { options ->
+                .collect { (options, action) ->
                     if (options.isNullOrEmpty()) {
                         hide()
                     } else {
-                        showOptions(options)
+                        showOptions(options, action)
                     }
                 }
         }
@@ -66,13 +75,14 @@ class ContactPickerOverlayManager @Inject constructor(
     fun stop() {
         observeJob?.cancel()
         observeJob = null
+        _pickerState.value = PickerState()
         hide()
     }
 
-    private fun showOptions(options: List<ContactOption>) {
+    private fun showOptions(options: List<ContactOption>, action: CommandIdentifier?) {
         hide()
 
-        this.options = options
+        _pickerState.value = PickerState(options = options, action = action)
 
         if (!show()) {
             voiceSessionManager.cancelSelection()
@@ -97,9 +107,11 @@ class ContactPickerOverlayManager @Inject constructor(
             setViewTreeSavedStateRegistryOwner(lifecycle)
 
             setContent {
+                val state by _pickerState.collectAsState()
                 SłowomirTheme {
                     ContactPickerView(
-                        options = options,
+                        options = state.options,
+                        action = state.action,
                         onSelect = { index -> voiceSessionManager.selectContact(index) },
                         onCancel = { voiceSessionManager.cancelSelection() },
                     )

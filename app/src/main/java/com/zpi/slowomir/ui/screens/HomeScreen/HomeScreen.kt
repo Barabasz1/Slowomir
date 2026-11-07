@@ -87,6 +87,12 @@ fun HomeScreen(
                     PackageManager.PERMISSION_GRANTED
         )
     }
+    var hasAnswerCallsPermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(context, Manifest.permission.ANSWER_PHONE_CALLS) ==
+                    PackageManager.PERMISSION_GRANTED
+        )
+    }
 
     val contactsPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -95,6 +101,10 @@ fun HomeScreen(
     val callPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted -> hasCallPermission = isGranted }
+
+    val answerCallsPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted -> hasAnswerCallsPermission = isGranted }
 
     val toggleVoiceService = {
         if (isServiceRunning) {
@@ -362,6 +372,14 @@ fun HomeScreen(
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(if (hasCallPermission) "Call Phone: Granted" else "Enable Call Phone")
+        }
+
+        Button(
+            onClick = { answerCallsPermissionLauncher.launch(Manifest.permission.ANSWER_PHONE_CALLS) },
+            enabled = !hasAnswerCallsPermission,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(if (hasAnswerCallsPermission) "Answer/Decline Calls: Granted" else "Enable Answer/Decline Calls")
         }
     }
 }

@@ -9,7 +9,6 @@ import com.zpi.slowomir.overlay.executors.PredictionExecutor
 import com.zpi.slowomir.overlay.executors.TextEditExecutor
 import com.zpi.slowomir.overlay.executors.TouchExecutor
 import com.zpi.slowomir.overlay.services.CommandExecutorService
-import com.zpi.slowomir.overlay.services.PhoneCallService
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -41,7 +40,7 @@ class ExecutorModule {
 
     @Provides
     fun providePhoneCallExecutor(): PhoneCallExecutor? {
-        return PhoneCallService.instance?.phoneCallExecutor
+        return CommandExecutorService.instance?.phoneCallExecutor
     }
 
     @Provides

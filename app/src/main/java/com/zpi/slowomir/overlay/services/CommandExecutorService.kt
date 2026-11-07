@@ -8,6 +8,7 @@ import com.zpi.slowomir.overlay.executors.GridExecutor
 import com.zpi.slowomir.overlay.executors.MacroExecutor
 import com.zpi.slowomir.overlay.executors.MediaExecutor
 import com.zpi.slowomir.overlay.executors.NavigationExecutor
+import com.zpi.slowomir.overlay.executors.PhoneCallExecutor
 import com.zpi.slowomir.overlay.executors.PredictionExecutor
 import com.zpi.slowomir.overlay.executors.TextEditExecutor
 import com.zpi.slowomir.overlay.executors.TouchExecutor
@@ -68,6 +69,9 @@ class CommandExecutorService : AccessibilityService() {
     var textEditExecutor: TextEditExecutor? = null
         private set
 
+    var phoneCallExecutor: PhoneCallExecutor? = null
+        private set
+
     companion object {
         var instance: CommandExecutorService? = null
             private set
@@ -80,12 +84,14 @@ class CommandExecutorService : AccessibilityService() {
 
         // Ensure soft keyboard mode is restored to AUTO so system input is not globally suppressed
         softKeyboardController.setShowMode(SHOW_MODE_AUTO)
-        touchExecutor = TouchExecutor(this)
+        val touch = TouchExecutor(this)
+        touchExecutor = touch
         macroExecutor = MacroExecutor(this)
         mediaExecutor = MediaExecutor(this)
         navigationExecutor = NavigationExecutor(this)
         predictionExecutor = PredictionExecutor(this)
         textEditExecutor = TextEditExecutor(this)
+        phoneCallExecutor = PhoneCallExecutor(this, touch)
         instance = this
     }
 
@@ -116,5 +122,6 @@ class CommandExecutorService : AccessibilityService() {
         navigationExecutor = null
         predictionExecutor = null
         textEditExecutor = null
+        phoneCallExecutor = null
     }
 }
