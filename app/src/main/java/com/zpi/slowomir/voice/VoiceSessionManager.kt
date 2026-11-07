@@ -168,7 +168,10 @@ class VoiceSessionManager @Inject constructor(
         scope.launch {
             mediator.handleEvent(OverlayEvent.ProcessingCommand(text))
 
-            if (mediator.mediatorState.value.contactSelection != null) {
+            val hasContactSelection = mediator.mediatorState.value.contactSelection != null
+            val hasAppSelection = mediator.mediatorState.value.appSelection != null
+
+            if (hasContactSelection || hasAppSelection) {
                 handleSelectionSpeech(text)
                 return@launch
             }
@@ -204,6 +207,14 @@ class VoiceSessionManager @Inject constructor(
         scope.launch { cancelSelectionInternal() }
     }
 
+    fun selectApp(index: Int) {
+        scope.launch { selectAppInternal(index) }
+    }
+
+    fun cancelAppSelection() {
+        scope.launch { cancelSelectionInternal() }
+    }
+
     private suspend fun handleSelectionSpeech(text: String) {
         if (isCancel(text)) {
             cancelSelectionInternal()
@@ -212,11 +223,15 @@ class VoiceSessionManager @Inject constructor(
 
         val index = parseSelection(text)
         if (index == null) {
-            Log.d(TAG, "Ignoring speech during contact selection: '$text'")
+            Log.d(TAG, "Ignoring speech during selection: '$text'")
             return
         }
 
-        selectContactInternal(index)
+        if (mediator.mediatorState.value.contactSelection != null) {
+            selectContactInternal(index)
+        } else if (mediator.mediatorState.value.appSelection != null) {
+            selectAppInternal(index)
+        }
     }
 
     private suspend fun selectContactInternal(index: Int) {
@@ -230,6 +245,17 @@ class VoiceSessionManager @Inject constructor(
         mediator.handleEvent(OverlayEvent.CommandInterpreted(command))
     }
 
+    private suspend fun selectAppInternal(index: Int) {
+        val app = consumeAppSelection(index)
+        if (app == null) {
+            Log.d(TAG, "App selection $index ignored (no pending selection or out of range)")
+            return
+        }
+
+        val executor = CommandExecutorService.instance?.appLaunchExecutor
+        executor?.launchAppPackage(app.packageName)
+    }
+
     private suspend fun cancelSelectionInternal() {
         selectionMutex.withLock {
             mediator.handleEvent(OverlayEvent.SelectionCleared)
@@ -238,6 +264,13 @@ class VoiceSessionManager @Inject constructor(
 
     private suspend fun consumeSelection(index: Int): ContactOption? = selectionMutex.withLock {
         val options = mediator.mediatorState.value.contactSelection ?: return@withLock null
+        val option = options.getOrNull(index - 1) ?: return@withLock null
+        mediator.handleEvent(OverlayEvent.SelectionCleared)
+        option
+    }
+
+    private suspend fun consumeAppSelection(index: Int): com.zpi.slowomir.overlay.executors.AppItem? = selectionMutex.withLock {
+        val options = mediator.mediatorState.value.appSelection ?: return@withLock null
         val option = options.getOrNull(index - 1) ?: return@withLock null
         mediator.handleEvent(OverlayEvent.SelectionCleared)
         option

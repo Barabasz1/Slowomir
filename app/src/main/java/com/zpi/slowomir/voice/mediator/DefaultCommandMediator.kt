@@ -5,6 +5,8 @@ import com.zpi.slowomir.overlay.OverlayContext
 import com.zpi.slowomir.overlay.commands.Command
 import com.zpi.slowomir.overlay.commands.CommandArgument
 import com.zpi.slowomir.overlay.commands.CommandResult
+import com.zpi.slowomir.overlay.executors.AppItem
+import com.zpi.slowomir.utils.ContactOption
 import com.zpi.slowomir.voice.OverlayState
 import com.zpi.slowomir.voice.OverlayState.*
 import com.zpi.slowomir.voice.OverlayEvent
@@ -30,6 +32,18 @@ class DefaultCommandMediator @Inject constructor() : CommandMediator {
     override fun updateContext(context: OverlayContext) {
         _mediatorState.update { currentState ->
             currentState.copy(overlayContext = context)
+        }
+    }
+
+    override fun setContactSelection(options: List<ContactOption>?) {
+        _mediatorState.update { currentState ->
+            currentState.copy(contactSelection = options)
+        }
+    }
+
+    override fun setAppSelection(options: List<AppItem>?) {
+        _mediatorState.update { currentState ->
+            currentState.copy(appSelection = options)
         }
     }
 
@@ -74,7 +88,7 @@ class DefaultCommandMediator @Inject constructor() : CommandMediator {
             }
 
             is OverlayEvent.SelectionCleared -> {
-                _mediatorState.update { it.copy(contactSelection = null) }
+                _mediatorState.update { it.copy(contactSelection = null, appSelection = null) }
 
                 null
             }

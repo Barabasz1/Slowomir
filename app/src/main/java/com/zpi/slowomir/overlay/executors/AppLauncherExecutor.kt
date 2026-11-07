@@ -2,12 +2,13 @@ package com.zpi.slowomir.overlay.executors
 
 import android.accessibilityservice.AccessibilityService
 import android.content.Intent
-import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.content.pm.ResolveInfo
 import android.graphics.drawable.Drawable
 import android.os.Build
+import android.util.Log
 import com.zpi.slowomir.voice.mediator.CommandMediator
+import javax.inject.Provider
 import kotlin.math.max
 
 data class AppItem(
@@ -16,26 +17,49 @@ data class AppItem(
     val icon: Drawable,
 )
 
-
 class AppLaunchExecutor(
     private val service: AccessibilityService,
-    private val
+    private val mediatorProvider: Provider<CommandMediator?>
 ) {
 
-    fun findApps(name: String): Result<AppItem> {
+    fun launchAppByName(name: String): Boolean {
         val apps = getInstalledApps()
         val ordered = orderApps(name, apps)
 
         if (ordered.isEmpty()) {
-            return Result.failure(Exception("No app with name: $name found."))
+            return false
         }
 
-        if (ordered.first().second > THRESHOLD) {
-            return Result.success(ordered.first().first)
+        val topMatch = ordered.first()
+        val topScore = topMatch.second
+
+        if (topScore >= THRESHOLD) {
+            return launchAppPackage(topMatch.first.packageName)
         }
 
+        val candidates = ordered
+            .filter { it.second >= MIN_THRESHOLD }
+            .map { it.first }
+            .take(MAX_AMBIGUOUS_OPTIONS)
 
-        return
+        if (candidates.isNotEmpty()) {
+            mediatorProvider.get()?.setAppSelection(candidates)
+            return true
+        }
+
+        return false
+    }
+
+    fun launchAppPackage(packageName: String): Boolean {
+        val launchIntent = service.packageManager.getLaunchIntentForPackage(packageName) ?: return false
+        launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        return try {
+            service.startActivity(launchIntent)
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to launch package: $packageName", e)
+            false
+        }
     }
 
     private fun orderApps(name: String, apps: List<AppItem>): List<Pair<AppItem, Double>> {
@@ -46,7 +70,7 @@ class AppLaunchExecutor(
                 val finalScore = if (isSubstring) maxOf(score, THRESHOLD) else score
                 app to finalScore
             }
-        .sortedByDescending { (_, score) -> score }
+            .sortedByDescending { (_, score) -> score }
     }
 
     private fun getInstalledApps(): List<AppItem> {
@@ -74,7 +98,6 @@ class AppLaunchExecutor(
                 icon = resolveInfo.loadIcon(packageManager)
             )
         }
-
     }
 
     private fun levenshteinDistance(s1: String, s2: String): Int {
@@ -106,7 +129,9 @@ class AppLaunchExecutor(
     }
 
     companion object {
-        val TAG = "AppLaunchExecutor"
-        val THRESHOLD = 0.8
+        const val TAG = "AppLaunchExecutor"
+        const val THRESHOLD = 0.8
+        const val MIN_THRESHOLD = 0.35
+        const val MAX_AMBIGUOUS_OPTIONS = 5
     }
 }

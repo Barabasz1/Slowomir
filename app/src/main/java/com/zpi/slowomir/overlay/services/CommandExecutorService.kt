@@ -4,6 +4,7 @@ import android.accessibilityservice.AccessibilityService
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.view.accessibility.AccessibilityEvent
+import com.zpi.slowomir.overlay.executors.AppLaunchExecutor
 import com.zpi.slowomir.overlay.executors.GridExecutor
 import com.zpi.slowomir.overlay.executors.MacroExecutor
 import com.zpi.slowomir.overlay.executors.MediaExecutor
@@ -13,6 +14,8 @@ import com.zpi.slowomir.overlay.executors.TextEditExecutor
 import com.zpi.slowomir.overlay.executors.TouchExecutor
 import com.zpi.slowomir.overlay.ui.common.OverlayHostProvider
 import com.zpi.slowomir.overlay.ui.grid.GridManager
+import com.zpi.slowomir.overlay.ui.launcher.AppLauncherOverlayManager
+import com.zpi.slowomir.overlay.ui.voice.ContactPickerOverlayManager
 import com.zpi.slowomir.overlay.ui.voice.VoiceOverlayManager
 import com.zpi.slowomir.voice.mediator.CommandMediator
 import com.zpi.slowomir.voice.VoiceSessionManager
@@ -50,7 +53,16 @@ class CommandExecutorService : AccessibilityService() {
     @Inject
     lateinit var voiceOverlayManager: VoiceOverlayManager
 
+    @Inject
+    lateinit var contactPickerOverlayManager: ContactPickerOverlayManager
+
+    @Inject
+    lateinit var appLauncherOverlayManager: AppLauncherOverlayManager
+
     // Executors for different modules
+    var appLaunchExecutor: AppLaunchExecutor? = null
+        private set
+
     var touchExecutor: TouchExecutor? = null
         private set
 
@@ -78,9 +90,12 @@ class CommandExecutorService : AccessibilityService() {
         super.onServiceConnected()
 
         overlayHostProvider.useAccessibility(this)
+        contactPickerOverlayManager.start()
+        appLauncherOverlayManager.start()
 
         // Ensure soft keyboard mode is restored to AUTO so system input is not globally suppressed
         softKeyboardController.setShowMode(SHOW_MODE_AUTO)
+        appLaunchExecutor = AppLaunchExecutor(this) { mediator }
         touchExecutor = TouchExecutor(this)
         macroExecutor = MacroExecutor(this)
         mediaExecutor = MediaExecutor(this)
@@ -105,12 +120,15 @@ class CommandExecutorService : AccessibilityService() {
     }
 
     private fun release() {
+        contactPickerOverlayManager.stop()
+        appLauncherOverlayManager.stop()
         overlayHostProvider.useApplication()
         clearExecutors()
         instance = null
     }
 
     private fun clearExecutors() {
+        appLaunchExecutor = null
         touchExecutor = null
         macroExecutor = null
         mediaExecutor = null
