@@ -59,30 +59,8 @@ class VoiceSessionManager @Inject constructor(
     private val mediator: CommandMediator,
     private val intentParser: CommandIntentParser,
     private val normalizer: PolishTextNormalizer,
-    private val tapCommandFactory: TapCommand.Factory,
-    private val notificationsCommandFactory: NotificationsCommand.Factory,
-    private val quickSettingsCommandFactory: QuickSettingsCommand.Factory,
-    private val lockScreenCommandFactory: LockScreenCommand.Factory,
-    private val screenshotCommandFactory: ScreenshotCommand.Factory,
-    private val navigateHomeCommandFactory: NavigateHomeCommand.Factory,
-    private val navigateRecentCommandFactory: NavigateRecentCommand.Factory,
-    private val keyboardHideCommandFactory: KeyboardHideCommand.Factory,
-    private val keyboardShowCommandFactory: KeyboardShowCommand.Factory,
-    private val pickUpCommandFactory: PickUpCommand.Factory,
-    private val declineCommandFactory: DeclineCommand.Factory,
-    private val endCommandFactory: EndCommand.Factory,
-    private val speakerCommandFactory: SpeakerCommand.Factory,
     private val callCommandFactory: CallCommand.Factory,
-    private val writeSMSCommandFactory: WriteSMSCommand.Factory,
-    private val navigateBackCommandFactory: NavigateBackCommand.Factory,
-    private val swipeUpCommandFactory: SwipeUpCommand.Factory,
-    private val swipeDownCommandFactory: SwipeDownCommand.Factory,
-    private val swipeLeftCommandFactory: SwipeLeftCommand.Factory,
-    private val swipeRightCommandFactory: SwipeRightCommand.Factory,
-    private val zoomInCommandFactory: ZoomInCommand.Factory,
-    private val zoomOutCommandFactory: ZoomOutCommand.Factory,
-    private val volumeUpCommandFactory: VolumeUpCommand.Factory,
-    private val volumeDownCommandFactory: VolumeDownCommand.Factory,
+    private val commandResolver: CommandResolver,
 ) : VoiceInputSink, VoiceStateSource {
 
     private val _state = MutableStateFlow<VoiceState>(VoiceState.Stopped)
@@ -121,7 +99,7 @@ class VoiceSessionManager @Inject constructor(
     }
 
     private val commandStage = PipelineStage<VoiceIntent, Command> { intent ->
-        resolveIntentToCommand(intent)
+        commandResolver.resolve(intent)
     }
 
     private val pipeline = Pipeline.Builder.create<String>()
@@ -230,7 +208,7 @@ class VoiceSessionManager @Inject constructor(
             return
         }
 
-        val command = callCommandFactory.create(recipient = option.number)
+        val command = commandResolver.createCall(option.name)
         mediator.handleEvent(OverlayEvent.CommandInterpreted(command))
     }
 
@@ -256,186 +234,12 @@ class VoiceSessionManager @Inject constructor(
         return selectionRegex.matchEntire(normalized)?.groupValues?.get(1)?.toIntOrNull()
     }
 
-    private fun resolveIntentToCommand(intent: VoiceIntent): Command {
-        return when (intent.identifier) {
-            // Navigation commands
-            CommandIdentifier.CELL_PRESS -> {
-                val (x, y) = when (val arg = intent.argument) {
-                    is CommandArgument.Number -> cellNumberToCoordinates(arg.value)
-                    else -> Pair(DEFAULT_TAP_X, DEFAULT_TAP_Y)
-                }
-                tapCommandFactory.create(x, y)
-            }
-
-            CommandIdentifier.NOTIFICATIONS -> {
-                notificationsCommandFactory.create()
-            }
-
-            CommandIdentifier.QUICK_SETTINGS -> {
-                quickSettingsCommandFactory.create()
-            }
-
-            CommandIdentifier.LOCK_SCREEN -> {
-                lockScreenCommandFactory.create()
-            }
-
-            CommandIdentifier.SCREENSHOT -> {
-                screenshotCommandFactory.create()
-            }
-
-            CommandIdentifier.NAVIGATE_HOME -> {
-                navigateHomeCommandFactory.create()
-            }
-
-            CommandIdentifier.NAVIGATE_RECENT -> {
-                navigateRecentCommandFactory.create()
-            }
-
-            CommandIdentifier.NAVIGATE_BACK -> {
-                navigateBackCommandFactory.create()
-            }
-            CommandIdentifier.SWIPE_UP -> {
-                val displayMetrics = CommandExecutorService.instance?.resources?.displayMetrics
-                val screenWidth = displayMetrics?.widthPixels?.toFloat() ?: DEFAULT_SCREEN_WIDTH
-                val screenHeight = displayMetrics?.heightPixels?.toFloat() ?: DEFAULT_SCREEN_HEIGHT
-                val x = screenWidth / 2f
-                val y = screenHeight * 0.8f
-                swipeUpCommandFactory.create(x, y)
-            }
-            CommandIdentifier.SWIPE_DOWN -> {
-                val displayMetrics = CommandExecutorService.instance?.resources?.displayMetrics
-                val screenWidth = displayMetrics?.widthPixels?.toFloat() ?: DEFAULT_SCREEN_WIDTH
-                val screenHeight = displayMetrics?.heightPixels?.toFloat() ?: DEFAULT_SCREEN_HEIGHT
-                val x = screenWidth / 2f
-                val y = screenHeight * 0.2f
-                swipeDownCommandFactory.create(x, y)
-            }
-            CommandIdentifier.SWIPE_LEFT -> {
-                val displayMetrics = CommandExecutorService.instance?.resources?.displayMetrics
-                val screenWidth = displayMetrics?.widthPixels?.toFloat() ?: DEFAULT_SCREEN_WIDTH
-                val screenHeight = displayMetrics?.heightPixels?.toFloat() ?: DEFAULT_SCREEN_HEIGHT
-                val x = screenWidth * 0.8f
-                val y = screenHeight / 2f
-                swipeLeftCommandFactory.create(x, y)
-            }
-            CommandIdentifier.SWIPE_RIGHT -> {
-                val displayMetrics = CommandExecutorService.instance?.resources?.displayMetrics
-                val screenWidth = displayMetrics?.widthPixels?.toFloat() ?: DEFAULT_SCREEN_WIDTH
-                val screenHeight = displayMetrics?.heightPixels?.toFloat() ?: DEFAULT_SCREEN_HEIGHT
-                val x = screenWidth * 0.2f
-                val y = screenHeight / 2f
-                swipeRightCommandFactory.create(x, y)
-            }
-            CommandIdentifier.ZOOM_IN -> {
-                val displayMetrics = CommandExecutorService.instance?.resources?.displayMetrics
-                val screenWidth = displayMetrics?.widthPixels?.toFloat() ?: DEFAULT_SCREEN_WIDTH
-                val screenHeight = displayMetrics?.heightPixels?.toFloat() ?: DEFAULT_SCREEN_HEIGHT
-                val x = screenWidth / 2f
-                val y = screenHeight / 2f
-                zoomInCommandFactory.create(x, y)
-            }
-            CommandIdentifier.ZOOM_OUT -> {
-                val displayMetrics = CommandExecutorService.instance?.resources?.displayMetrics
-                val screenWidth = displayMetrics?.widthPixels?.toFloat() ?: DEFAULT_SCREEN_WIDTH
-                val screenHeight = displayMetrics?.heightPixels?.toFloat() ?: DEFAULT_SCREEN_HEIGHT
-                val x = screenWidth / 2f
-                val y = screenHeight / 2f
-                zoomOutCommandFactory.create(x, y)
-            }
-
-            // Text editing commands
-            CommandIdentifier.HIDE_KEYBOARD -> {
-                keyboardHideCommandFactory.create()
-            }
-
-            CommandIdentifier.SHOW_KEYBOARD -> {
-                keyboardShowCommandFactory.create()
-            }
-
-            // Phone call commands
-            CommandIdentifier.PHONE_PICK_UP -> {
-                pickUpCommandFactory.create()
-            }
-
-            CommandIdentifier.PHONE_DECLINE -> {
-                declineCommandFactory.create()
-            }
-
-            CommandIdentifier.PHONE_END_CALL -> {
-                endCommandFactory.create()
-            }
-
-            CommandIdentifier.PHONE_SPEAKER -> {
-                speakerCommandFactory.create()
-            }
-
-            CommandIdentifier.PHONE_CALL -> {
-                val recipient = when (val arg = intent.argument) {
-                    is CommandArgument.Text -> arg.value
-                    else -> null
-                }
-                callCommandFactory.create(recipient = recipient)
-            }
-
-            CommandIdentifier.SMS_WRITE -> {
-                val recipient = when (val arg = intent.argument) {
-                    is CommandArgument.Text -> arg.value
-                    else -> null
-                }
-                writeSMSCommandFactory.create(recipient = recipient)
-            }
-
-            // Media commands
-            CommandIdentifier.VOLUME_UP -> {
-                volumeUpCommandFactory.create()
-            }
-
-            CommandIdentifier.VOLUME_DOWN -> {
-                volumeDownCommandFactory.create()
-            }
-
-            else -> LogCommand(intent.identifier, intent.argument)
-        }
-    }
-
-    /**
-     * Dynamic mapping from a cell number to screen coordinates based on active screen metrics.
-     * Assumes a 4-column, 5-row grid covering the full screen area.
-     *
-     * @param cellNumber The 1-based cell number to map.
-     * @return A pair of (x, y) coordinates representing the center of the cell.
-     */
-    private fun cellNumberToCoordinates(cellNumber: Int): Pair<Float, Float> {
-        val displayMetrics = CommandExecutorService.instance?.resources?.displayMetrics
-        val screenWidth = displayMetrics?.widthPixels?.toFloat() ?: DEFAULT_SCREEN_WIDTH
-        val screenHeight = displayMetrics?.heightPixels?.toFloat() ?: DEFAULT_SCREEN_HEIGHT
-
-        val columns = 4
-        val rows = 5
-        val cellWidth = screenWidth / columns
-        val cellHeight = screenHeight / rows
-
-        val zeroIndexed = (cellNumber - 1).coerceAtLeast(0)
-        val col = zeroIndexed % columns
-        val row = zeroIndexed / columns
-
-        val x = col * cellWidth + cellWidth / 2f
-        val y = row * cellHeight + cellHeight / 2f
-        return Pair(x.coerceIn(0f, screenWidth), y.coerceIn(0f, screenHeight))
-    }
-
-    override fun accept(input: VoiceInput) {
+        override fun accept(input: VoiceInput) {
         inbox.trySend(input)
     }
 
     companion object {
         private const val TAG = "VoiceSessionManager"
-
-        private const val DEFAULT_SCREEN_WIDTH = 1080f
-        private const val DEFAULT_SCREEN_HEIGHT = 2400f
-        private const val DEFAULT_TAP_X = 540f
-        private const val DEFAULT_TAP_Y = 1200f
-
         private val selectionRegex =
             Regex("""^(?:(?:numer|opcja|opcję|pozycja|pozycję|kontakt|wybierz|wybieram)\s+)*(\d+)$""")
 
