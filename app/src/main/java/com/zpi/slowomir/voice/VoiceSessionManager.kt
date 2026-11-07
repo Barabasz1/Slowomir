@@ -241,7 +241,6 @@ class VoiceSessionManager @Inject constructor(
             .joinToString(" ") { extraNumberWords[it] ?: it }
         return selectionRegex.matchEntire(normalized)?.groupValues?.get(1)?.toIntOrNull()
     }
-
     override fun accept(input: VoiceInput) {
         inbox.trySend(input)
     }
