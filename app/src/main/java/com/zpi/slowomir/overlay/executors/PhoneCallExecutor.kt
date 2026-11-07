@@ -27,7 +27,7 @@ class PhoneCallExecutor(
      */
     fun pickUp(): Boolean {
         val success = findAndInteractWithNode(
-            textKeywords = listOf("odbierz", "odpowiedz", "answer"),
+            textKeywords = listOf("odbierz", "odpowiedz", "answer", "accept", "odbierz połączenie"),
             idKeywords = listOf("answer", "accept"),
             isAnswer = true
         )
@@ -44,15 +44,15 @@ class PhoneCallExecutor(
     /**
      * Declines an incoming phone call.
      *
-     * First attempts to end/reject the call via TelecomManager, then falls back
-     * to searching for and clicking/swiping a "Decline" UI element.
+     * Searches accessible windows for a "Decline" UI element (in full screen dialer or heads-up notification)
+     * and performs a click, tap, or swipe gesture.
      *
      * @return `true` if an active incoming call was rejected, `false` otherwise.
      */
     fun decline(): Boolean {
         val success = findAndInteractWithNode(
-            textKeywords = listOf("odrzuć", "odrzuć połączenie", "decline", "reject"),
-            idKeywords = listOf("decline", "reject", "hangup", "end_call"),
+            textKeywords = listOf("odrzuć", "odrzuć połączenie", "decline", "reject", "dismiss", "nie odbieraj"),
+            idKeywords = listOf("decline", "reject", "hangup", "end_call", "dismiss"),
             isDecline = true
         )
         if (success) {
@@ -68,8 +68,7 @@ class PhoneCallExecutor(
     /**
      * Ends an active phone call.
      *
-     * First attempts to end the call via TelecomManager, then falls back
-     * to searching for and clicking an "End Call" UI element.
+     * Searches accessible windows for an "End Call" UI element and performs a click or tap gesture.
      *
      * @return `true` if an active call was disconnected, `false` otherwise.
      */
@@ -207,25 +206,34 @@ class PhoneCallExecutor(
             }
 
             if (target != null) {
-                val pkg = target.packageName?.toString().orEmpty().lowercase()
-                val bounds = Rect()
-                target.getBoundsInScreen(bounds)
-
-                // For Google Dialer incoming call UI: swipe gestures are required on the drag handle
-                if (pkg.contains("dialer") && (isAnswer || isDecline) && !bounds.isEmpty) {
-                    val cx = bounds.centerX().toFloat()
-                    val cy = bounds.centerY().toFloat()
-                    return if (isDecline) {
-                        // Swipe down to decline on Google Dialer
-                        touchExecutor.swipe(cx, cy, cx, cy + 400f)
-                    } else {
-                        // Swipe up to answer on Google Dialer
-                        touchExecutor.swipe(cx, cy, cx, cy - 400f)
-                    }
+                // 1. First, attempt to click or tap the target node (works for buttons, notifications, widgets)
+                val clicked = performClickOrTap(target)
+                if (clicked) {
+                    Log.i(TAG, "Interacted with target node via click/tap.")
+                    return true
                 }
 
-                val success = performClickOrTap(target)
-                if (success) return true
+                // 2. Fallback: If click/tap failed, and it's an incoming call (e.g. slider drag handle), attempt swipe
+                val bounds = Rect()
+                target.getBoundsInScreen(bounds)
+                if (!bounds.isEmpty && bounds.centerX() > 0 && bounds.centerY() > 0) {
+                    val cx = bounds.centerX().toFloat()
+                    val cy = bounds.centerY().toFloat()
+                    val offset = 400f
+                    val swiped = if (isDecline) {
+                        // Swipe down to decline on legacy/slider incoming call UI
+                        touchExecutor.swipe(cx, cy, cx, cy + offset)
+                    } else if (isAnswer) {
+                        // Swipe up to answer on legacy/slider incoming call UI
+                        touchExecutor.swipe(cx, cy, cx, cy - offset)
+                    } else {
+                        false
+                    }
+                    if (swiped) {
+                        Log.i(TAG, "Interacted with target node via swipe gesture.")
+                        return true
+                    }
+                }
             }
         }
         return false
@@ -285,7 +293,8 @@ class PhoneCallExecutor(
         // 1. Try performAction(ACTION_CLICK) on node or its clickable parents
         var current: AccessibilityNodeInfo? = node
         while (current != null) {
-            if (current.isClickable && current.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
+            val hasClickAction = current.actionList.any { it.id == AccessibilityNodeInfo.ACTION_CLICK }
+            if ((current.isClickable || hasClickAction) && current.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
                 return true
             }
             current = current.parent

@@ -100,4 +100,79 @@ class CallCommandTest {
         assertTrue(result is CommandResult.Failure)
         assertEquals("Could not find a contact: Janek", (result as CommandResult.Failure).reason)
     }
+
+    @Test
+    fun `execute returns Failure when permission is denied`() {
+        // Arrange
+        whenever(mockContactUtils.lookup(any(), eq("Tata"))).thenReturn(ContactLookupResult.PermissionDenied)
+
+        val command = CallCommand(mockExecutorProvider, mockContactUtils, mockContext, recipient = "Tata")
+
+        // Act
+        val result = command.execute()
+
+        // Assert
+        assertTrue(result is CommandResult.Failure)
+        assertEquals("No access to reading contacts", (result as CommandResult.Failure).reason)
+    }
+
+    @Test
+    fun `execute returns Failure when PhoneCallExecutor call returns false`() {
+        // Arrange
+        val number = "987654321"
+        whenever(mockContactUtils.lookup(any(), eq("Mama"))).thenReturn(ContactLookupResult.Found("Mama", number))
+        whenever(mockExecutor.call(number)).thenReturn(false)
+
+        val command = CallCommand(mockExecutorProvider, mockContactUtils, mockContext, recipient = "Mama")
+
+        // Act
+        val result = command.execute()
+
+        // Assert
+        assertTrue(result is CommandResult.Failure)
+        assertEquals("Phone call failed", (result as CommandResult.Failure).reason)
+    }
+
+    @Test
+    fun `execute falls back to TelecomManager placeCall when PhoneCallExecutor is null`() {
+        val mockUri = mock<android.net.Uri>()
+        org.mockito.Mockito.mockStatic(android.net.Uri::class.java).use { uriMock ->
+            uriMock.`when`<android.net.Uri> { android.net.Uri.parse(any()) }.thenReturn(mockUri)
+
+            val number = "123456789"
+            whenever(mockExecutorProvider.get()).thenReturn(null)
+            whenever(mockContactUtils.lookup(any(), eq("Brat"))).thenReturn(ContactLookupResult.Found("Brat", number))
+
+            val command = CallCommand(mockExecutorProvider, mockContactUtils, mockContext, recipient = "Brat")
+
+            val result = command.execute()
+
+            assertTrue(result is CommandResult.Success)
+            verify(mockTelecomManager).placeCall(eq(mockUri), eq(null))
+        }
+    }
+
+    @Test
+    fun `execute returns Failure when fallback placeCall throws exception`() {
+        // Arrange
+        val number = "123456789"
+        whenever(mockExecutorProvider.get()).thenReturn(null)
+        whenever(mockContactUtils.lookup(any(), eq("Brat"))).thenReturn(ContactLookupResult.Found("Brat", number))
+        whenever(mockTelecomManager.placeCall(any(), eq(null))).thenThrow(SecurityException("Permission denied"))
+
+        val command = CallCommand(mockExecutorProvider, mockContactUtils, mockContext, recipient = "Brat")
+
+        // Act
+        val result = command.execute()
+
+        // Assert
+        assertTrue(result is CommandResult.Failure)
+        assertEquals("Phone call failed", (result as CommandResult.Failure).reason)
+    }
+
+    @Test
+    fun `canExecute returns true`() {
+        val command = CallCommand(mockExecutorProvider, mockContactUtils, mockContext, recipient = "Test")
+        assertTrue(command.canExecute(mock()))
+    }
 }
