@@ -3,113 +3,99 @@ package com.zpi.slowomir.overlay.executors
 import android.accessibilityservice.AccessibilityService
 import android.content.Context
 import android.content.Intent
-import android.graphics.Rect
+import android.media.AudioManager
 import android.telecom.TelecomManager
 import android.util.Log
-import android.view.accessibility.AccessibilityNodeInfo
 import androidx.core.net.toUri
 
 /**
- * Designed to act as an accessibility overlay on top of the native system dialer.
+ * Executes phone call related operations using system services and global actions.
  *
  * @param service The active [AccessibilityService] instance.
- * @param touchExecutor The [TouchExecutor] used to emulate tap gestures.
+ * @param touchExecutor An optional [TouchExecutor] retained for caller compatibility.
  */
 class PhoneCallExecutor(
     private val service: AccessibilityService,
-    private val touchExecutor: TouchExecutor = TouchExecutor(service)
+    @Suppress("UNUSED_PARAMETER") touchExecutor: TouchExecutor = TouchExecutor(service)
 ) {
 
     /**
-     * Answers an incoming phone call.
+     * Answers an incoming phone call using the system headset hook action.
      *
-     * @return `true` if an active incoming call was answered, `false` otherwise.
+     * @return `true` if the headset hook action was dispatched, `false` otherwise.
      */
     fun pickUp(): Boolean {
-        val success = findAndInteractWithNode(
-            textKeywords = listOf("odbierz", "odpowiedz", "answer", "accept", "odbierz połączenie"),
-            idKeywords = listOf("answer", "accept"),
-            isAnswer = true
-        )
+        val success = service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_KEYCODE_HEADSETHOOK)
         if (success) {
-            Log.i(TAG, "Call answered via Accessibility UI.")
+            Log.i(TAG, "Call answered via HEADSET_HOOK.")
+        } else {
+            Log.w(TAG, "Failed to perform HEADSET_HOOK action to answer call.")
         }
-        else {
-            Log.w(TAG, "Cannot pick up: No active call / answer button found.")
-        }
-
         return success
     }
 
     /**
-     * Declines an incoming phone call.
-     *
-     * Searches accessible windows for a "Decline" UI element (in full screen dialer or heads-up notification)
-     * and performs a click, tap, or swipe gesture.
+     * Declines an incoming phone call using the TelecomManager system API.
      *
      * @return `true` if an active incoming call was rejected, `false` otherwise.
      */
+    @Suppress("DEPRECATION")
     fun decline(): Boolean {
-        val success = findAndInteractWithNode(
-            textKeywords = listOf("odrzuć", "odrzuć połączenie", "decline", "reject", "dismiss", "nie odbieraj"),
-            idKeywords = listOf("decline", "reject", "hangup", "end_call", "dismiss"),
-            isDecline = true
-        )
-        if (success) {
-            Log.i(TAG, "Call declined via Accessibility UI.")
+        return try {
+            val telecomManager = service.getSystemService(Context.TELECOM_SERVICE) as? TelecomManager
+            val success = telecomManager?.endCall() == true
+            if (success) {
+                Log.i(TAG, "Call declined via TelecomManager.endCall().")
+            } else {
+                Log.w(TAG, "Cannot decline: TelecomManager.endCall() returned false.")
+            }
+            success
+        } catch (e: SecurityException) {
+            Log.e(TAG, "SecurityException declining call: ${e.message}", e)
+            false
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to decline call", e)
+            false
         }
-        else {
-            Log.w(TAG, "Cannot decline: No active call / decline button found.")
-        }
+    }
 
+    /**
+     * Ends an active phone call using the system headset hook action.
+     *
+     * @return `true` if the headset hook action was dispatched, `false` otherwise.
+     */
+    fun end(): Boolean {
+        val success = service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_KEYCODE_HEADSETHOOK)
+        if (success) {
+            Log.i(TAG, "Call ended via HEADSET_HOOK.")
+        } else {
+            Log.w(TAG, "Failed to perform HEADSET_HOOK action to end call.")
+        }
         return success
     }
 
     /**
-     * Ends an active phone call.
+     * Toggles the speakerphone using the AudioManager system API.
      *
-     * Searches accessible windows for an "End Call" UI element and performs a click or tap gesture.
-     *
-     * @return `true` if an active call was disconnected, `false` otherwise.
+     * @return `true` if the speakerphone state was toggled, `false` otherwise.
      */
-    fun end(): Boolean {
-        val success = findAndInteractWithNode(
-            textKeywords = listOf("rozłącz", "zakończ", "zakończ połączenie", "odłóż słuchawkę", "end call", "hang up", "disconnect"),
-            idKeywords = listOf("end_call", "disconnect", "hangup")
-        )
-        if (success) {
-            Log.i(TAG, "Call ended via Accessibility UI.")
-            return true
-        }
-
-        Log.w(TAG, "Cannot end: No active call / end button found.")
-        return false
-    }
-
-    /**
-     * Toggles the speakerphone.
-     *
-     * Searches the active window and interactive windows for a speakerphone button
-     * (matching Polish and English labels or resource IDs) and clicks or taps it.
-     *
-     * @return `true` if the speakerphone toggle button was found and clicked, `false` otherwise.
-     */
+    @Suppress("DEPRECATION")
     fun speakerToggle(): Boolean {
-        val clicked = findAndInteractWithNode(
-            textKeywords = listOf(
-                "głośnik", "głośnomówiący", "tryb głośnomówiący", "przełącz na głośnik",
-                "wyłącz głośnik", "słuchawka telefonu", "słuchawka", "speaker", "speakerphone", "earpiece"
-            ),
-            idKeywords = listOf("incall_audio_button", "audio_route", "speaker", "btn_speaker"),
-            excludeKeywords = listOf("emoji", "emotik", "efekt", "effect")
-        )
-        if (clicked) {
-            Log.i(TAG, "Speaker toggled via Accessibility UI.")
-            return true
+        return try {
+            val audioManager = service.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+            if (audioManager != null) {
+                val newState = !audioManager.isSpeakerphoneOn
+                audioManager.isSpeakerphoneOn = newState
+                Log.i(TAG, "Speaker toggled via AudioManager to $newState.")
+                true
+            } else {
+                Log.w(TAG, "AudioManager not available.")
+                false
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to toggle speakerphone", e)
+            false
         }
-
-        Log.w(TAG, "Failed to find speaker button on screen.")
-        return false
     }
 
     /**
@@ -160,151 +146,6 @@ class PhoneCallExecutor(
             Log.e(TAG, "Failed to open SMS composer", e)
             false
         }
-    }
-
-    /**
-     * Searches accessible windows for a node matching the given keywords in its text,
-     * content description, or view ID, and performs a click, tap, or swipe gesture.
-     *
-     * @param textKeywords Keywords to match in the node's text.
-     * @param idKeywords Keywords to match in the node's view ID.
-     * @param excludeKeywords Keywords to exclude from the search.
-     * @param isAnswer Whether the interaction is for answering an incoming call.
-     * @param isDecline Whether the interaction is for declining an incoming call.
-     * @return `true` if the node was found and interacted with, `false` otherwise.
-     */
-    private fun findAndInteractWithNode(
-        textKeywords: List<String>,
-        idKeywords: List<String>,
-        excludeKeywords: List<String> = emptyList(),
-        isAnswer: Boolean = false,
-        isDecline: Boolean = false
-    ): Boolean {
-        val rootNodes = collectRootNodes()
-        for (root in rootNodes) {
-            val target = findNode(root) { node ->
-                val pkg = node.packageName?.toString().orEmpty().lowercase()
-                val isRelevantPackage = pkg.contains("dialer") ||
-                    pkg.contains("telecom") ||
-                    pkg.contains("phone") ||
-                    pkg.contains("incall") ||
-                    pkg.contains("systemui")
-
-                if (!isRelevantPackage) return@findNode false
-
-                val text = node.text?.toString().orEmpty().lowercase()
-                val desc = node.contentDescription?.toString().orEmpty().lowercase()
-                val resId = node.viewIdResourceName.orEmpty().lowercase()
-
-                val isExcluded = excludeKeywords.any {
-                    text.contains(it) || desc.contains(it) || resId.contains(it)
-                }
-                if (isExcluded) return@findNode false
-
-                textKeywords.any { text.contains(it) || desc.contains(it) } ||
-                    idKeywords.any { resId.contains(it) }
-            }
-
-            if (target != null) {
-                // 1. First, attempt to click or tap the target node (works for buttons, notifications, widgets)
-                val clicked = performClickOrTap(target)
-                if (clicked) {
-                    Log.i(TAG, "Interacted with target node via click/tap.")
-                    return true
-                }
-
-                // 2. Fallback: If click/tap failed, and it's an incoming call (e.g. slider drag handle), attempt swipe
-                val bounds = Rect()
-                target.getBoundsInScreen(bounds)
-                if (!bounds.isEmpty && bounds.centerX() > 0 && bounds.centerY() > 0) {
-                    val cx = bounds.centerX().toFloat()
-                    val cy = bounds.centerY().toFloat()
-                    val offset = 400f
-                    val swiped = if (isDecline) {
-                        // Swipe down to decline on legacy/slider incoming call UI
-                        touchExecutor.swipe(cx, cy, cx, cy + offset)
-                    } else if (isAnswer) {
-                        // Swipe up to answer on legacy/slider incoming call UI
-                        touchExecutor.swipe(cx, cy, cx, cy - offset)
-                    } else {
-                        false
-                    }
-                    if (swiped) {
-                        Log.i(TAG, "Interacted with target node via swipe gesture.")
-                        return true
-                    }
-                }
-            }
-        }
-        return false
-    }
-
-    /**
-     * Collects all interactive windows from the service.
-     *
-     * @return List of [AccessibilityNodeInfo] representing the interactive windows.
-     */
-    private fun collectRootNodes(): List<AccessibilityNodeInfo> {
-        val roots = mutableListOf<AccessibilityNodeInfo>()
-        service.rootInActiveWindow?.let { roots.add(it) }
-        try {
-            service.windows?.forEach { window ->
-                window.root?.let { node ->
-                    if (roots.none { it == node }) {
-                        roots.add(node)
-                    }
-                }
-            }
-        } catch (e: Exception) {
-            Log.w(TAG, "Could not retrieve interactive windows", e)
-        }
-        return roots
-    }
-
-    /**
-     * Finds a node in the given root that matches the given predicate.
-     *
-     * @param root The root to search in.
-     * @param predicate A function that takes an [AccessibilityNodeInfo] and returns a boolean.
-     * @return The first node that matches the predicate, or null if no match is found.
-     */
-    private fun findNode(
-        root: AccessibilityNodeInfo?,
-        predicate: (AccessibilityNodeInfo) -> Boolean
-    ): AccessibilityNodeInfo? {
-        if (root == null) return null
-        if (predicate(root)) return root
-
-        for (i in 0 until root.childCount) {
-            val child = root.getChild(i) ?: continue
-            val match = findNode(child, predicate)
-            if (match != null) return match
-        }
-        return null
-    }
-
-    /**
-     * Performs a click or tap gesture on the given node.
-     *
-     * @param node The node to interact with.
-     * @return `true` if the interaction was successful, `false` otherwise.
-     */
-    private fun performClickOrTap(node: AccessibilityNodeInfo): Boolean {
-        // 1. Try performAction(ACTION_CLICK) on node or its clickable parents
-        var current: AccessibilityNodeInfo? = node
-        while (current != null) {
-            val hasClickAction = current.actionList.any { it.id == AccessibilityNodeInfo.ACTION_CLICK }
-            if ((current.isClickable || hasClickAction) && current.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
-                return true
-            }
-            current = current.parent
-        }
-
-        // 2. Fallback to tap gesture at bounds
-        val bounds = Rect()
-        node.getBoundsInScreen(bounds)
-        return !bounds.isEmpty && bounds.centerX() > 0 && bounds.centerY() > 0
-                && touchExecutor.tap(bounds.centerX().toFloat(), bounds.centerY().toFloat())
     }
 
     companion object {
