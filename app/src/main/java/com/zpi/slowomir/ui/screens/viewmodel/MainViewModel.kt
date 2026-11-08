@@ -7,7 +7,7 @@ import com.zpi.slowomir.overlay.commands.CommandResult
 import com.zpi.slowomir.overlay.commands.touch.TapCommand
 import com.zpi.slowomir.overlay.commands.grid.ToggleGridCommand
 import com.zpi.slowomir.overlay.services.VoiceRecognitionService
-import com.zpi.slowomir.overlay.ui.voice.ContactPickerOverlayManager
+import com.zpi.slowomir.overlay.ui.voice.PickerOverlayManager
 import com.zpi.slowomir.overlay.ui.voice.VoiceOverlayManager
 import com.zpi.slowomir.voice.VoiceSessionManager
 import com.zpi.slowomir.voice.mediator.CommandMediator
@@ -35,7 +35,7 @@ class MainViewModel @Inject constructor(
     private val toggleGridCommandFactory: ToggleGridCommand.Factory,
     private val voiceSessionManager: VoiceSessionManager,
     private val voiceOverlayManager: VoiceOverlayManager,
-    contactPickerOverlayManager: ContactPickerOverlayManager
+    pickerOverlayManager: PickerOverlayManager, // injected so it starts observing selections
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<CommandResult?>(null)
@@ -53,7 +53,6 @@ class MainViewModel @Inject constructor(
     val showIntroHighlight: StateFlow<Boolean> = preferencesManager.showIntroHighlight
 
     init {
-        contactPickerOverlayManager.start()
         viewModelScope.launch {
             if (isOverlayEnabled.value) {
                 voiceOverlayManager.showOverlay()

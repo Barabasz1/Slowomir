@@ -4,6 +4,8 @@ import android.content.Context
 import android.util.Log
 import com.zpi.slowomir.overlay.commands.CommandArgument
 import com.zpi.slowomir.overlay.commands.CommandIdentifier
+import com.zpi.slowomir.utils.ApplicationUtils
+import com.zpi.slowomir.utils.ApplicationUtils.ApplicationLookupResult
 import com.zpi.slowomir.utils.ContactLookupResult
 import com.zpi.slowomir.utils.ContactUtils
 import com.zpi.slowomir.voice.PolishTextNormalizer
@@ -22,6 +24,7 @@ import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * Handles resolving ambiguous intent arguments by interpreting user choice and returns complete intent.
@@ -30,6 +33,7 @@ import javax.inject.Singleton
 class SelectionManager @Inject constructor(
     @ApplicationContext private val appContext: Context,
     private val contactUtils: ContactUtils,
+    private val applicationUtils: ApplicationUtils,
     private val normalizer: PolishTextNormalizer,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -50,6 +54,7 @@ class SelectionManager @Inject constructor(
     suspend fun begin(intent: VoiceIntent): SelectionResult = when (intent.identifier) {
         CommandIdentifier.PHONE_CALL,
         CommandIdentifier.SMS_WRITE -> beginContact(intent)
+        CommandIdentifier.NAVIGATE_APP_OPEN -> beginApplication(intent)
 
         else -> {
             Log.w(TAG, "No selection defined for ${intent.identifier}")
@@ -91,7 +96,6 @@ class SelectionManager @Inject constructor(
     fun choose(index: Int): VoiceIntent? {
         val current = _selection.value ?: return null
         val intent = current.resolve(index) ?: return null
-        // Only the caller that actually clears the selection gets the intent.
         val won = _selection.compareAndSet(current, null)
         if (won) {
             timeoutJob?.cancel()
@@ -145,6 +149,24 @@ class SelectionManager @Inject constructor(
             ContactLookupResult.NotFound -> SelectionResult.Failed("Could not find a contact: $query")
             ContactLookupResult.PermissionDenied -> SelectionResult.Failed("No access to reading contacts")
             ContactLookupResult.EmptyQuery -> SelectionResult.Failed("No contact was given.")
+        }
+    }
+
+    private suspend fun beginApplication(intent: VoiceIntent): SelectionResult {
+        val query = (intent.argument as? CommandArgument.Text)?.value.orEmpty()
+
+        return when (val result =
+            withContext(Dispatchers.IO) { applicationUtils.lookup(query) }) {
+            is ApplicationLookupResult.Found ->
+                SelectionResult.Resolved(intent.copy(argument = CommandArgument.Text(result.packageName)))
+
+            is ApplicationLookupResult.Ambiguous -> {
+                publish(Selection.Application(intent, result.options))
+                SelectionResult.Pending
+            }
+
+            ApplicationLookupResult.NotFound -> SelectionResult.Failed("Could not find a contact: $query")
+            ApplicationLookupResult.EmptyQuery -> SelectionResult.Failed("No contact was given.")
         }
     }
 

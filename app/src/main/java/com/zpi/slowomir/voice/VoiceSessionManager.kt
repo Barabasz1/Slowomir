@@ -201,6 +201,7 @@ class VoiceSessionManager @Inject constructor(
         private val SELECTABLE_INTENTS = setOf(
             CommandIdentifier.PHONE_CALL,
             CommandIdentifier.SMS_WRITE,
+            CommandIdentifier.NAVIGATE_APP_OPEN
         )
     }
 }

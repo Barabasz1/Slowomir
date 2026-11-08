@@ -13,17 +13,14 @@ import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.lifecycle.setViewTreeViewModelStoreOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.zpi.slowomir.overlay.commands.CommandIdentifier
-import com.zpi.slowomir.overlay.ui.ContactPickerView
 import com.zpi.slowomir.overlay.ui.common.OverlayHostProvider
 import com.zpi.slowomir.overlay.ui.common.OverlayLifecycleOwner
 import com.zpi.slowomir.overlay.ui.common.OverlayWindowManager
 import com.zpi.slowomir.ui.theme.SłowomirTheme
-import com.zpi.slowomir.utils.ContactOption
 import com.zpi.slowomir.voice.VoiceSessionManager
 import com.zpi.slowomir.voice.selection.Selection
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
@@ -31,47 +28,44 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class ContactPickerOverlayManager @Inject constructor(
+class PickerOverlayManager @Inject constructor(
     private val voiceSessionManager: VoiceSessionManager,
     hostProvider: OverlayHostProvider
 ) : OverlayWindowManager(hostProvider) {
 
-    override val tag = "ContactPickerOverlay"
+    override val tag = "SelectionPickerOverlay"
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-    private var observeJob: Job? = null
     private var lifecycleOwner: OverlayLifecycleOwner? = null
 
     private data class PickerState(
-        val options: List<ContactOption> = emptyList(),
+        val options: List<PickerOption> = emptyList(),
         val action: CommandIdentifier? = null,
     )
 
     private val _pickerState = MutableStateFlow(PickerState())
 
-    fun start() {
-        if (observeJob != null) return
-        observeJob = scope.launch {
-            voiceSessionManager.selection
-                .collect { selection ->
-                    when (selection) {
-                        is Selection.Contact ->
-                            if (selection.options.isEmpty()) hide()
-                            else showOptions(selection.options, selection.pending.identifier)
-                        null -> hide()
-                    }
-                }
+    init {
+        scope.launch {
+            voiceSessionManager.selection.collect(::onSelectionChanged)
         }
     }
 
-    fun stop() {
-        observeJob?.cancel()
-        observeJob = null
-        _pickerState.value = PickerState()
-        hide()
+    private fun onSelectionChanged(selection: Selection?) {
+        val options = when (selection) {
+            is Selection.Contact -> selection.options.map { PickerOption(it.name) }
+            is Selection.Application -> selection.options.map { PickerOption(it.name, it.icon) }
+            null -> emptyList()
+        }
+
+        if (selection == null || options.isEmpty()) {
+            hide()
+        } else {
+            showOptions(options, selection.pending.identifier)
+        }
     }
 
-    private fun showOptions(options: List<ContactOption>, action: CommandIdentifier?) {
+    private fun showOptions(options: List<PickerOption>, action: CommandIdentifier?) {
         hide()
 
         _pickerState.value = PickerState(options = options, action = action)
@@ -87,6 +81,8 @@ class ContactPickerOverlayManager @Inject constructor(
             onStart()
         }
 
+        lifecycleOwner = lifecycle
+
         return ComposeView(context).apply {
             setViewTreeLifecycleOwner(lifecycle)
             setViewTreeViewModelStoreOwner(lifecycle)
@@ -95,7 +91,7 @@ class ContactPickerOverlayManager @Inject constructor(
             setContent {
                 val state by _pickerState.collectAsState()
                 SłowomirTheme {
-                    ContactPickerView(
+                    SelectionPickerView(
                         options = state.options,
                         action = state.action,
                         onSelect = { index -> voiceSessionManager.selectOption(index) },

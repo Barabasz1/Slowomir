@@ -1,8 +1,10 @@
 package com.zpi.slowomir.voice.selection
 
 import com.zpi.slowomir.overlay.commands.CommandArgument
+import com.zpi.slowomir.utils.ApplicationUtils
 import com.zpi.slowomir.utils.ContactOption
 import com.zpi.slowomir.voice.VoiceIntent
+import kotlin.collections.getOrNull
 
 /**
  * A pending choice the user has to make before an intent can be turned into a command.
@@ -31,6 +33,19 @@ sealed interface Selection {
             options.getOrNull(index - 1)?.let {
                 pending.copy(argument = CommandArgument.Text(it.number))
             }
+    }
+
+    data class Application(
+        override val pending: VoiceIntent,
+        val options: List<ApplicationUtils.AppItem>,
+    ) : Selection {
+        override val size: Int get() = options.size
+
+        override fun resolve(index: Int): VoiceIntent? =
+            options.getOrNull(index - 1)?.let {
+                pending.copy(argument = CommandArgument.Text(it.packageName))
+            }
+
     }
 }
 
