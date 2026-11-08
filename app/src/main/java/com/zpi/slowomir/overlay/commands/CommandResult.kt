@@ -1,7 +1,5 @@
 package com.zpi.slowomir.overlay.commands
 
-import com.zpi.slowomir.utils.ContactOption
-
 /**
  * Represents the outcome of executing a [Command].
  */
@@ -31,15 +29,5 @@ sealed class CommandResult {
      */
     data class InvalidContext(val reason: String) : CommandResult() {
         override fun toString(): String = "Invalid Context: $reason"
-    }
-
-    /**
-     * Indicates that the command needs the user to choose one of several matching contacts
-     * before it can be completed.
-     *
-     * @param options Matching contacts, in the order they should be shown (1-based for the user).
-     */
-    data class NeedsSelection(val options: List<ContactOption>) : CommandResult() {
-        override fun toString(): String = "NeedsSelection: ${options.size} options"
     }
 }

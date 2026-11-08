@@ -156,22 +156,30 @@ class CommandResolverTest {
     }
 
     @Test
-    fun `createCall delegates directly to callCommandFactory`() {
+    fun `resolve PHONE_CALL passes the resolved number to callCommandFactory`() {
         val mockCommand = mock<CallCommand>()
         whenever(callCommandFactory.create(recipient = "123456789")).thenReturn(mockCommand)
 
-        val result = resolver.createCall("123456789")
+        val intent = VoiceIntent(
+            identifier = CommandIdentifier.PHONE_CALL,
+            argument = CommandArgument.Text("123456789"),
+        )
+        val result = resolver.resolve(intent)
 
         assertEquals(mockCommand, result)
         verify(callCommandFactory).create(recipient = "123456789")
     }
 
     @Test
-    fun `createWriteSMS delegates directly to writeSMSCommandFactory`() {
+    fun `resolve SMS_WRITE passes the resolved number to writeSMSCommandFactory`() {
         val mockCommand = mock<WriteSMSCommand>()
         whenever(writeSMSCommandFactory.create(recipient = "987654321")).thenReturn(mockCommand)
 
-        val result = resolver.createWriteSMS("987654321")
+        val intent = VoiceIntent(
+            identifier = CommandIdentifier.SMS_WRITE,
+            argument = CommandArgument.Text("987654321"),
+        )
+        val result = resolver.resolve(intent)
 
         assertEquals(mockCommand, result)
         verify(writeSMSCommandFactory).create(recipient = "987654321")

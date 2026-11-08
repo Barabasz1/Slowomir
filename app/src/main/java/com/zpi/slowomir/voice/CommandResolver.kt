@@ -114,15 +114,6 @@ class CommandResolver @Inject constructor(
         else -> LogCommand(intent.identifier, intent.argument)
     }
 
-    /** Used when the user picks a contact from the selection list. */
-    fun createCall(recipient: String?): Command =
-        callCommandFactory.create(recipient = recipient)
-
-    /** Used when the user picks a contact from the selection list for SMS writing. */
-    fun createWriteSMS(recipient: String?): Command =
-        writeSMSCommandFactory.create(recipient = recipient)
-
-    // ---- helpers ----
 
     private fun VoiceIntent.textArgument(): String? =
         (argument as? CommandArgument.Text)?.value

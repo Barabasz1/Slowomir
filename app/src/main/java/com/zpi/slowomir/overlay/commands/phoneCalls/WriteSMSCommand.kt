@@ -8,8 +8,6 @@ import com.zpi.slowomir.overlay.OverlayContext
 import com.zpi.slowomir.overlay.commands.Command
 import com.zpi.slowomir.overlay.commands.CommandResult
 import com.zpi.slowomir.overlay.executors.PhoneCallExecutor
-import com.zpi.slowomir.utils.ContactLookupResult
-import com.zpi.slowomir.utils.ContactUtils
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -21,29 +19,17 @@ import javax.inject.Provider
  *
  * @param phoneCallExecutorProvider A provider for the [PhoneCallExecutor].
  * @param appContext The application context used as fallback when no active call is present.
- * @param recipient The optional recipient contact name or phone number.
+ * @param recipient The phone number of the recipient.
  */
 class WriteSMSCommand @AssistedInject constructor(
     private val phoneCallExecutorProvider: Provider<PhoneCallExecutor?>,
-    private val contactUtils: ContactUtils,
     @ApplicationContext private val appContext: Context,
     @Assisted("recipient") private val recipient: String? = null,
 ) : Command {
 
     override fun execute(): CommandResult {
-        val query = recipient.orEmpty()
-
-        val number = when (val result = contactUtils.lookup(appContext, query)) {
-            is ContactLookupResult.Found -> result.number
-            is ContactLookupResult.Ambiguous ->
-                return CommandResult.NeedsSelection(result.options)
-            ContactLookupResult.NotFound ->
-                return CommandResult.Failure("Could not find a contact: $query")
-            ContactLookupResult.PermissionDenied ->
-                return CommandResult.Failure("No access to reading contacts")
-            ContactLookupResult.EmptyQuery ->
-                return CommandResult.Failure("No contact was given.")
-        }
+        val number = recipient?.takeIf { it.isNotBlank() }
+            ?: return CommandResult.Failure("No contact was given.")
 
         val executor = phoneCallExecutorProvider.get()
 

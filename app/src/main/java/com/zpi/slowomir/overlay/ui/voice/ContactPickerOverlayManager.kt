@@ -3,7 +3,6 @@ package com.zpi.slowomir.overlay.ui.voice
 import android.content.Context
 import android.content.res.Resources
 import android.graphics.PixelFormat
-import android.util.Log
 import android.view.Gravity
 import android.view.View
 import android.view.WindowManager
@@ -20,25 +19,20 @@ import com.zpi.slowomir.overlay.ui.common.OverlayLifecycleOwner
 import com.zpi.slowomir.overlay.ui.common.OverlayWindowManager
 import com.zpi.slowomir.ui.theme.SłowomirTheme
 import com.zpi.slowomir.utils.ContactOption
-import com.zpi.slowomir.voice.ContactSelectionManager
-import com.zpi.slowomir.voice.mediator.CommandMediator
+import com.zpi.slowomir.voice.VoiceSessionManager
+import com.zpi.slowomir.voice.selection.Selection
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlin.time.Duration.Companion.milliseconds
 
 @Singleton
 class ContactPickerOverlayManager @Inject constructor(
-    private val mediator: CommandMediator,
-    private val contactSelectionManager: ContactSelectionManager,
+    private val voiceSessionManager: VoiceSessionManager,
     hostProvider: OverlayHostProvider
 ) : OverlayWindowManager(hostProvider) {
 
@@ -46,7 +40,6 @@ class ContactPickerOverlayManager @Inject constructor(
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var observeJob: Job? = null
-    private var timeoutJob: Job? = null
     private var lifecycleOwner: OverlayLifecycleOwner? = null
 
     private data class PickerState(
@@ -59,14 +52,13 @@ class ContactPickerOverlayManager @Inject constructor(
     fun start() {
         if (observeJob != null) return
         observeJob = scope.launch {
-            mediator.mediatorState
-                .map { it.contactSelection to it.contactSelectionAction }
-                .distinctUntilChanged()
-                .collect { (options, action) ->
-                    if (options.isNullOrEmpty()) {
-                        hide()
-                    } else {
-                        showOptions(options, action)
+            voiceSessionManager.selection
+                .collect { selection ->
+                    when (selection) {
+                        is Selection.Contact ->
+                            if (selection.options.isEmpty()) hide()
+                            else showOptions(selection.options, selection.pending.identifier)
+                        null -> hide()
                     }
                 }
         }
@@ -85,13 +77,7 @@ class ContactPickerOverlayManager @Inject constructor(
         _pickerState.value = PickerState(options = options, action = action)
 
         if (!show()) {
-            contactSelectionManager.cancelSelection()
-        }
-
-        timeoutJob = scope.launch {
-            delay(TIMEOUT_MS.milliseconds)
-            Log.i(tag, "Contact selection timed out")
-            contactSelectionManager.cancelSelection()
+            voiceSessionManager.cancelSelection()
         }
     }
 
@@ -112,8 +98,8 @@ class ContactPickerOverlayManager @Inject constructor(
                     ContactPickerView(
                         options = state.options,
                         action = state.action,
-                        onSelect = { index -> contactSelectionManager.selectContact(index) },
-                        onCancel = { contactSelectionManager.cancelSelection() },
+                        onSelect = { index -> voiceSessionManager.selectOption(index) },
+                        onCancel = { voiceSessionManager.cancelSelection() },
                     )
                 }
             }
@@ -135,24 +121,12 @@ class ContactPickerOverlayManager @Inject constructor(
         }
     }
 
-    override fun onViewAttached(view: View) {
-        timeoutJob?.cancel()
-        timeoutJob = scope.launch {
-            delay(TIMEOUT_MS.milliseconds)
-            Log.i(tag, "Contact selection timed out")
-            contactSelectionManager.cancelSelection()
-        }
-    }
-
     override fun onViewDetached(view: View) {
-        timeoutJob?.cancel()
-        timeoutJob = null
         lifecycleOwner?.onDestroy()
         lifecycleOwner = null
     }
 
     companion object {
-        private const val TIMEOUT_MS = 15_000L
         private const val WIDTH_FRACTION = 0.9f
     }
 }
