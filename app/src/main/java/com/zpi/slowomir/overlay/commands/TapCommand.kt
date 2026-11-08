@@ -24,7 +24,7 @@ class TapCommand @AssistedInject constructor(
         val executor = touchExecutorProvider.get()
             ?: return CommandResult.Failure("Accessibility Service is not enabled")
 
-        val success = executor.tap(x, y)
+        val success = executor.tapAt(x, y)
         return if (success) CommandResult.Success() else CommandResult.Failure("Tap failed")
     }
 

@@ -3,21 +3,20 @@ package com.zpi.slowomir.overlay.executors
 import android.accessibilityservice.AccessibilityService
 import android.content.Context
 import android.content.Intent
-import android.media.AudioDeviceInfo
-import android.media.AudioManager
 import android.telecom.TelecomManager
 import android.util.Log
+import android.view.accessibility.AccessibilityNodeInfo
 import androidx.core.net.toUri
 
 /**
- * Executes phone call related operations using system services and global actions.
+ * Executes phone call related operations using system services and Accessibility UI interaction.
  *
  * @param service The active [AccessibilityService] instance.
- * @param touchExecutor An optional [TouchExecutor] retained for caller compatibility.
+ * @param touchExecutor The [TouchExecutor] used to perform tap and click gestures.
  */
 class PhoneCallExecutor(
     private val service: AccessibilityService,
-    @Suppress("UNUSED_PARAMETER") touchExecutor: TouchExecutor = TouchExecutor(service)
+    private val touchExecutor: TouchExecutor = TouchExecutor(service),
 ) {
 
     /**
@@ -76,35 +75,29 @@ class PhoneCallExecutor(
     }
 
     /**
-     * Toggles the speakerphone using system audio APIs.
+     * Toggles the speakerphone.
      *
-     * @param enable Optional explicit state to set. If null, the current state is inverted.
-     * @return `true` if the speakerphone state was updated, `false` otherwise.
+     * Searches the active window and interactive windows for a speakerphone button
+     * (matching Polish and English labels or resource IDs) and clicks or taps it.
+     *
+     * @return `true` if the speakerphone toggle button was found and clicked, `false` otherwise.
      */
-    @Suppress("DEPRECATION")
-    fun speakerToggle(enable: Boolean? = null): Boolean {
-        return try {
-            val audioManager = service.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return false
-
-            val targetState = enable ?: !audioManager.isSpeakerphoneOn
-
-            if (targetState) {
-                val speakerDevice = audioManager.availableCommunicationDevices
-                    .firstOrNull { it.type == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER }
-                if (speakerDevice != null) {
-                    audioManager.setCommunicationDevice(speakerDevice)
-                }
-            } else {
-                audioManager.clearCommunicationDevice()
-            }
-
-            audioManager.isSpeakerphoneOn = targetState
-            Log.i(TAG, "Speaker updated to: $targetState")
-            true
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to toggle speakerphone", e)
-            false
+    fun speakerToggle(): Boolean {
+        val clicked = findAndInteractWithNode(
+            textKeywords = listOf(
+                "głośnik", "głośnomówiący", "tryb głośnomówiący", "przełącz na głośnik",
+                "wyłącz głośnik", "słuchawka telefonu", "słuchawka", "speaker", "speakerphone", "earpiece",
+            ),
+            idKeywords = listOf("incall_audio_button", "audio_route", "speaker", "btn_speaker"),
+            excludeKeywords = listOf("emoji", "emotik", "efekt", "effect"),
+        )
+        if (clicked) {
+            Log.i(TAG, "Speaker toggled via Accessibility UI.")
+            return true
         }
+
+        Log.w(TAG, "Failed to find speaker button on screen.")
+        return false
     }
 
     /**
@@ -155,6 +148,126 @@ class PhoneCallExecutor(
             Log.e(TAG, "Failed to open SMS composer", e)
             false
         }
+    }
+
+    /**
+     * Searches accessible windows for a node matching the given keywords in its text,
+     * content description, or view ID, and delegates the click or tap to [touchExecutor].
+     *
+     * @param textKeywords Keywords to match in the node's text.
+     * @param idKeywords Keywords to match in the node's view ID.
+     * @param excludeKeywords Keywords to exclude from the search.
+     * @return `true` if the node was found and interacted with, `false` otherwise.
+     */
+    private fun findAndInteractWithNode(
+        textKeywords: List<String>,
+        idKeywords: List<String>,
+        excludeKeywords: List<String> = emptyList(),
+    ): Boolean {
+        val rootNodes = collectRootNodes()
+
+        // 1. Fast path: Native indexed text search across root windows
+        for (root in rootNodes) {
+            for (keyword in textKeywords) {
+                val matches = try {
+                    root.findAccessibilityNodeInfosByText(keyword).orEmpty()
+                } catch (_: Exception) {
+                    emptyList()
+                }
+                for (match in matches) {
+                    val pkg = match.packageName?.toString().orEmpty().lowercase()
+                    if (isRelevantPackage(pkg)) {
+                        val text = match.text?.toString().orEmpty().lowercase()
+                        val desc = match.contentDescription?.toString().orEmpty().lowercase()
+                        val resId = match.viewIdResourceName.orEmpty().lowercase()
+                        val isExcluded = excludeKeywords.any {
+                            text.contains(it) || desc.contains(it) || resId.contains(it)
+                        }
+                        if (!isExcluded && touchExecutor.tapNode(match)) {
+                            Log.i(TAG, "Fast-path interaction successful on node matching '$keyword'.")
+                            return true
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2. Comprehensive path: Full hierarchy search
+        for (root in rootNodes) {
+            val target = findNode(root) { node ->
+                val pkg = node.packageName?.toString().orEmpty().lowercase()
+                if (!isRelevantPackage(pkg)) return@findNode false
+
+                val text = node.text?.toString().orEmpty().lowercase()
+                val desc = node.contentDescription?.toString().orEmpty().lowercase()
+                val resId = node.viewIdResourceName.orEmpty().lowercase()
+
+                val isExcluded = excludeKeywords.any {
+                    text.contains(it) || desc.contains(it) || resId.contains(it)
+                }
+                if (isExcluded) return@findNode false
+
+                textKeywords.any { text.contains(it) || desc.contains(it) } ||
+                    idKeywords.any { resId.contains(it) }
+            }
+
+            if ((target != null) && touchExecutor.tapNode(target)) {
+                Log.i(TAG, "Interacted with target node via TouchExecutor.click.")
+                return true
+            }
+        }
+        return false
+    }
+
+    private fun isRelevantPackage(pkg: String): Boolean {
+        return pkg.contains("dialer") ||
+            pkg.contains("telecom") ||
+            pkg.contains("phone") ||
+            pkg.contains("incall") ||
+            pkg.contains("systemui")
+    }
+
+    /**
+     * Collects all interactive windows from the service.
+     *
+     * @return List of [AccessibilityNodeInfo] representing the interactive windows.
+     */
+    private fun collectRootNodes(): List<AccessibilityNodeInfo> {
+        val roots = mutableListOf<AccessibilityNodeInfo>()
+        service.rootInActiveWindow?.let { roots.add(it) }
+        try {
+            service.windows?.forEach { window ->
+                window.root?.let { node ->
+                    if (roots.none { it == node }) {
+                        roots.add(node)
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not retrieve interactive windows", e)
+        }
+        return roots
+    }
+
+    /**
+     * Finds a node in the given root that matches the given predicate.
+     *
+     * @param root The root to search in.
+     * @param predicate A function that takes an [AccessibilityNodeInfo] and returns a boolean.
+     * @return The first node that matches the predicate, or null if no match is found.
+     */
+    private fun findNode(
+        root: AccessibilityNodeInfo?,
+        predicate: (AccessibilityNodeInfo) -> Boolean,
+    ): AccessibilityNodeInfo? {
+        if (root == null) return null
+        if (predicate(root)) return root
+
+        for (i in 0 until root.childCount) {
+            val child = root.getChild(i) ?: continue
+            findNode(child, predicate)?.let { return it }
+        }
+        return null
     }
 
     companion object {

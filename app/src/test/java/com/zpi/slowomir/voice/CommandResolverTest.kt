@@ -1,6 +1,5 @@
 package com.zpi.slowomir.voice
 
-import com.zpi.slowomir.overlay.commands.Command
 import com.zpi.slowomir.overlay.commands.CommandArgument
 import com.zpi.slowomir.overlay.commands.CommandIdentifier
 import com.zpi.slowomir.overlay.commands.TapCommand
@@ -10,11 +9,10 @@ import com.zpi.slowomir.overlay.commands.navigation.*
 import com.zpi.slowomir.overlay.commands.phoneCalls.*
 import com.zpi.slowomir.overlay.commands.textEdit.KeyboardHideCommand
 import com.zpi.slowomir.overlay.commands.textEdit.KeyboardShowCommand
+import com.zpi.slowomir.utils.ScreenCoordinatesProvider
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.mockito.kotlin.any
-import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
@@ -45,6 +43,7 @@ class CommandResolverTest {
     private val zoomOutCommandFactory = mock<ZoomOutCommand.Factory>()
     private val volumeUpCommandFactory = mock<VolumeUpCommand.Factory>()
     private val volumeDownCommandFactory = mock<VolumeDownCommand.Factory>()
+    private val screenCoordinatesProvider = ScreenCoordinatesProvider()
 
     private val resolver = CommandResolver(
         tapCommandFactory = tapCommandFactory,
@@ -71,6 +70,7 @@ class CommandResolverTest {
         zoomOutCommandFactory = zoomOutCommandFactory,
         volumeUpCommandFactory = volumeUpCommandFactory,
         volumeDownCommandFactory = volumeDownCommandFactory,
+        screenCoordinatesProvider = screenCoordinatesProvider,
     )
 
     @Test
@@ -81,7 +81,7 @@ class CommandResolverTest {
         val intent = VoiceIntent(
             identifier = CommandIdentifier.PHONE_CALL,
             argument = CommandArgument.Text("Jan Kowalski"),
-            rawText = "Zadzwoń do Jan Kowalski"
+            rawText = "Zadzwoń do Jan Kowalski",
         )
 
         val result = resolver.resolve(intent)
