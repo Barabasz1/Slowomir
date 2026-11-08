@@ -2,6 +2,7 @@ package com.zpi.slowomir.voice.mediator
 
 import com.zpi.slowomir.overlay.OverlayContext
 import com.zpi.slowomir.overlay.commands.Command
+import com.zpi.slowomir.overlay.commands.CommandIdentifier
 import com.zpi.slowomir.overlay.commands.CommandResult
 import com.zpi.slowomir.utils.ContactOption
 import com.zpi.slowomir.voice.OverlayState
@@ -22,6 +23,7 @@ data class MediatorState(
      * should be visible and speech is interpreted only as a selection or cancel.
      */
     val contactSelection: List<ContactOption>? = null,
+    val contactSelectionAction: CommandIdentifier? = null,
 )
 
 

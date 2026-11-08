@@ -4,7 +4,10 @@ import android.util.Log
 import com.zpi.slowomir.overlay.OverlayContext
 import com.zpi.slowomir.overlay.commands.Command
 import com.zpi.slowomir.overlay.commands.CommandArgument
+import com.zpi.slowomir.overlay.commands.CommandIdentifier
 import com.zpi.slowomir.overlay.commands.CommandResult
+import com.zpi.slowomir.overlay.commands.phoneCalls.CallCommand
+import com.zpi.slowomir.overlay.commands.phoneCalls.WriteSMSCommand
 import com.zpi.slowomir.voice.OverlayState
 import com.zpi.slowomir.voice.OverlayState.*
 import com.zpi.slowomir.voice.OverlayEvent
@@ -52,7 +55,17 @@ class DefaultCommandMediator @Inject constructor() : CommandMediator {
             is OverlayEvent.CommandInterpreted -> {
                 val result = dispatch(event.command)
                 if (result is CommandResult.NeedsSelection) {
-                    _mediatorState.update { it.copy(contactSelection = result.options) }
+                    val action = when (event.command) {
+                        is WriteSMSCommand -> CommandIdentifier.SMS_WRITE
+                        is CallCommand -> CommandIdentifier.PHONE_CALL
+                        else -> _mediatorState.value.intent?.identifier
+                    }
+                    _mediatorState.update {
+                        it.copy(
+                            contactSelection = result.options,
+                            contactSelectionAction = action,
+                        )
+                    }
                 }
                 formatCommandResult(event.command, result, mediatorState.value.intent)
             }
@@ -74,7 +87,12 @@ class DefaultCommandMediator @Inject constructor() : CommandMediator {
             }
 
             is OverlayEvent.SelectionCleared -> {
-                _mediatorState.update { it.copy(contactSelection = null) }
+                _mediatorState.update {
+                    it.copy(
+                        contactSelection = null,
+                        contactSelectionAction = null
+                    )
+                }
 
                 null
             }
@@ -108,6 +126,14 @@ class DefaultCommandMediator @Inject constructor() : CommandMediator {
         return result
     }
 
+    /**
+     * Formats a [CommandResult] into an [OverlayState] for display.
+     *
+     * @param command The command that was executed.
+     * @param result The result of the command execution.
+     * @param intent The voice intent associated with the command.
+     * @return The formatted [OverlayState] for display.
+     */
     fun formatCommandResult(
         command: Command,
         result: CommandResult,

@@ -5,9 +5,6 @@
     <uses-permission
         android:name="android.permission.BIND_ACCESSIBILITY_SERVICE"
         tools:ignore="ProtectedPermissions" />
-    <uses-permission
-        android:name="android.permission.BIND_INCALL_SERVICE"
-        tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
@@ -50,18 +47,6 @@
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="microphone" />
-
-        <service
-            android:name=".overlay.services.PhoneCallService"
-            android:exported="true"
-            android:permission="android.permission.BIND_INCALL_SERVICE">
-            <intent-filter>
-                <action android:name="android.telecom.InCallService" />
-            </intent-filter>
-            <meta-data
-                android:name="android.telecom.IN_CALL_SERVICE_UI"
-                android:value="false" />
-        </service>
 
         <activity
             android:name=".MainActivity"

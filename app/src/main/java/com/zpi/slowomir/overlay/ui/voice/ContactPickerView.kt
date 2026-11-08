@@ -28,18 +28,28 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.zpi.slowomir.R
+import com.zpi.slowomir.overlay.commands.CommandIdentifier
 import com.zpi.slowomir.utils.ContactOption
 
 @Composable
 fun ContactPickerView(
     options: List<ContactOption>,
+    modifier: Modifier = Modifier,
+    action: CommandIdentifier? = null,
     onSelect: (Int) -> Unit,
     onCancel: () -> Unit,
-    modifier: Modifier = Modifier,
 ) {
+    val titleRes = if (action == CommandIdentifier.SMS_WRITE) {
+        R.string.contact_picker_title_sms
+    } else {
+        R.string.contact_picker_title_call
+    }
+
     Box(modifier = modifier.padding(12.dp)) {
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -55,13 +65,13 @@ fun ContactPickerView(
 
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(
-                        text = "Do kogo zadzwonić?",
+                        text = stringResource(titleRes),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface,
                     )
                     Text(
-                        text = "Powiedz numer z listy, np. „dwa”",
+                        text = stringResource(R.string.contact_picker_subtitle),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -81,7 +91,7 @@ fun ContactPickerView(
                     onClick = onCancel,
                     modifier = Modifier.align(Alignment.End),
                 ) {
-                    Text("Anuluj")
+                    Text(stringResource(R.string.contact_picker_cancel))
                 }
             }
         }
@@ -113,7 +123,7 @@ private fun ListeningHeader() {
                 .background(MaterialTheme.colorScheme.primary),
         )
         Text(
-            text = "Słucham…",
+            text = stringResource(R.string.contact_picker_listening),
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.primary,
         )

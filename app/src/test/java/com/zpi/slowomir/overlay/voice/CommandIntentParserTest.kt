@@ -13,7 +13,7 @@ class CommandIntentParserTest {
     private val parser = CommandIntentParser(PolishTextNormalizer())
 
     @Test
-    fun `powinien poprawnie rozpoznać komendę kliknięcia z cyfrą oraz ze słownym liczebnikiem`() {
+    fun `should correctly recognize click command with numbers and words`() {
         val resultNumeric = parser.parse("Kliknij 5")
         assertNotNull(resultNumeric)
         assertEquals(CommandIdentifier.CELL_PRESS, resultNumeric?.identifier)
@@ -46,7 +46,7 @@ class CommandIntentParserTest {
     }
 
     @Test
-    fun `powinien poprawnie rozpoznać przeciągnięcie z dwoma argumentami numerycznymi`() {
+    fun `should correctly recognize swipe command with two numeric arguments`() {
         val result = parser.parse("Przeciągnij z 2 do 8")
         assertNotNull(result)
         assertEquals(CommandIdentifier.CELL_SWIPE, result?.identifier)
@@ -69,7 +69,7 @@ class CommandIntentParserTest {
     }
 
     @Test
-    fun `powinien poprawnie rozpoznać podział i wybór pola`() {
+    fun `should correctly recognize cell division and selection`() {
         val divide1 = parser.parse("Rozdziel pole 3")
         assertEquals(CommandIdentifier.CELL_DIVIDE, divide1?.identifier)
         assertEquals(CommandArgument.Number(3), divide1?.argument)
@@ -88,7 +88,7 @@ class CommandIntentParserTest {
     }
 
     @Test
-    fun `powinien poprawnie rozpoznać otwieranie aplikacji`() {
+    fun `should correctly recognize app opening commands`() {
         val resultSpotify = parser.parse("Otwórz Spotify")
         assertNotNull(resultSpotify)
         assertEquals(CommandIdentifier.NAVIGATE_APP_OPEN, resultSpotify?.identifier)
@@ -111,7 +111,7 @@ class CommandIntentParserTest {
     }
 
     @Test
-    fun `powinien poprawnie rozpoznać komendy telefoniczne oraz SMS`() {
+    fun `should correctly recognize phone and SMS commands`() {
         val resultCall = parser.parse("Zadzwoń Jan Kowalski")
         assertNotNull(resultCall)
         assertEquals(CommandIdentifier.PHONE_CALL, resultCall?.identifier)
@@ -159,7 +159,7 @@ class CommandIntentParserTest {
     }
 
     @Test
-    fun `powinien poprawnie rozpoznać makra`() {
+    fun `should correctly recognize macro commands`() {
         val resultMacro = parser.parse("Makro Poranek")
         assertNotNull(resultMacro)
         assertEquals(CommandIdentifier.MACRO_PLAY, resultMacro?.identifier)
@@ -177,7 +177,7 @@ class CommandIntentParserTest {
     }
 
     @Test
-    fun `powinien poprawnie rozpoznać synonimy komend bezargumentowych`() {
+    fun `should correctly recognize synonyms for commands without arguments`() {
         val gridShow1 = parser.parse("Pokaż siatkę")
         assertEquals(CommandIdentifier.GRID_SHOW, gridShow1?.identifier)
 

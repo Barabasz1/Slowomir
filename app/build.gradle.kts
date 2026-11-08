@@ -1,3 +1,9 @@
+import org.gradle.api.file.ConfigurableFileCollection
+import org.gradle.api.tasks.InputFiles
+import org.gradle.api.tasks.PathSensitive
+import org.gradle.api.tasks.PathSensitivity
+import org.gradle.process.CommandLineArgumentProvider
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -56,8 +62,12 @@ android {
     }
 }
 
+val mockitoAgent = configurations.create("mockitoAgent") {
+    isTransitive = false
+}
+
 dependencies {
-    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.22.0")
+    implementation(libs.onnxruntime.android)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.compose.animation)
@@ -68,6 +78,9 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     testImplementation(libs.junit)
+    testImplementation(libs.mockito.core)
+    add("mockitoAgent", libs.mockito.core)
+    testImplementation(libs.mockito.kotlin)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -79,4 +92,21 @@ dependencies {
     ksp(libs.hilt.compiler)
 
     implementation(libs.vosk.android)
+}
+
+abstract class MockitoAgentProvider : CommandLineArgumentProvider {
+    @get:InputFiles
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val agentJar: ConfigurableFileCollection
+
+    override fun asArguments(): Iterable<String> =
+        listOf("-javaagent:${agentJar.asPath}")
+}
+
+tasks.withType<Test>().configureEach {
+    jvmArgumentProviders.add(
+        objects.newInstance<MockitoAgentProvider>().apply {
+            agentJar.from(mockitoAgent)
+        }
+    )
 }

@@ -39,10 +39,7 @@ abstract class OverlayWindowManager(
     fun show(): Boolean {
         wanted = true
         observeHost()
-        if (view != null) {
-            return true
-        }
-        return attach(host)
+        return view != null || attach(host)
     }
 
     fun hide() {

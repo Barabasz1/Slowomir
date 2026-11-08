@@ -8,6 +8,8 @@ import android.util.Log
 import androidx.core.content.ContextCompat
 import java.text.Normalizer
 import java.util.Locale
+import javax.inject.Inject
+import javax.inject.Singleton
 
 data class ContactOption(val name: String, val number: String)
 
@@ -19,13 +21,17 @@ sealed class ContactLookupResult {
     object EmptyQuery : ContactLookupResult()
 }
 
-object ContactUtils {
+/**
+ * Utility class for looking up contacts.
+ */
+@Singleton
+class ContactUtils @Inject constructor() {
 
-    private const val TAG = "ContactUtils"
-    private const val MAX_OPTIONS = 5
+    private val TAG = "ContactUtils"
+    private val MAX_OPTIONS = 5
 
     // TODO
-    private const val USE_TEST_CONTACTS = true
+    private val USE_TEST_CONTACTS = true
     private val TEST_CONTACTS = listOf(
         "Mama Ania" to "600100001",
         "Mama Basia" to "600100002",
@@ -46,6 +52,13 @@ object ContactUtils {
         val isMobile: Boolean,
     )
 
+    /**
+     * Looks up a contact by name or phone number.
+     *
+     * @param context The application context.
+     * @param input The name or phone number to look up.
+     * @return The result of the contact lookup.
+     */
     fun lookup(context: Context, input: String): ContactLookupResult {
         val query = input.trim()
             .split(Regex("\\s+"))
@@ -94,16 +107,21 @@ object ContactUtils {
         return ContactLookupResult.Found(pick.name, pick.number)
     }
 
-    fun resolvePhoneNumber(context: Context, input: String): String =
-        when (val r = lookup(context, input)) {
-            is ContactLookupResult.Found -> r.number
-            else -> input.trim()
-        }
-
-
+    /**
+     * Returns the preferred phone number from a list of entries.
+     *
+     * @param entries The list of entries to consider.
+     * @return The preferred phone number from the entries.
+     */
     private fun preferredNumber(entries: List<Entry>): String =
         (entries.firstOrNull { it.isMobile } ?: entries.first()).number
 
+    /**
+     * Loads contacts from the device's contact list.
+     *
+     * @param context The application context.
+     * @return A list of loaded contacts.
+     */
     private fun loadContacts(context: Context): List<Entry> {
         val projection = arrayOf(Phone.NUMBER, Phone.DISPLAY_NAME, Phone.TYPE)
         val result = mutableListOf<Entry>()
@@ -126,6 +144,13 @@ object ContactUtils {
         return result
     }
 
+    /**
+     * Scores a query against a contact entry.
+     *
+     * @param query The list of query tokens.
+     * @param entry The contact entry to score.
+     * @return The score of the query against the entry, or null if no match.
+     */
     private fun score(query: List<String>, entry: Entry): Int? {
         var total = 0
         for (q in query) {
@@ -137,20 +162,45 @@ object ContactUtils {
         return total * 10 - extra
     }
 
+    /**
+     * Calculates the score of a token pair.
+     *
+     * @param q The query token.
+     * @param c The contact token.
+     * @return The score of the token pair.
+     */
     private fun tokenScore(q: String, c: String): Int = when {
         q == c -> 4
         stemVariants(q).intersect(stemVariants(c)).isNotEmpty() -> 3
         else -> 0
     }
 
+    /**
+     * Normalizes a string for comparison.
+     *
+     * @param s The string to fold.
+     * @return The folded string.
+     */
     private fun fold(s: String): String {
         val lower = s.lowercase(POLISH).replace('ł', 'l')
         return Normalizer.normalize(lower, Normalizer.Form.NFD).replace(Regex("\\p{Mn}+"), "")
     }
 
+    /**
+     * Tokenizes a string.
+     *
+     * @param s The string to tokenize.
+     * @return The list of tokens.
+     */
     private fun tokenize(s: String): List<String> =
         fold(s).split(Regex("[^a-z0-9]+")).filter { it.isNotEmpty() }
 
+    /**
+     * Stems a word to its root form.
+     *
+     * @param t The word to stem.
+     * @return The set of stemmed variants.
+     */
     private fun stemVariants(t: String): Set<String> {
         val stripped = buildSet {
             add(t)

@@ -11,7 +11,7 @@ import com.zpi.slowomir.overlay.commands.navigation.*
 import com.zpi.slowomir.overlay.commands.phoneCalls.*
 import com.zpi.slowomir.overlay.commands.textEdit.KeyboardHideCommand
 import com.zpi.slowomir.overlay.commands.textEdit.KeyboardShowCommand
-import com.zpi.slowomir.overlay.services.CommandExecutorService
+import com.zpi.slowomir.utils.ScreenCoordinatesProvider
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -41,14 +41,15 @@ class CommandResolver @Inject constructor(
     private val zoomOutCommandFactory: ZoomOutCommand.Factory,
     private val volumeUpCommandFactory: VolumeUpCommand.Factory,
     private val volumeDownCommandFactory: VolumeDownCommand.Factory,
+    private val screenCoordinatesProvider: ScreenCoordinatesProvider,
 ) {
 
     fun resolve(intent: VoiceIntent): Command = when (intent.identifier) {
         // Navigation
         CommandIdentifier.CELL_PRESS -> {
             val (x, y) = when (val arg = intent.argument) {
-                is CommandArgument.Number -> cellNumberToCoordinates(arg.value)
-                else -> DEFAULT_TAP_X to DEFAULT_TAP_Y
+                is CommandArgument.Number -> screenCoordinatesProvider.cellNumberToCoordinates(arg.value)
+                else -> screenCoordinatesProvider.defaultTapCoordinates
             }
             tapCommandFactory.create(x, y)
         }
@@ -94,16 +95,14 @@ class CommandResolver @Inject constructor(
     fun createCall(recipient: String?): Command =
         callCommandFactory.create(recipient = recipient)
 
+    /** Used when the user picks a contact from the selection list for SMS writing. */
+    fun createWriteSMS(recipient: String?): Command =
+        writeSMSCommandFactory.create(recipient = recipient)
+
     // ---- helpers ----
 
     private fun VoiceIntent.textArgument(): String? =
         (argument as? CommandArgument.Text)?.value
-
-    private fun screenSize(): Pair<Float, Float> {
-        val m = CommandExecutorService.instance?.resources?.displayMetrics
-        return (m?.widthPixels?.toFloat() ?: DEFAULT_SCREEN_WIDTH) to
-                (m?.heightPixels?.toFloat() ?: DEFAULT_SCREEN_HEIGHT)
-    }
 
     /** Builds a command at a point given as fractions of screen width/height. */
     private fun <T : Command> withScreenPoint(
@@ -111,38 +110,7 @@ class CommandResolver @Inject constructor(
         yFraction: Float,
         create: (Float, Float) -> T,
     ): T {
-        val (w, h) = screenSize()
-        return create(w * xFraction, h * yFraction)
-    }
-
-    /**
-     * Dynamic mapping from a cell number to screen coordinates based on active screen metrics.
-     * Assumes a 4-column, 5-row grid covering the full screen area.
-     *
-     * @param cellNumber The 1-based cell number to map.
-     * @return A pair of (x, y) coordinates representing the center of the cell.
-     */
-    private fun cellNumberToCoordinates(cellNumber: Int): Pair<Float, Float> {
-        val (screenWidth, screenHeight) = screenSize()
-
-        val columns = 4
-        val rows = 5
-        val cellWidth = screenWidth / columns
-        val cellHeight = screenHeight / rows
-
-        val zeroIndexed = (cellNumber - 1).coerceAtLeast(0)
-        val col = zeroIndexed % columns
-        val row = zeroIndexed / columns
-
-        val x = col * cellWidth + cellWidth / 2f
-        val y = row * cellHeight + cellHeight / 2f
-        return Pair(x.coerceIn(0f, screenWidth), y.coerceIn(0f, screenHeight))
-    }
-
-    private companion object {
-        const val DEFAULT_SCREEN_WIDTH = 1080f
-        const val DEFAULT_SCREEN_HEIGHT = 2400f
-        const val DEFAULT_TAP_X = 540f
-        const val DEFAULT_TAP_Y = 1200f
+        val (x, y) = screenCoordinatesProvider.getCoordinates(xFraction, yFraction)
+        return create(x, y)
     }
 }

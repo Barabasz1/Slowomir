@@ -3,7 +3,7 @@ package com.zpi.slowomir.voice
 import android.util.Log
 import com.zpi.slowomir.overlay.commands.Command
 import com.zpi.slowomir.overlay.commands.CommandIdentifier
-import com.zpi.slowomir.utils.ContactOption
+import com.zpi.slowomir.overlay.commands.CommandResult
 import com.zpi.slowomir.voice.mediator.CommandMediator
 import com.zpi.slowomir.voice.stt.InternalEvent
 import com.zpi.slowomir.voice.stt.SessionEvent
@@ -20,17 +20,18 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/**
+ * Voice session manager. Coordinates the state of the voice session and dispatches commands.
+ */
 @Singleton
 class VoiceSessionManager @Inject constructor(
     private val mediator: CommandMediator,
     private val intentParser: CommandIntentParser,
-    private val normalizer: PolishTextNormalizer,
     private val commandResolver: CommandResolver,
+    private val contactSelectionManager: ContactSelectionManager,
 ) : VoiceInputSink, VoiceStateSource {
 
     private val _state = MutableStateFlow<VoiceState>(VoiceState.Stopped)
@@ -38,8 +39,6 @@ class VoiceSessionManager @Inject constructor(
 
     private val inbox = Channel<SessionEvent>(Channel.UNLIMITED)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-
-    private val selectionMutex = Mutex()
 
     init {
         scope.launch {
@@ -70,6 +69,11 @@ class VoiceSessionManager @Inject constructor(
         }
     }
 
+    /**
+     * Handles a state transition.
+     *
+     * @param newState The new state.
+     */
     private fun onStateChanged(newState: VoiceState) {
         when (newState) {
             is VoiceState.IntentParsing -> {
@@ -84,6 +88,11 @@ class VoiceSessionManager @Inject constructor(
         }
     }
 
+    /**
+     * Parses a command intent.
+     *
+     * @param text The text to parse.
+     */
     private fun parseIntent(text: String) {
         if (text.isBlank()) {
             return
@@ -93,7 +102,17 @@ class VoiceSessionManager @Inject constructor(
             mediator.handleEvent(OverlayEvent.ProcessingCommand(text))
 
             if (mediator.mediatorState.value.contactSelection != null) {
-                handleSelectionSpeech(text)
+                when (val result = contactSelectionManager.handleSpeech(text)) {
+                    is ContactSelectionSpeechResult.Selected -> {
+                        inbox.send(InternalEvent.IntentParsed(result.intent, result.command))
+                    }
+                    is ContactSelectionSpeechResult.Cancelled -> {
+                        inbox.send(InternalEvent.IntentFailed(result.rawText))
+                    }
+                    is ContactSelectionSpeechResult.Unrecognized -> {
+                        inbox.send(InternalEvent.IntentFailed(result.rawText))
+                    }
+                }
                 return@launch
             }
 
@@ -110,71 +129,35 @@ class VoiceSessionManager @Inject constructor(
         }
     }
 
+    /**
+     * Executes a command.
+     *
+     * @param intent The command intent.
+     * @param command The command to execute.
+     */
     private fun dispatchCommand(intent: VoiceIntent, command: Command) {
         scope.launch {
             mediator.handleEvent(OverlayEvent.CommandInterpreted(command))
-
-            val result = mediator.dispatch(command)
             val returnToKws = intent.identifier == CommandIdentifier.OVERLAY_STOP
 
-            inbox.send(InternalEvent.CommandFinished(result, returnToKws = returnToKws))
+            inbox.send(InternalEvent.CommandFinished(CommandResult.Success(), returnToKws = returnToKws))
         }
     }
 
+    /**
+     * Selects a contact (delegates to [ContactSelectionManager]).
+     *
+     * @param index The index of the contact to select.
+     */
     fun selectContact(index: Int) {
-        scope.launch { selectContactInternal(index) }
+        contactSelectionManager.selectContact(index)
     }
 
+    /**
+     * Cancels the current contact selection (delegates to [ContactSelectionManager]).
+     */
     fun cancelSelection() {
-        scope.launch { cancelSelectionInternal() }
-    }
-
-    private suspend fun handleSelectionSpeech(text: String) {
-        if (isCancel(text)) {
-            cancelSelectionInternal()
-            return
-        }
-
-        val index = parseSelection(text)
-        if (index == null) {
-            Log.d(TAG, "Ignoring speech during contact selection: '$text'")
-            return
-        }
-
-        selectContactInternal(index)
-    }
-
-    private suspend fun selectContactInternal(index: Int) {
-        val option = consumeSelection(index)
-        if (option == null) {
-            Log.d(TAG, "Selection $index ignored (no pending selection or out of range)")
-            return
-        }
-
-        val command = commandResolver.createCall(option.name)
-        mediator.handleEvent(OverlayEvent.CommandInterpreted(command))
-    }
-
-    private suspend fun cancelSelectionInternal() {
-        selectionMutex.withLock {
-            mediator.handleEvent(OverlayEvent.SelectionCleared)
-        }
-    }
-
-    private suspend fun consumeSelection(index: Int): ContactOption? = selectionMutex.withLock {
-        val options = mediator.mediatorState.value.contactSelection ?: return@withLock null
-        val option = options.getOrNull(index - 1) ?: return@withLock null
-        mediator.handleEvent(OverlayEvent.SelectionCleared)
-        option
-    }
-
-    private fun isCancel(text: String): Boolean = normalizer.normalize(text) in cancelPhrases
-
-    private fun parseSelection(text: String): Int? {
-        val normalized = normalizer.normalize(text)
-            .split(" ")
-            .joinToString(" ") { extraNumberWords[it] ?: it }
-        return selectionRegex.matchEntire(normalized)?.groupValues?.get(1)?.toIntOrNull()
+        contactSelectionManager.cancelSelection()
     }
 
     override fun accept(input: VoiceInput) {
@@ -183,20 +166,5 @@ class VoiceSessionManager @Inject constructor(
 
     companion object {
         private const val TAG = "VoiceSessionManager"
-        private val selectionRegex =
-            Regex("""^(?:(?:numer|opcja|opcję|pozycja|pozycję|kontakt|wybierz|wybieram)\s+)*(\d+)$""")
-
-        private val cancelPhrases = setOf(
-            "anuluj",
-            "zamknij",
-        )
-
-        private val extraNumberWords = mapOf(
-            "jedynkę" to "1",
-            "dwójkę" to "2",
-            "trójkę" to "3",
-            "czwórkę" to "4",
-            "piątkę" to "5",
-        )
     }
 }
