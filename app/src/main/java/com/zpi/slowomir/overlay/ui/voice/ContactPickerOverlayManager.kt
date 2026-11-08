@@ -20,7 +20,7 @@ import com.zpi.slowomir.overlay.ui.common.OverlayLifecycleOwner
 import com.zpi.slowomir.overlay.ui.common.OverlayWindowManager
 import com.zpi.slowomir.ui.theme.SłowomirTheme
 import com.zpi.slowomir.utils.ContactOption
-import com.zpi.slowomir.voice.VoiceSessionManager
+import com.zpi.slowomir.voice.ContactSelectionManager
 import com.zpi.slowomir.voice.mediator.CommandMediator
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -38,7 +38,7 @@ import kotlin.time.Duration.Companion.milliseconds
 @Singleton
 class ContactPickerOverlayManager @Inject constructor(
     private val mediator: CommandMediator,
-    private val voiceSessionManager: VoiceSessionManager,
+    private val contactSelectionManager: ContactSelectionManager,
     hostProvider: OverlayHostProvider
 ) : OverlayWindowManager(hostProvider) {
 
@@ -85,13 +85,13 @@ class ContactPickerOverlayManager @Inject constructor(
         _pickerState.value = PickerState(options = options, action = action)
 
         if (!show()) {
-            voiceSessionManager.cancelSelection()
+            contactSelectionManager.cancelSelection()
         }
 
         timeoutJob = scope.launch {
             delay(TIMEOUT_MS.milliseconds)
             Log.i(tag, "Contact selection timed out")
-            voiceSessionManager.cancelSelection()
+            contactSelectionManager.cancelSelection()
         }
     }
 
@@ -112,8 +112,8 @@ class ContactPickerOverlayManager @Inject constructor(
                     ContactPickerView(
                         options = state.options,
                         action = state.action,
-                        onSelect = { index -> voiceSessionManager.selectContact(index) },
-                        onCancel = { voiceSessionManager.cancelSelection() },
+                        onSelect = { index -> contactSelectionManager.selectContact(index) },
+                        onCancel = { contactSelectionManager.cancelSelection() },
                     )
                 }
             }
@@ -140,7 +140,7 @@ class ContactPickerOverlayManager @Inject constructor(
         timeoutJob = scope.launch {
             delay(TIMEOUT_MS.milliseconds)
             Log.i(tag, "Contact selection timed out")
-            voiceSessionManager.cancelSelection()
+            contactSelectionManager.cancelSelection()
         }
     }
 

@@ -31,7 +31,7 @@ class HomeViewModel @Inject constructor(
     private val toggleGridCommandFactory: ToggleGridCommand.Factory,
     private val voiceSessionManager: VoiceSessionManager,
     private val voiceOverlayManager: VoiceOverlayManager,
-    private val contactPickerOverlayManager: ContactPickerOverlayManager
+    contactPickerOverlayManager: ContactPickerOverlayManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<CommandResult?>(null)
