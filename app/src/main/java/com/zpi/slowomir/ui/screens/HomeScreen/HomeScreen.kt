@@ -59,7 +59,6 @@ fun HomeScreen(
     var inputText by remember { mutableStateOf("") }
     val isServiceRunning by viewModel.isVoiceRunning.collectAsState()
     val voiceState by viewModel.voiceState.collectAsState()
-    val kwsState by viewModel.kwsState.collectAsState()
     val isOverlayEnabled by viewModel.isOverlayEnabled.collectAsState()
 
     val scrollState = rememberScrollState()
@@ -288,14 +287,6 @@ fun HomeScreen(
                 }
             }
         }
-
-        KeywordTestCard(
-            state = kwsState,
-            onStart = viewModel::startKws,
-            onStop = viewModel::stopKws,
-            onPermissionDenied = viewModel::onKwsPermissionDenied
-        )
-
 
         Card(
             modifier = Modifier.fillMaxWidth(),

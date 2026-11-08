@@ -3,8 +3,6 @@ package com.zpi.slowomir.ui.screens.HomeScreen
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.zpi.slowomir.kws.KeywordTestController
-import com.zpi.slowomir.kws.KeywordUiState
 import com.zpi.slowomir.overlay.commands.CommandResult
 import com.zpi.slowomir.overlay.commands.TapCommand
 import com.zpi.slowomir.overlay.commands.grid.ToggleGridCommand
@@ -33,7 +31,6 @@ class HomeViewModel @Inject constructor(
     private val toggleGridCommandFactory: ToggleGridCommand.Factory,
     private val voiceSessionManager: VoiceSessionManager,
     private val voiceOverlayManager: VoiceOverlayManager,
-    private val keywordTestController: KeywordTestController,
     private val contactPickerOverlayManager: ContactPickerOverlayManager
 ) : ViewModel() {
 
@@ -46,7 +43,6 @@ class HomeViewModel @Inject constructor(
     val isVoiceRunning: StateFlow<Boolean> = voiceState
         .map { it !is VoiceState.Stopped && it !is VoiceState.Failed }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
-    val kwsState: StateFlow<KeywordUiState> = keywordTestController.state
 
     private val _isOverlayEnabled = MutableStateFlow(true)
     val isOverlayEnabled: StateFlow<Boolean> = _isOverlayEnabled.asStateFlow()
@@ -59,12 +55,6 @@ class HomeViewModel @Inject constructor(
             }
         }
     }
-
-    fun startKws() = keywordTestController.start()
-
-    fun stopKws() = keywordTestController.stop()
-
-    fun onKwsPermissionDenied() = keywordTestController.onPermissionDenied()
 
     fun setOverlayEnabled(enabled: Boolean) {
         _isOverlayEnabled.value = enabled
