@@ -3,7 +3,7 @@ package com.zpi.slowomir.overlay.commands.touch
 import com.zpi.slowomir.overlay.OverlayContext
 import com.zpi.slowomir.overlay.commands.Command
 import com.zpi.slowomir.overlay.commands.CommandResult
-import com.zpi.slowomir.touch.TouchExecutor
+import com.zpi.slowomir.overlay.executors.TouchExecutor
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject

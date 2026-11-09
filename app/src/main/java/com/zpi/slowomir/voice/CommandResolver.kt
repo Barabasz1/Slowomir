@@ -4,11 +4,11 @@ import com.zpi.slowomir.overlay.commands.Command
 import com.zpi.slowomir.overlay.commands.CommandArgument
 import com.zpi.slowomir.overlay.commands.CommandIdentifier
 import com.zpi.slowomir.overlay.commands.LogCommand
-import com.zpi.slowomir.overlay.commands.TapCommand
 import com.zpi.slowomir.overlay.commands.media.VolumeDownCommand
 import com.zpi.slowomir.overlay.commands.media.VolumeUpCommand
 import com.zpi.slowomir.overlay.commands.navigation.*
 import com.zpi.slowomir.overlay.commands.phoneCalls.*
+import com.zpi.slowomir.overlay.commands.grid.*
 import com.zpi.slowomir.overlay.commands.textEdit.KeyboardHideCommand
 import com.zpi.slowomir.overlay.commands.textEdit.KeyboardShowCommand
 import com.zpi.slowomir.utils.ScreenCoordinatesProvider
@@ -17,7 +17,6 @@ import javax.inject.Singleton
 
 @Singleton
 class CommandResolver @Inject constructor(
-    private val tapCommandFactory: TapCommand.Factory,
     private val notificationsCommandFactory: NotificationsCommand.Factory,
     private val quickSettingsCommandFactory: QuickSettingsCommand.Factory,
     private val lockScreenCommandFactory: LockScreenCommand.Factory,
@@ -33,26 +32,28 @@ class CommandResolver @Inject constructor(
     private val speakerCommandFactory: SpeakerCommand.Factory,
     private val callCommandFactory: CallCommand.Factory,
     private val writeSMSCommandFactory: WriteSMSCommand.Factory,
-    private val swipeUpCommandFactory: SwipeUpCommand.Factory,
-    private val swipeDownCommandFactory: SwipeDownCommand.Factory,
-    private val swipeLeftCommandFactory: SwipeLeftCommand.Factory,
-    private val swipeRightCommandFactory: SwipeRightCommand.Factory,
-    private val zoomInCommandFactory: ZoomInCommand.Factory,
-    private val zoomOutCommandFactory: ZoomOutCommand.Factory,
+    private val swipeUpNavCommandFactory: SwipeUpNavCommand.Factory,
+    private val swipeDownNavCommandFactory: SwipeDownNavCommand.Factory,
+    private val swipeLeftNavCommandFactory: SwipeLeftNavCommand.Factory,
+    private val swipeRightNavCommandFactory: SwipeRightNavCommand.Factory,
+    private val zoomInNavCommandFactory: ZoomInNavCommand.Factory,
+    private val zoomOutNavCommandFactory: ZoomOutNavCommand.Factory,
     private val volumeUpCommandFactory: VolumeUpCommand.Factory,
     private val volumeDownCommandFactory: VolumeDownCommand.Factory,
+    private val enableGridCommandFactory: EnableGridCommand.Factory,
+    private val disableGridCommandFactory: EnableGridCommand.Factory,
+    private val resetGridCommandFactory: ResetGridCommand.Factory,
+    private val selectCellCommandFactory: SelectCellCommand.Factory,
+    private val divideCellCommandFactory: DivideCellCommand.Factory,
+    private val undivideCellCommandFactory: UndivideCellCommand.Factory,
+    private val tapCellCommandFactory: TapCellCommand.Factory,
+    private val longTapCellCommandFactory: LongTapCellCommand.Factory,
     private val screenCoordinatesProvider: ScreenCoordinatesProvider,
 ) {
 
     fun resolve(intent: VoiceIntent): Command = when (intent.identifier) {
         // Navigation
-        CommandIdentifier.CELL_PRESS -> {
-            val (x, y) = when (val arg = intent.argument) {
-                is CommandArgument.Number -> screenCoordinatesProvider.cellNumberToCoordinates(arg.value)
-                else -> screenCoordinatesProvider.defaultTapCoordinates
-            }
-            tapCommandFactory.create(x, y)
-        }
+
         CommandIdentifier.NOTIFICATIONS -> notificationsCommandFactory.create()
         CommandIdentifier.QUICK_SETTINGS -> quickSettingsCommandFactory.create()
         CommandIdentifier.LOCK_SCREEN -> lockScreenCommandFactory.create()
@@ -61,13 +62,34 @@ class CommandResolver @Inject constructor(
         CommandIdentifier.NAVIGATE_RECENT -> navigateRecentCommandFactory.create()
         CommandIdentifier.NAVIGATE_BACK -> navigateBackCommandFactory.create()
 
+        // Grid
+
+        //TODO maybe add GRID_TOGGLE command? just "siatka"
+        CommandIdentifier.GRID_SHOW -> enableGridCommandFactory.create()
+        CommandIdentifier.GRID_HIDE -> disableGridCommandFactory.create()
+        CommandIdentifier.GRID_RESET -> resetGridCommandFactory.create()
+        CommandIdentifier.CELL_SELECT -> {
+            val arg = intent.intArgument()
+            if (arg != null)
+                selectCellCommandFactory.create(arg)
+            else
+                voidCommand(intent)
+        }
+
+        CommandIdentifier.CELL_DIVIDE -> divideCellCommandFactory.create()
+        CommandIdentifier.CELL_UNDIVIDE -> undivideCellCommandFactory.create()
+        CommandIdentifier.CELL_PRESS -> tapCellCommandFactory.create()
+        CommandIdentifier.CELL_LONG_PRESS -> longTapCellCommandFactory.create()
+
+        //rest of cell actions are shared with navigation commands because they are ambiguous
+
         // Gestures
-        CommandIdentifier.SWIPE_UP -> withScreenPoint(0.5f, 0.8f, swipeUpCommandFactory::create)
-        CommandIdentifier.SWIPE_DOWN -> withScreenPoint(0.5f, 0.2f, swipeDownCommandFactory::create)
-        CommandIdentifier.SWIPE_LEFT -> withScreenPoint(0.8f, 0.5f, swipeLeftCommandFactory::create)
-        CommandIdentifier.SWIPE_RIGHT -> withScreenPoint(0.2f, 0.5f, swipeRightCommandFactory::create)
-        CommandIdentifier.ZOOM_IN -> withScreenPoint(0.5f, 0.5f, zoomInCommandFactory::create)
-        CommandIdentifier.ZOOM_OUT -> withScreenPoint(0.5f, 0.5f, zoomOutCommandFactory::create)
+        CommandIdentifier.SWIPE_UP -> swipeUpNavCommandFactory.create()
+        CommandIdentifier.SWIPE_DOWN -> swipeDownNavCommandFactory.create()
+        CommandIdentifier.SWIPE_LEFT -> swipeLeftNavCommandFactory.create()
+        CommandIdentifier.SWIPE_RIGHT -> swipeRightNavCommandFactory.create()
+        CommandIdentifier.ZOOM_IN -> zoomInNavCommandFactory.create()
+        CommandIdentifier.ZOOM_OUT -> zoomOutNavCommandFactory.create()
 
         // Text editing
         CommandIdentifier.HIDE_KEYBOARD -> keyboardHideCommandFactory.create()
@@ -80,6 +102,7 @@ class CommandResolver @Inject constructor(
         CommandIdentifier.PHONE_SPEAKER -> speakerCommandFactory.create()
         CommandIdentifier.PHONE_CALL ->
             callCommandFactory.create(recipient = intent.textArgument())
+
         CommandIdentifier.SMS_WRITE ->
             writeSMSCommandFactory.create(recipient = intent.textArgument())
 
@@ -104,13 +127,11 @@ class CommandResolver @Inject constructor(
     private fun VoiceIntent.textArgument(): String? =
         (argument as? CommandArgument.Text)?.value
 
-    /** Builds a command at a point given as fractions of screen width/height. */
-    private fun <T : Command> withScreenPoint(
-        xFraction: Float,
-        yFraction: Float,
-        create: (Float, Float) -> T,
-    ): T {
-        val (x, y) = screenCoordinatesProvider.getCoordinates(xFraction, yFraction)
-        return create(x, y)
+    private fun VoiceIntent.intArgument(): Int? =
+        (argument as? CommandArgument.Number)?.value
+
+    // fallback when a blank command is needed (user did not provide an argument for example)
+    private fun voidCommand(intent: VoiceIntent): Command {
+        return LogCommand(intent.identifier, intent.argument)
     }
 }

@@ -3,7 +3,8 @@ package com.zpi.slowomir.overlay.commands.touch
 import com.zpi.slowomir.overlay.OverlayContext
 import com.zpi.slowomir.overlay.commands.Command
 import com.zpi.slowomir.overlay.commands.CommandResult
-import com.zpi.slowomir.touch.TouchExecutor
+import com.zpi.slowomir.overlay.executors.TouchExecutor
+import com.zpi.slowomir.overlay.executors.TouchExecutor.Companion.DEFAULT_PINCH_POWER
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -13,7 +14,7 @@ class PinchOutCommand @AssistedInject constructor(
     private val touchExecutorProvider: Provider<TouchExecutor?>,
     @Assisted("x") private val x: Float,
     @Assisted("y") private val y: Float,
-    @Assisted("power") private val power: Float = 1f,
+    @Assisted("power") private val power: Float = DEFAULT_PINCH_POWER,
 ) : Command {
 
     override fun execute(): CommandResult {
@@ -33,7 +34,7 @@ class PinchOutCommand @AssistedInject constructor(
         fun create(
             @Assisted("x") x: Float,
             @Assisted("y") y: Float,
-            @Assisted("power") power: Float = 1f,
+            @Assisted("power") power: Float = DEFAULT_PINCH_POWER
         ): PinchOutCommand
     }
 }

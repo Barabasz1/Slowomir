@@ -1,5 +1,6 @@
 package com.zpi.slowomir.overlay.commands.navigation
 
+
 import com.zpi.slowomir.overlay.OverlayContext
 import com.zpi.slowomir.overlay.commands.Command
 import com.zpi.slowomir.overlay.commands.CommandResult
@@ -10,7 +11,7 @@ import dagger.assisted.AssistedInject
 import javax.inject.Provider
 
 
-class SwipeDownCommand @AssistedInject constructor(
+class SwipeRightNavCommand @AssistedInject constructor(
     private val navigationExecutorProvider: Provider<NavigationExecutor?>,
     private val gridExecutorProvider: Provider<GridExecutor?>,
 ) : Command {
@@ -19,10 +20,10 @@ class SwipeDownCommand @AssistedInject constructor(
             ?: return CommandResult.Failure("Accessibility Service is not enabled")
         val gridExecutor: GridExecutor? = gridExecutorProvider.get()
 
-        val success = if (gridExecutor !=null && gridExecutor.canExecuteActionOnCell())
-            gridExecutor.swipeDownCell()
+        val success = if (gridExecutor != null && gridExecutor.canExecuteActionOnCell())
+            gridExecutor.swipeRightCell()
         else
-            navExecutor.swipeDown()
+            navExecutor.swipeRight()
 
         return if (success) CommandResult.Success() else CommandResult.Failure("Navigation swipe down failed")
     }
@@ -34,6 +35,6 @@ class SwipeDownCommand @AssistedInject constructor(
     @AssistedFactory
     interface Factory {
         fun create(
-        ): SwipeDownCommand
+        ): SwipeRightNavCommand
     }
 }

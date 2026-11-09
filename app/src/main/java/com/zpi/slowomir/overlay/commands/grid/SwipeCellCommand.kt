@@ -19,7 +19,7 @@ class SwipeCellCommand @AssistedInject constructor(
         val gridExecutor = gridExecutorProvider.get()
             ?: return CommandResult.Failure("Grid executor is null")
         val success = gridExecutor.swipe(cell0, cell1)
-        return if (success) CommandResult.Success() else CommandResult.Failure("Swipe up on cell failed")
+        return if (success) CommandResult.Success() else CommandResult.Failure("Swipe cell failed")
     }
 
     override fun canExecute(context: OverlayContext): Boolean {

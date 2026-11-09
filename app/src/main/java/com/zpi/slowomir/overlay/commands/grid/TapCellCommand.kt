@@ -11,7 +11,7 @@ import javax.inject.Provider
 
 class TapCellCommand @AssistedInject constructor(
     private val gridExecutorProvider: Provider<GridExecutor?>,
-    ) : Command {
+) : Command {
 
     override fun execute(): CommandResult {
         val gridExecutor = gridExecutorProvider.get()

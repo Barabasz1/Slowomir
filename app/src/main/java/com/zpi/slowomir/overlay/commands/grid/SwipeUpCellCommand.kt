@@ -4,6 +4,7 @@ import com.zpi.slowomir.overlay.OverlayContext
 import com.zpi.slowomir.overlay.commands.Command
 import com.zpi.slowomir.overlay.commands.CommandResult
 import com.zpi.slowomir.overlay.executors.GridExecutor
+import com.zpi.slowomir.overlay.executors.TouchExecutor.Companion.DEFAULT_SWIPE_DISTANCE
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -11,7 +12,7 @@ import javax.inject.Provider
 
 class SwipeUpCellCommand @AssistedInject constructor(
     private val gridExecutorProvider: Provider<GridExecutor?>,
-    @Assisted("distance") private val distance: Float = 500f
+    @Assisted("distance") private val distance: Float = DEFAULT_SWIPE_DISTANCE
 ) : Command {
 
     override fun execute(): CommandResult {
@@ -28,7 +29,7 @@ class SwipeUpCellCommand @AssistedInject constructor(
     @AssistedFactory
     interface Factory {
         fun create(
-            @Assisted("distance") distance: Float = 500f
+            @Assisted("distance") distance: Float = DEFAULT_SWIPE_DISTANCE
         ): SwipeUpCellCommand
     }
 }

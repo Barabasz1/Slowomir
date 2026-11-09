@@ -1,12 +1,12 @@
-package com.zpi.slowomir.touch
+package com.zpi.slowomir.overlay.executors
 
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription
 import android.graphics.Path
+import android.graphics.Rect
 import android.util.Log
+import android.view.accessibility.AccessibilityNodeInfo
 import com.zpi.slowomir.utils.ScreenPoint
-import javax.inject.Inject
-import javax.inject.Singleton
 
 class TouchExecutor(
     private val service: AccessibilityService
@@ -47,6 +47,27 @@ class TouchExecutor(
         startTime: Long
     ): GestureDescription.StrokeDescription {
         return GestureDescription.StrokeDescription(path, startTime, duration)
+    }
+
+    fun tapNode(node: AccessibilityNodeInfo): Boolean {
+        var current: AccessibilityNodeInfo? = node
+        while (current != null) {
+            val hasClickAction =
+                current.actionList.any { it.id == AccessibilityNodeInfo.ACTION_CLICK }
+            if ((current.isClickable || hasClickAction) && current.performAction(
+                    AccessibilityNodeInfo.ACTION_CLICK
+                )
+            ) {
+                return true
+            }
+            current = current.parent
+        }
+
+        // 2. Fallback to tap gesture at center bounds
+        val bounds = Rect()
+        node.getBoundsInScreen(bounds)
+        val hasValidBounds = !bounds.isEmpty && bounds.centerX() > 0 && bounds.centerY() > 0
+        return hasValidBounds && shortTap(bounds.centerX().toFloat(), bounds.centerY().toFloat())
     }
 
     private fun tap(

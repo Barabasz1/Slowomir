@@ -10,58 +10,54 @@ import android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_QUICK_SET
 import android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_RECENTS
 import android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_TAKE_SCREENSHOT
 import com.zpi.slowomir.overlay.services.CommandExecutorService
-import com.zpi.slowomir.touch.TouchExecutor
 import com.zpi.slowomir.utils.ScreenPoint
-import com.zpi.slowomir.voice.VoiceSessionManager
 
+//TODO use ScreenCoordinatesProvider
 class NavigationExecutor(
     private val service: AccessibilityService,
-    private val touchExecutor: TouchExecutor
+    private val touchExecutor: TouchExecutor,
 ) {
 
     companion object {
         private const val DEFAULT_SCREEN_WIDTH = 1080f
         private const val DEFAULT_SCREEN_HEIGHT = 2400f
     }
-    private fun getCenter() : ScreenPoint{
+
+    fun getCenter(): ScreenPoint {
         val displayMetrics = service.resources.displayMetrics
-        return ScreenPoint(displayMetrics.widthPixels / 2f,displayMetrics.heightPixels / 2f)
+        return ScreenPoint(displayMetrics.widthPixels / 2f, displayMetrics.heightPixels / 2f)
     }
 
-    private fun getSwipePoint() : ScreenPoint {
-        val displayMetrics = CommandExecutorService.instance?.resources?.displayMetrics
+    fun getFromFraction(xFraction: Float, yFraction: Float): ScreenPoint {
+        val displayMetrics = service.resources.displayMetrics
         val screenWidth = displayMetrics?.widthPixels?.toFloat() ?: DEFAULT_SCREEN_WIDTH
         val screenHeight = displayMetrics?.heightPixels?.toFloat() ?: DEFAULT_SCREEN_HEIGHT
-        val x = screenWidth * 0.2f
-        val y = screenHeight / 2f
-        return ScreenPoint(x, y)
+        return ScreenPoint(screenWidth * xFraction, screenHeight * yFraction)
     }
 
-    private fun getZoomPoint() : ScreenPoint {
-        val displayMetrics = CommandExecutorService.instance?.resources?.displayMetrics
-        val screenWidth = displayMetrics?.widthPixels?.toFloat() ?: DEFAULT_SCREEN_WIDTH
-        val screenHeight = displayMetrics?.heightPixels?.toFloat() ?: DEFAULT_SCREEN_HEIGHT
-        val x = screenWidth / 2f
-        val y = screenHeight / 2f
-        return ScreenPoint(x,y)
+
+    fun swipeUp(xFraction: Float = 0.5f, yFraction: Float = 0.8f): Boolean {
+        return touchExecutor.swipeUp(getFromFraction(xFraction, yFraction))
     }
-    fun swipeUp(): Boolean {
-        return touchExecutor.swipeUp(getCenter())
+
+    fun swipeDown(xFraction: Float = 0.5f, yFraction: Float = 0.2f): Boolean {
+        return touchExecutor.swipeDown(getFromFraction(xFraction, yFraction))
     }
-    fun swipeDown(): Boolean {
-        return touchExecutor.swipeDown(getSwipePoint())
+
+    fun swipeRight(xFraction: Float = 0.2f, yFraction: Float = 0.5f): Boolean {
+        return touchExecutor.swipeRight(getFromFraction(xFraction, yFraction))
     }
-    fun swipeRight(): Boolean {
-        return touchExecutor.swipeRight(getSwipePoint())
+
+    fun swipeLeft(xFraction: Float = 0.8f, yFraction: Float = 0.5f): Boolean {
+        return touchExecutor.swipeLeft(getFromFraction(xFraction, yFraction))
     }
-    fun swipeLeft(): Boolean {
-        return touchExecutor.swipeLeft(getSwipePoint())
+
+    fun zoomIn(xFraction: Float = 0.5f, yFraction: Float = 0.5f): Boolean {
+        return touchExecutor.pinchOut(getFromFraction(xFraction, yFraction))
     }
-    fun zoomIn(): Boolean {
-        return touchExecutor.pinchOut(getZoomPoint())
-    }
-    fun zoomOut(): Boolean {
-        return touchExecutor.pinchIn(getZoomPoint())
+
+    fun zoomOut(xFraction: Float = 0.5f, yFraction: Float = 0.5f): Boolean {
+        return touchExecutor.pinchIn(getFromFraction(xFraction, yFraction))
     }
 
     /**

@@ -12,7 +12,7 @@ import com.zpi.slowomir.overlay.executors.PhoneCallExecutor
 import com.zpi.slowomir.overlay.executors.PredictionExecutor
 import com.zpi.slowomir.overlay.executors.TextEditExecutor
 import com.zpi.slowomir.overlay.ui.common.OverlayHostProvider
-import com.zpi.slowomir.touch.TouchExecutor
+import com.zpi.slowomir.overlay.executors.TouchExecutor
 import com.zpi.slowomir.overlay.ui.voice.VoiceOverlayManager
 import com.zpi.slowomir.voice.mediator.CommandMediator
 import com.zpi.slowomir.voice.VoiceSessionManager
@@ -54,6 +54,8 @@ class CommandExecutorService : AccessibilityService() {
     lateinit var gridExecutor: GridExecutor
 
     // Executors for different modules
+    var touchExecutor: TouchExecutor? = null
+        private set
 
     var macroExecutor: MacroExecutor? = null
         private set
@@ -69,9 +71,6 @@ class CommandExecutorService : AccessibilityService() {
 
     var textEditExecutor: TextEditExecutor? = null
         private set
-    var touchExecutor: TouchExecutor? = null
-        private set
-
 
     var phoneCallExecutor: PhoneCallExecutor? = null
         private set
@@ -84,17 +83,15 @@ class CommandExecutorService : AccessibilityService() {
     override fun onServiceConnected() {
         super.onServiceConnected()
 
-        touchExecutor = TouchExecutor(this)
         overlayHostProvider.useAccessibility(this)
 
-        gridExecutor.attachService(this)
         // Ensure soft keyboard mode is restored to AUTO so system input is not globally suppressed
         softKeyboardController.setShowMode(SHOW_MODE_AUTO)
         val touch = TouchExecutor(this)
         touchExecutor = touch
         macroExecutor = MacroExecutor(this)
         mediaExecutor = MediaExecutor(this)
-        navigationExecutor = NavigationExecutor(this, touchExecutor!!)
+        navigationExecutor = NavigationExecutor(this, touch)
         predictionExecutor = PredictionExecutor(this)
         textEditExecutor = TextEditExecutor(this)
         phoneCallExecutor = PhoneCallExecutor(this, touch)
@@ -128,7 +125,6 @@ class CommandExecutorService : AccessibilityService() {
         navigationExecutor = null
         predictionExecutor = null
         textEditExecutor = null
-        gridExecutor.detachService()
         phoneCallExecutor = null
     }
 }

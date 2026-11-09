@@ -3,8 +3,8 @@ package com.zpi.slowomir.overlay.commands.touch
 import com.zpi.slowomir.overlay.OverlayContext
 import com.zpi.slowomir.overlay.commands.Command
 import com.zpi.slowomir.overlay.commands.CommandResult
-import com.zpi.slowomir.touch.TouchExecutor
-import com.zpi.slowomir.touch.TouchExecutor.Companion.DEFAULT_HOLD_DURATION
+import com.zpi.slowomir.overlay.executors.TouchExecutor
+import com.zpi.slowomir.overlay.executors.TouchExecutor.Companion.DEFAULT_HOLD_DURATION
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject

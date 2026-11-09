@@ -1,35 +1,8 @@
 package com.zpi.slowomir.voice
 
-import android.R.attr.x
-import android.R.attr.y
 import android.util.Log
 import com.zpi.slowomir.overlay.commands.Command
 import com.zpi.slowomir.overlay.commands.CommandIdentifier
-import com.zpi.slowomir.overlay.commands.LogCommand
-import com.zpi.slowomir.overlay.commands.touch.TapCommand
-import com.zpi.slowomir.overlay.commands.navigation.LockScreenCommand
-import com.zpi.slowomir.overlay.commands.navigation.NavigateBackCommand
-import com.zpi.slowomir.overlay.commands.navigation.NavigateHomeCommand
-import com.zpi.slowomir.overlay.commands.navigation.NavigateRecentCommand
-import com.zpi.slowomir.overlay.commands.navigation.NotificationsCommand
-import com.zpi.slowomir.overlay.commands.navigation.QuickSettingsCommand
-import com.zpi.slowomir.overlay.commands.navigation.ScreenshotCommand
-import com.zpi.slowomir.overlay.commands.navigation.SwipeDownCommand
-import com.zpi.slowomir.overlay.commands.navigation.SwipeLeftCommand
-import com.zpi.slowomir.overlay.commands.navigation.SwipeRightCommand
-import com.zpi.slowomir.overlay.commands.navigation.SwipeUpCommand
-import com.zpi.slowomir.overlay.commands.navigation.ZoomInCommand
-import com.zpi.slowomir.overlay.commands.navigation.ZoomOutCommand
-import com.zpi.slowomir.overlay.commands.phoneCalls.CallCommand
-import com.zpi.slowomir.overlay.commands.phoneCalls.DeclineCommand
-import com.zpi.slowomir.overlay.commands.phoneCalls.EndCommand
-import com.zpi.slowomir.overlay.commands.phoneCalls.PickUpCommand
-import com.zpi.slowomir.overlay.commands.phoneCalls.SpeakerCommand
-import com.zpi.slowomir.overlay.commands.phoneCalls.WriteSMSCommand
-import com.zpi.slowomir.overlay.commands.textEdit.KeyboardHideCommand
-import com.zpi.slowomir.overlay.commands.textEdit.KeyboardShowCommand
-import com.zpi.slowomir.overlay.services.CommandExecutorService
-import com.zpi.slowomir.utils.ContactOption
 import com.zpi.slowomir.overlay.commands.CommandResult
 import com.zpi.slowomir.voice.mediator.CommandMediator
 import com.zpi.slowomir.voice.stt.InternalEvent
@@ -133,9 +106,11 @@ class VoiceSessionManager @Inject constructor(
                     is ContactSelectionSpeechResult.Selected -> {
                         inbox.send(InternalEvent.IntentParsed(result.intent, result.command))
                     }
+
                     is ContactSelectionSpeechResult.Cancelled -> {
                         inbox.send(InternalEvent.IntentFailed(result.rawText))
                     }
+
                     is ContactSelectionSpeechResult.Unrecognized -> {
                         inbox.send(InternalEvent.IntentFailed(result.rawText))
                     }
@@ -167,7 +142,12 @@ class VoiceSessionManager @Inject constructor(
             mediator.handleEvent(OverlayEvent.CommandInterpreted(command))
             val returnToKws = intent.identifier == CommandIdentifier.OVERLAY_STOP
 
-            inbox.send(InternalEvent.CommandFinished(CommandResult.Success(), returnToKws = returnToKws))
+            inbox.send(
+                InternalEvent.CommandFinished(
+                    CommandResult.Success(),
+                    returnToKws = returnToKws
+                )
+            )
         }
     }
 

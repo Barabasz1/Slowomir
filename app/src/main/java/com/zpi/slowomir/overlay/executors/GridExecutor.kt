@@ -2,9 +2,11 @@ package com.zpi.slowomir.overlay.executors
 
 import com.zpi.slowomir.overlay.ui.grid.GridView
 import android.accessibilityservice.AccessibilityService
+import android.content.Context
 import android.content.Context.WINDOW_SERVICE
 import android.graphics.PixelFormat
 import android.view.Gravity
+import android.view.View
 import android.view.WindowManager
 import com.zpi.slowomir.overlay.commands.Command
 import com.zpi.slowomir.overlay.commands.touch.LongTapCommand
@@ -15,9 +17,11 @@ import com.zpi.slowomir.overlay.commands.touch.SwipeLeftCommand
 import com.zpi.slowomir.overlay.commands.touch.SwipeRightCommand
 import com.zpi.slowomir.overlay.commands.touch.SwipeUpCommand
 import com.zpi.slowomir.overlay.commands.touch.TapCommand
-import com.zpi.slowomir.touch.TouchExecutor.Companion.DEFAULT_HOLD_DURATION
-import com.zpi.slowomir.touch.TouchExecutor.Companion.DEFAULT_PINCH_POWER
-import com.zpi.slowomir.touch.TouchExecutor.Companion.DEFAULT_SWIPE_DISTANCE
+import com.zpi.slowomir.overlay.executors.TouchExecutor.Companion.DEFAULT_HOLD_DURATION
+import com.zpi.slowomir.overlay.executors.TouchExecutor.Companion.DEFAULT_PINCH_POWER
+import com.zpi.slowomir.overlay.executors.TouchExecutor.Companion.DEFAULT_SWIPE_DISTANCE
+import com.zpi.slowomir.overlay.ui.common.OverlayHostProvider
+import com.zpi.slowomir.overlay.ui.common.OverlayWindowManager
 import com.zpi.slowomir.utils.ScreenPoint
 import com.zpi.slowomir.voice.mediator.CommandMediator
 import javax.inject.Inject
@@ -25,6 +29,7 @@ import javax.inject.Singleton
 
 @Singleton
 class GridExecutor @Inject constructor(
+    hostProvider: OverlayHostProvider,
     private val mediator: CommandMediator,
     private val tapCommandFactory: TapCommand.Factory,
     private val longTapCommandFactory: LongTapCommand.Factory,
@@ -34,28 +39,66 @@ class GridExecutor @Inject constructor(
     private val swipeUpCommandFactory: SwipeUpCommand.Factory,
     private val pinchInCommandFactory: PinchInCommand.Factory,
     private val pinchOutCommandFactory: PinchOutCommand.Factory,
-) {
+) : OverlayWindowManager(hostProvider) {
+
+    override val tag = "GridManager"
+
     companion object {
         const val DEFAULT_ROWS = 10
         const val DEFAULT_COLS = 6
     }
 
-    private var accessibilityService: AccessibilityService? = null
     private var gridView: GridView? = null
     private var parentCell: Int? = null
     private val divisions = mutableListOf<Pair<Int, Int>>()
     private var selectedCell: Int? = null
 
-    fun attachService(accessibilityService: AccessibilityService) {
-        this.accessibilityService = accessibilityService
+    override fun onCreateView(context: Context): View {
+        return GridView(
+            context = context,
+            rows = 10,
+            cols = 6,
+            lineOpacity = 180,
+            labelOpacity = 220,
+            overlayOpacity = 0,
+            lineWidthPx = 2f,
+            labelTextSizePx = 32f
+        )
     }
 
-    fun detachService() {
-        this.accessibilityService = null
+    override fun onCreateLayoutParams(windowType: Int): WindowManager.LayoutParams {
+        return WindowManager.LayoutParams(
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.MATCH_PARENT,
+            windowType,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                    WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+            PixelFormat.TRANSLUCENT
+        ).apply {
+            gravity = Gravity.TOP or Gravity.START
+        }
+    }
+
+    override fun onViewAttached(view: View) {
+        gridView = view as GridView
+        redraw()
+    }
+
+    override fun onViewDetached(view: View) {
+        if (gridView === view) {
+            gridView = null
+        }
+    }
+
+    override fun toggle(): Boolean {
+        if (isEnabled()) disable() else enable()
+        return isEnabled()
     }
 
     fun isEnabled(): Boolean {
-        return gridView != null
+        return isShowing
     }
 
     fun isCellSelected(): Boolean {
@@ -67,59 +110,25 @@ class GridExecutor @Inject constructor(
     }
 
     fun enable() {
-        if (gridView != null) return
-        val service = accessibilityService ?: return
-
-        val windowManager =
-            service.getSystemService(WINDOW_SERVICE) as WindowManager
-
-        val grid = GridView(
-            context = service,
-            rows = DEFAULT_ROWS,
-            cols = DEFAULT_COLS
-        )
-
-        val params = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.MATCH_PARENT,
-            WindowManager.LayoutParams.MATCH_PARENT,
-            WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                    WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
-                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
-            PixelFormat.TRANSLUCENT
-        ).apply {
-            gravity = Gravity.TOP or Gravity.START
-        }
-
-        windowManager.addView(grid, params)
-        gridView = grid
-        selectedCell = null
-        redraw()
+        if (isEnabled()) return
+        resetSelection()
+        show()
     }
 
     fun disable() {
-        val service = accessibilityService
-        if (service != null) {
-            val windowManager =
-                service.getSystemService(WINDOW_SERVICE) as WindowManager
-            gridView?.let { windowManager.removeView(it) }
-        }
-
+        hide()
         gridView = null
+        resetSelection()
+    }
+
+    fun resetSelection() {
         parentCell = null
         selectedCell = null
         divisions.clear()
-    }
-
-    fun toggle() {
-        if (gridView == null) enable() else disable()
     }
 
     fun reset() {
-        selectedCell = null
-        parentCell = null
-        divisions.clear()
+        resetSelection()
         redraw()
     }
 
@@ -161,6 +170,11 @@ class GridExecutor @Inject constructor(
 
     fun divide(n: Int): Boolean {
         return selectedCell != null && divide(selectedCell!!, n)
+    }
+
+    fun undivide(): Boolean {
+        resetSelection()
+        return true
     }
 
     fun getTouchCoords(cell: Int): ScreenPoint {

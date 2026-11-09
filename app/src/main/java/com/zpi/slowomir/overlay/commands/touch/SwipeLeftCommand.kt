@@ -3,7 +3,8 @@ package com.zpi.slowomir.overlay.commands.touch
 import com.zpi.slowomir.overlay.OverlayContext
 import com.zpi.slowomir.overlay.commands.Command
 import com.zpi.slowomir.overlay.commands.CommandResult
-import com.zpi.slowomir.touch.TouchExecutor
+import com.zpi.slowomir.overlay.executors.TouchExecutor
+import com.zpi.slowomir.overlay.executors.TouchExecutor.Companion.DEFAULT_SWIPE_DISTANCE
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -13,7 +14,7 @@ class SwipeLeftCommand @AssistedInject constructor(
     private val touchExecutorProvider: Provider<TouchExecutor?>,
     @Assisted("x") private val x: Float,
     @Assisted("y") private val y: Float,
-    @Assisted("distance") private val distance: Float,
+    @Assisted("distance") private val distance: Float = DEFAULT_SWIPE_DISTANCE,
 ) : Command {
 
     override fun execute(): CommandResult {
@@ -33,8 +34,8 @@ class SwipeLeftCommand @AssistedInject constructor(
         fun create(
             @Assisted("x") x: Float,
             @Assisted("y") y: Float,
-            @Assisted("distance") distance: Float,
+            @Assisted("distance") distance: Float = DEFAULT_SWIPE_DISTANCE,
 
-        ): SwipeLeftCommand
+            ): SwipeLeftCommand
     }
 }
