@@ -1,4 +1,4 @@
-package com.zpi.slowomir.ui.screens.HomeScreen
+package com.zpi.slowomir.ui.screens.dev
 
 import android.Manifest
 import android.content.Intent
@@ -48,8 +48,8 @@ import com.zpi.slowomir.voice.OverlayState
 import com.zpi.slowomir.voice.stt.VoiceState
 
 @Composable
-fun HomeScreen(
-    viewModel: HomeViewModel,
+fun DevScreen(
+    viewModel: DevViewModel,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current

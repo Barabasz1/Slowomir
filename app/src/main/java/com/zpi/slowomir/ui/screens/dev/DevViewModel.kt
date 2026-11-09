@@ -1,4 +1,4 @@
-package com.zpi.slowomir.ui.screens.HomeScreen
+package com.zpi.slowomir.ui.screens.dev
 
 import android.content.Context
 import androidx.lifecycle.ViewModel
@@ -25,7 +25,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
-class HomeViewModel @Inject constructor(
+class DevViewModel @Inject constructor(
     private val mediator: CommandMediator,
     private val tapCommandFactory: TapCommand.Factory,
     private val toggleGridCommandFactory: ToggleGridCommand.Factory,
