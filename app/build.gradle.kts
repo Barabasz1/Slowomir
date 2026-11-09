@@ -67,6 +67,7 @@ val mockitoAgent = configurations.create("mockitoAgent") {
 }
 
 dependencies {
+    implementation("androidx.compose.material:material-icons-core")
     implementation(libs.onnxruntime.android)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)

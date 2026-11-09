@@ -1,5 +1,5 @@
 [versions]
-agp = "9.5.1"
+agp = "9.4.1"
 coreKtx = "1.19.1"
 hiltAndroid = "2.60.1"
 hiltCompiler = "2.60.1"
