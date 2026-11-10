@@ -1,4 +1,4 @@
-package com.zpi.slowomir.ui.screens.dev
+package com.zpi.slowomir.ui.screens.viewmodel
 
 import android.content.Context
 import androidx.lifecycle.ViewModel
@@ -14,7 +14,9 @@ import com.zpi.slowomir.voice.mediator.CommandMediator
 import com.zpi.slowomir.voice.mediator.MediatorState
 import com.zpi.slowomir.voice.stt.VoiceInput
 import com.zpi.slowomir.voice.stt.VoiceState
+import com.zpi.slowomir.utils.PreferencesManager
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -25,7 +27,9 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
-class DevViewModel @Inject constructor(
+class MainViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
+    private val preferencesManager: PreferencesManager,
     private val mediator: CommandMediator,
     private val tapCommandFactory: TapCommand.Factory,
     private val toggleGridCommandFactory: ToggleGridCommand.Factory,
@@ -44,20 +48,21 @@ class DevViewModel @Inject constructor(
         .map { it !is VoiceState.Stopped && it !is VoiceState.Failed }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
-    private val _isOverlayEnabled = MutableStateFlow(true)
-    val isOverlayEnabled: StateFlow<Boolean> = _isOverlayEnabled.asStateFlow()
+    val isOverlayEnabled: StateFlow<Boolean> = preferencesManager.isOverlayEnabled
+    val isOnboardingCompleted: StateFlow<Boolean> = preferencesManager.isOnboardingCompleted
+    val showIntroHighlight: StateFlow<Boolean> = preferencesManager.showIntroHighlight
 
     init {
         contactPickerOverlayManager.start()
         viewModelScope.launch {
-            if (_isOverlayEnabled.value) {
+            if (isOverlayEnabled.value) {
                 voiceOverlayManager.showOverlay()
             }
         }
     }
 
     fun setOverlayEnabled(enabled: Boolean) {
-        _isOverlayEnabled.value = enabled
+        preferencesManager.setOverlayEnabled(enabled)
         viewModelScope.launch {
             if (enabled) {
                 voiceOverlayManager.showOverlay()
@@ -67,16 +72,24 @@ class DevViewModel @Inject constructor(
         }
     }
 
-    fun startVoiceService(context: Context) {
+    fun completeOnboarding() {
+        preferencesManager.setOnboardingCompleted(true)
+    }
+
+    fun dismissIntroHighlight() {
+        preferencesManager.setIntroHighlightShown(false)
+    }
+
+    fun startVoiceService() {
         VoiceRecognitionService.start(context)
-        if (_isOverlayEnabled.value) {
+        if (isOverlayEnabled.value) {
             viewModelScope.launch {
                 voiceOverlayManager.showOverlay()
             }
         }
     }
 
-    fun stopVoiceService(context: Context) {
+    fun stopVoiceService() {
         VoiceRecognitionService.stop(context)
     }
 

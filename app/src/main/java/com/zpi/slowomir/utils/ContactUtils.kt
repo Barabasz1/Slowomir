@@ -66,7 +66,6 @@ class ContactUtils @Inject constructor() {
             .joinToString(" ")
         if (query.isBlank()) return ContactLookupResult.EmptyQuery
 
-        // Sam numer: nie szukamy w kontaktach.
         if (PHONE_CHARS.matches(query)) {
             return ContactLookupResult.Found(null, query.filter { it.isDigit() || it == '+' })
         }
