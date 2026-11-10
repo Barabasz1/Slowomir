@@ -3,7 +3,6 @@ package com.zpi.slowomir.overlay.ui.voice
 import android.content.Context
 import android.content.res.Resources
 import android.graphics.PixelFormat
-import android.util.Log
 import android.view.Gravity
 import android.view.View
 import android.view.WindowManager
@@ -14,84 +13,65 @@ import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.lifecycle.setViewTreeViewModelStoreOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.zpi.slowomir.overlay.commands.CommandIdentifier
-import com.zpi.slowomir.overlay.ui.ContactPickerView
 import com.zpi.slowomir.overlay.ui.common.OverlayHostProvider
 import com.zpi.slowomir.overlay.ui.common.OverlayLifecycleOwner
 import com.zpi.slowomir.overlay.ui.common.OverlayWindowManager
 import com.zpi.slowomir.ui.theme.SłowomirTheme
-import com.zpi.slowomir.utils.ContactOption
-import com.zpi.slowomir.voice.ContactSelectionManager
-import com.zpi.slowomir.voice.mediator.CommandMediator
+import com.zpi.slowomir.voice.VoiceSessionManager
+import com.zpi.slowomir.voice.selection.Selection
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlin.time.Duration.Companion.milliseconds
 
 @Singleton
-class ContactPickerOverlayManager @Inject constructor(
-    private val mediator: CommandMediator,
-    private val contactSelectionManager: ContactSelectionManager,
+class PickerOverlayManager @Inject constructor(
+    private val voiceSessionManager: VoiceSessionManager,
     hostProvider: OverlayHostProvider
 ) : OverlayWindowManager(hostProvider) {
 
-    override val tag = "ContactPickerOverlay"
+    override val tag = "SelectionPickerOverlay"
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-    private var observeJob: Job? = null
-    private var timeoutJob: Job? = null
     private var lifecycleOwner: OverlayLifecycleOwner? = null
 
     private data class PickerState(
-        val options: List<ContactOption> = emptyList(),
+        val options: List<PickerOption> = emptyList(),
         val action: CommandIdentifier? = null,
     )
 
     private val _pickerState = MutableStateFlow(PickerState())
 
-    fun start() {
-        if (observeJob != null) return
-        observeJob = scope.launch {
-            mediator.mediatorState
-                .map { it.contactSelection to it.contactSelectionAction }
-                .distinctUntilChanged()
-                .collect { (options, action) ->
-                    if (options.isNullOrEmpty()) {
-                        hide()
-                    } else {
-                        showOptions(options, action)
-                    }
-                }
+    init {
+        scope.launch {
+            voiceSessionManager.selection.collect(::onSelectionChanged)
         }
     }
 
-    fun stop() {
-        observeJob?.cancel()
-        observeJob = null
-        _pickerState.value = PickerState()
-        hide()
+    private fun onSelectionChanged(selection: Selection?) {
+        val options = when (selection) {
+            is Selection.Contact -> selection.options.map { PickerOption(it.name) }
+            is Selection.Application -> selection.options.map { PickerOption(it.name, it.icon) }
+            null -> emptyList()
+        }
+
+        if (selection == null || options.isEmpty()) {
+            hide()
+        } else {
+            showOptions(options, selection.pending.identifier)
+        }
     }
 
-    private fun showOptions(options: List<ContactOption>, action: CommandIdentifier?) {
+    private fun showOptions(options: List<PickerOption>, action: CommandIdentifier?) {
         hide()
 
         _pickerState.value = PickerState(options = options, action = action)
 
         if (!show()) {
-            contactSelectionManager.cancelSelection()
-        }
-
-        timeoutJob = scope.launch {
-            delay(TIMEOUT_MS.milliseconds)
-            Log.i(tag, "Contact selection timed out")
-            contactSelectionManager.cancelSelection()
+            voiceSessionManager.cancelSelection()
         }
     }
 
@@ -101,6 +81,8 @@ class ContactPickerOverlayManager @Inject constructor(
             onStart()
         }
 
+        lifecycleOwner = lifecycle
+
         return ComposeView(context).apply {
             setViewTreeLifecycleOwner(lifecycle)
             setViewTreeViewModelStoreOwner(lifecycle)
@@ -109,11 +91,11 @@ class ContactPickerOverlayManager @Inject constructor(
             setContent {
                 val state by _pickerState.collectAsState()
                 SłowomirTheme {
-                    ContactPickerView(
+                    SelectionPickerView(
                         options = state.options,
                         action = state.action,
-                        onSelect = { index -> contactSelectionManager.selectContact(index) },
-                        onCancel = { contactSelectionManager.cancelSelection() },
+                        onSelect = { index -> voiceSessionManager.selectOption(index) },
+                        onCancel = { voiceSessionManager.cancelSelection() },
                     )
                 }
             }
@@ -135,24 +117,12 @@ class ContactPickerOverlayManager @Inject constructor(
         }
     }
 
-    override fun onViewAttached(view: View) {
-        timeoutJob?.cancel()
-        timeoutJob = scope.launch {
-            delay(TIMEOUT_MS.milliseconds)
-            Log.i(tag, "Contact selection timed out")
-            contactSelectionManager.cancelSelection()
-        }
-    }
-
     override fun onViewDetached(view: View) {
-        timeoutJob?.cancel()
-        timeoutJob = null
         lifecycleOwner?.onDestroy()
         lifecycleOwner = null
     }
 
     companion object {
-        private const val TIMEOUT_MS = 15_000L
         private const val WIDTH_FRACTION = 0.9f
     }
 }

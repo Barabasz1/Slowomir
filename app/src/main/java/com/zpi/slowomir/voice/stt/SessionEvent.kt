@@ -21,6 +21,8 @@ internal sealed interface InternalEvent : SessionEvent {
     data class IntentParsed(val intent: VoiceIntent, val command: Command) : InternalEvent
     data class IntentFailed(val text: String) : InternalEvent
     data class CommandFinished(val result: CommandResult, val returnToKws: Boolean = false) : InternalEvent
+    data class SelectionPicked(val index: Int) : InternalEvent
+    data object SelectionCancelled : InternalEvent
 }
 
 interface VoiceInputSink { fun accept(input: VoiceInput) }

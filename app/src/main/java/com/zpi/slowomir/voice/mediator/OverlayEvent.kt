@@ -14,6 +14,9 @@ sealed interface OverlayEvent {
     data class CommandInterpreted(val command: Command) : OverlayEvent
     data class InvalidCommand(val text: String) : OverlayEvent
 
-    /** The contact picker was closed (a contact was chosen, cancelled or timed out). */
-    object SelectionCleared : OverlayEvent
+    /** The intent is ambiguous and the user has to choose an option. */
+    object AwaitingSelection : OverlayEvent
+
+    /** The intent's argument could not be resolved (e.g. contact not found). */
+    data class CommandRejected(val reason: String) : OverlayEvent
 }

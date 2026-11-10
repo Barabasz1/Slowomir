@@ -40,6 +40,7 @@ class CommandResolver @Inject constructor(
     private val zoomOutNavCommandFactory: ZoomOutNavCommand.Factory,
     private val volumeUpCommandFactory: VolumeUpCommand.Factory,
     private val volumeDownCommandFactory: VolumeDownCommand.Factory,
+    private val openAppCommandFactory: OpenAppCommand.Factory,
     private val enableGridCommandFactory: EnableGridCommand.Factory,
     private val disableGridCommandFactory: EnableGridCommand.Factory,
     private val resetGridCommandFactory: ResetGridCommand.Factory,
@@ -61,6 +62,9 @@ class CommandResolver @Inject constructor(
         CommandIdentifier.NAVIGATE_HOME -> navigateHomeCommandFactory.create()
         CommandIdentifier.NAVIGATE_RECENT -> navigateRecentCommandFactory.create()
         CommandIdentifier.NAVIGATE_BACK -> navigateBackCommandFactory.create()
+        // NAVIGATE_APP_OPEN
+        CommandIdentifier.NAVIGATE_APP_OPEN -> openAppCommandFactory.create(intent.textArgument())
+
 
         // Grid
 
@@ -110,19 +114,9 @@ class CommandResolver @Inject constructor(
         CommandIdentifier.VOLUME_UP -> volumeUpCommandFactory.create()
         CommandIdentifier.VOLUME_DOWN -> volumeDownCommandFactory.create()
 
-        // NAVIGATE_APP_OPEN
         else -> LogCommand(intent.identifier, intent.argument)
     }
 
-    /** Used when the user picks a contact from the selection list. */
-    fun createCall(recipient: String?): Command =
-        callCommandFactory.create(recipient = recipient)
-
-    /** Used when the user picks a contact from the selection list for SMS writing. */
-    fun createWriteSMS(recipient: String?): Command =
-        writeSMSCommandFactory.create(recipient = recipient)
-
-    // ---- helpers ----
 
     private fun VoiceIntent.textArgument(): String? =
         (argument as? CommandArgument.Text)?.value

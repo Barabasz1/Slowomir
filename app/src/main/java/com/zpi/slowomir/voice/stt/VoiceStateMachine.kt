@@ -30,6 +30,7 @@ internal object VoiceStateMachine {
                     else VoiceState.Listening()
                 }
                 VoiceInput.EnableKwsMode -> VoiceState.KeywordSpotting
+                is InternalEvent.IntentParsed -> VoiceState.CommandExecuting(intent = event.intent, command = event.command)
                 else -> state
             }
 

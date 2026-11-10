@@ -5,6 +5,10 @@ import com.zpi.slowomir.overlay.commands.Command
 import com.zpi.slowomir.overlay.commands.CommandIdentifier
 import com.zpi.slowomir.overlay.commands.CommandResult
 import com.zpi.slowomir.voice.mediator.CommandMediator
+import com.zpi.slowomir.voice.selection.SelectionResult
+import com.zpi.slowomir.voice.selection.Selection
+import com.zpi.slowomir.voice.selection.SelectionManager
+import com.zpi.slowomir.voice.selection.SelectionSpeechResult
 import com.zpi.slowomir.voice.stt.InternalEvent
 import com.zpi.slowomir.voice.stt.SessionEvent
 import com.zpi.slowomir.voice.stt.VoiceInput
@@ -31,8 +35,10 @@ class VoiceSessionManager @Inject constructor(
     private val mediator: CommandMediator,
     private val intentParser: CommandIntentParser,
     private val commandResolver: CommandResolver,
-    private val contactSelectionManager: ContactSelectionManager,
+    private val selectionManager: SelectionManager,
 ) : VoiceInputSink, VoiceStateSource {
+
+    val selection: StateFlow<Selection?> = selectionManager.selection
 
     private val _state = MutableStateFlow<VoiceState>(VoiceState.Stopped)
     override val state: StateFlow<VoiceState> = _state.asStateFlow()
@@ -54,6 +60,14 @@ class VoiceSessionManager @Inject constructor(
 
             is VoiceInput.KeywordDetected -> {
                 mediator.handleEvent(OverlayEvent.WakeWordDetected)
+            }
+
+            is InternalEvent.SelectionPicked -> {
+                selectionManager.choose(input.index)?.let { proceed(it) }
+            }
+
+            is InternalEvent.SelectionCancelled -> {
+                selectionManager.cancel()
             }
 
             else -> {}
@@ -101,19 +115,13 @@ class VoiceSessionManager @Inject constructor(
         scope.launch {
             mediator.handleEvent(OverlayEvent.ProcessingCommand(text))
 
-            if (mediator.mediatorState.value.contactSelection != null) {
-                when (val result = contactSelectionManager.handleSpeech(text)) {
-                    is ContactSelectionSpeechResult.Selected -> {
-                        inbox.send(InternalEvent.IntentParsed(result.intent, result.command))
-                    }
+            Log.d(TAG, "Parsing '$text' (selection active: ${selectionManager.isActive})")
 
-                    is ContactSelectionSpeechResult.Cancelled -> {
-                        inbox.send(InternalEvent.IntentFailed(result.rawText))
-                    }
-
-                    is ContactSelectionSpeechResult.Unrecognized -> {
-                        inbox.send(InternalEvent.IntentFailed(result.rawText))
-                    }
+            if (selectionManager.isActive) {
+                when (val result = selectionManager.handleSpeech(text)) {
+                    is SelectionSpeechResult.Chosen -> proceed(result.intent)
+                    is SelectionSpeechResult.Cancelled -> inbox.send(InternalEvent.IntentFailed(result.rawText))
+                    is SelectionSpeechResult.Ignored -> inbox.send(InternalEvent.IntentFailed(result.rawText))
                 }
                 return@launch
             }
@@ -126,9 +134,30 @@ class VoiceSessionManager @Inject constructor(
                 return@launch
             }
 
-            val command = commandResolver.resolve(intent)
-            inbox.send(InternalEvent.IntentParsed(intent, command))
+            if (intent.identifier in SELECTABLE_INTENTS) {
+                when (val result = selectionManager.begin(intent)) {
+                    is SelectionResult.Resolved -> proceed(result.intent)
+                    is SelectionResult.Pending -> {
+                        mediator.handleEvent(OverlayEvent.AwaitingSelection)
+                        inbox.send(InternalEvent.IntentFailed(text))
+                    }
+                    is SelectionResult.Failed -> {
+                        mediator.handleEvent(OverlayEvent.CommandRejected(result.reason))
+                        inbox.send(InternalEvent.IntentFailed(text))
+                    }
+                }
+                return@launch
+            }
+
+            proceed(intent)
         }
+    }
+
+    /**
+     * Turns a complete intent into a command and moves the session on to executing it.
+     */
+    private suspend fun proceed(intent: VoiceIntent) {
+        inbox.send(InternalEvent.IntentParsed(intent, commandResolver.resolve(intent)))
     }
 
     /**
@@ -142,29 +171,24 @@ class VoiceSessionManager @Inject constructor(
             mediator.handleEvent(OverlayEvent.CommandInterpreted(command))
             val returnToKws = intent.identifier == CommandIdentifier.OVERLAY_STOP
 
-            inbox.send(
-                InternalEvent.CommandFinished(
-                    CommandResult.Success(),
-                    returnToKws = returnToKws
-                )
-            )
+            inbox.send(InternalEvent.CommandFinished(CommandResult.Success(), returnToKws = returnToKws))
         }
     }
 
     /**
-     * Selects a contact (delegates to [ContactSelectionManager]).
+     * Picks an option of the pending selection.
      *
-     * @param index The index of the contact to select.
+     * @param index The 1-based index of the chosen option.
      */
-    fun selectContact(index: Int) {
-        contactSelectionManager.selectContact(index)
+    fun selectOption(index: Int) {
+        inbox.trySend(InternalEvent.SelectionPicked(index))
     }
 
     /**
-     * Cancels the current contact selection (delegates to [ContactSelectionManager]).
+     * Cancels the pending selection.
      */
     fun cancelSelection() {
-        contactSelectionManager.cancelSelection()
+        inbox.trySend(InternalEvent.SelectionCancelled)
     }
 
     override fun accept(input: VoiceInput) {
@@ -173,5 +197,11 @@ class VoiceSessionManager @Inject constructor(
 
     companion object {
         private const val TAG = "VoiceSessionManager"
+
+        private val SELECTABLE_INTENTS = setOf(
+            CommandIdentifier.PHONE_CALL,
+            CommandIdentifier.SMS_WRITE,
+            CommandIdentifier.NAVIGATE_APP_OPEN
+        )
     }
 }
