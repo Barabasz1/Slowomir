@@ -17,11 +17,14 @@ class TouchExecutor(
         const val DEFAULT_HOLD_DURATION: Long = 1000L
         const val DEFAULT_SWIPE_HOLD_DURATION: Long = 200L
         const val DEFAULT_PINCH_HOLD_DURATION: Long = 200L
-        const val DEFAULT_SWIPE_DISTANCE: Float = 50f
+        const val DEFAULT_SWIPE_DISTANCE: Float = 0f
         const val DEFAULT_PINCH_POWER: Float = 10f
+        const val SWIPE_RATIO: Float = 0.7f
+        const val PINCH_MIN_GAP_RATIO: Float = 0.05f
+        const val PINCH_MAX_GAP_RATIO: Float = 0.25f
+        const val MOVE_DURATION_MS: Long = 350L
+        const val HOLD_DURATION_MS: Long = 150L
         private const val SHORT_TAP_DURATION: Long = 20L
-        private const val MOVE_DURATION_MS: Long = 350L
-        private const val HOLD_DURATION_MS: Long = 150L
     }
 
     fun doGesture(gesture: GestureDescription): Boolean {
@@ -127,77 +130,89 @@ class TouchExecutor(
     fun swipeUp(
         startX: Float,
         startY: Float,
-        distance: Float = DEFAULT_SWIPE_DISTANCE,
-        duration: Long = DEFAULT_SWIPE_HOLD_DURATION,
-        startTime: Long = DEFAULT_START_TIME
+        distance: Float? = null,
+        moveDuration: Long = MOVE_DURATION_MS,
+        holdDuration: Long = HOLD_DURATION_MS
     ): Boolean {
-        return swipe(startX, startY, startX, startY - distance, duration, startTime)
+        val height = service.resources.displayMetrics.heightPixels.toFloat()
+        val swipeDistance = if (distance != null && distance > 0f) distance else (height * SWIPE_RATIO)
+        val endY = (startY - swipeDistance).coerceAtLeast(0f)
+        return performSwipeWithHold(startX, startY, startX, endY, moveDuration, holdDuration)
     }
 
     fun swipeUp(
         point: ScreenPoint,
-        distance: Float = DEFAULT_SWIPE_DISTANCE,
-        duration: Long = DEFAULT_SWIPE_HOLD_DURATION,
-        startTime: Long = DEFAULT_START_TIME
+        distance: Float? = null,
+        moveDuration: Long = MOVE_DURATION_MS,
+        holdDuration: Long = HOLD_DURATION_MS
     ): Boolean {
-        return swipeUp(point.x, point.y, distance, duration, startTime)
+        return swipeUp(point.x, point.y, distance, moveDuration, holdDuration)
     }
 
     fun swipeDown(
         startX: Float,
         startY: Float,
-        distance: Float = DEFAULT_SWIPE_DISTANCE,
-        duration: Long = DEFAULT_SWIPE_HOLD_DURATION,
-        startTime: Long = DEFAULT_START_TIME
+        distance: Float? = null,
+        moveDuration: Long = MOVE_DURATION_MS,
+        holdDuration: Long = HOLD_DURATION_MS
     ): Boolean {
-        return swipe(startX, startY, startX, startY + distance, duration, startTime)
+        val height = service.resources.displayMetrics.heightPixels.toFloat()
+        val swipeDistance = if (distance != null && distance > 0f) distance else (height * SWIPE_RATIO)
+        val endY = (startY + swipeDistance).coerceAtMost(height)
+        return performSwipeWithHold(startX, startY, startX, endY, moveDuration, holdDuration)
     }
 
     fun swipeDown(
         point: ScreenPoint,
-        distance: Float = DEFAULT_SWIPE_DISTANCE,
-        duration: Long = DEFAULT_SWIPE_HOLD_DURATION,
-        startTime: Long = DEFAULT_START_TIME
+        distance: Float? = null,
+        moveDuration: Long = MOVE_DURATION_MS,
+        holdDuration: Long = HOLD_DURATION_MS
     ): Boolean {
-        return swipeDown(point.x, point.y, distance, duration, startTime)
+        return swipeDown(point.x, point.y, distance, moveDuration, holdDuration)
     }
 
     fun swipeRight(
         startX: Float,
         startY: Float,
-        distance: Float = DEFAULT_SWIPE_DISTANCE,
-        duration: Long = DEFAULT_SWIPE_HOLD_DURATION,
-        startTime: Long = DEFAULT_START_TIME
+        distance: Float? = null,
+        moveDuration: Long = MOVE_DURATION_MS,
+        holdDuration: Long = HOLD_DURATION_MS
     ): Boolean {
-        return swipe(startX, startY, startX + distance, startY, duration, startTime)
+        val width = service.resources.displayMetrics.widthPixels.toFloat()
+        val swipeDistance = if (distance != null && distance > 0f) distance else (width * SWIPE_RATIO)
+        val endX = (startX + swipeDistance).coerceAtMost(width)
+        return performSwipeWithHold(startX, startY, endX, startY, moveDuration, holdDuration)
     }
 
     fun swipeRight(
         point: ScreenPoint,
-        distance: Float = DEFAULT_SWIPE_DISTANCE,
-        duration: Long = DEFAULT_SWIPE_HOLD_DURATION,
-        startTime: Long = DEFAULT_START_TIME
+        distance: Float? = null,
+        moveDuration: Long = MOVE_DURATION_MS,
+        holdDuration: Long = HOLD_DURATION_MS
     ): Boolean {
-        return swipeRight(point.x, point.y, distance, duration, startTime)
+        return swipeRight(point.x, point.y, distance, moveDuration, holdDuration)
     }
 
     fun swipeLeft(
         startX: Float,
         startY: Float,
-        distance: Float = DEFAULT_SWIPE_DISTANCE,
-        duration: Long = DEFAULT_SWIPE_HOLD_DURATION,
-        startTime: Long = DEFAULT_START_TIME
+        distance: Float? = null,
+        moveDuration: Long = MOVE_DURATION_MS,
+        holdDuration: Long = HOLD_DURATION_MS
     ): Boolean {
-        return swipe(startX, startY, startX - distance, startY, duration, startTime)
+        val width = service.resources.displayMetrics.widthPixels.toFloat()
+        val swipeDistance = if (distance != null && distance > 0f) distance else (width * SWIPE_RATIO)
+        val endX = (startX - swipeDistance).coerceAtLeast(0f)
+        return performSwipeWithHold(startX, startY, endX, startY, moveDuration, holdDuration)
     }
 
     fun swipeLeft(
         point: ScreenPoint,
-        distance: Float = DEFAULT_SWIPE_DISTANCE,
-        duration: Long = DEFAULT_SWIPE_HOLD_DURATION,
-        startTime: Long = DEFAULT_START_TIME
+        distance: Float? = null,
+        moveDuration: Long = MOVE_DURATION_MS,
+        holdDuration: Long = HOLD_DURATION_MS
     ): Boolean {
-        return swipeLeft(point.x, point.y, distance, duration, startTime)
+        return swipeLeft(point.x, point.y, distance, moveDuration, holdDuration)
     }
 
     private fun pinch(
@@ -243,58 +258,75 @@ class TouchExecutor(
         centerX: Float,
         centerY: Float,
         power: Float = DEFAULT_PINCH_POWER,
-        duration: Long = DEFAULT_PINCH_HOLD_DURATION,
-        startTime: Long = DEFAULT_START_TIME
+        moveDuration: Long = MOVE_DURATION_MS,
+        holdDuration: Long = HOLD_DURATION_MS
     ): Boolean {
-        val distance = 300f * power
-        return pinch(
-            startX1 = centerX - distance, startY1 = centerY - distance,
-            destX1 = centerX - distance / 4f, destY1 = centerY - distance / 4f,
-            startX2 = centerX + distance, startY2 = centerY + distance,
-            destX2 = centerX + distance / 4f, destY2 = centerY + distance / 4f,
-            duration = duration,
-            startTime = startTime
+        val displayMetrics = service.resources.displayMetrics
+        val height = displayMetrics.heightPixels.toFloat()
+
+        val minGap = height * PINCH_MIN_GAP_RATIO
+        val maxGap = height * PINCH_MAX_GAP_RATIO
+
+        val start1Y = (centerY - maxGap).coerceIn(0f, height)
+        val end1Y = (centerY - minGap).coerceIn(0f, height)
+
+        val start2Y = (centerY + maxGap).coerceIn(0f, height)
+        val end2Y = (centerY + minGap).coerceIn(0f, height)
+
+        return performPinchWithHold(
+            start1X = centerX, start1Y = start1Y, end1X = centerX, end1Y = end1Y,
+            start2X = centerX, start2Y = start2Y, end2X = centerX, end2Y = end2Y,
+            moveDuration = moveDuration,
+            holdDuration = holdDuration
         )
     }
 
     fun pinchIn(
         center: ScreenPoint,
         power: Float = DEFAULT_PINCH_POWER,
-        duration: Long = DEFAULT_PINCH_HOLD_DURATION,
-        startTime: Long = DEFAULT_START_TIME
+        moveDuration: Long = MOVE_DURATION_MS,
+        holdDuration: Long = HOLD_DURATION_MS
     ): Boolean {
-        return pinchIn(center.x, center.y, power, duration, startTime)
+        return pinchIn(center.x, center.y, power, moveDuration, holdDuration)
     }
 
     fun pinchOut(
         centerX: Float,
         centerY: Float,
         power: Float = DEFAULT_PINCH_POWER,
-        duration: Long = DEFAULT_PINCH_HOLD_DURATION,
-        startTime: Long = DEFAULT_START_TIME
+        moveDuration: Long = MOVE_DURATION_MS,
+        holdDuration: Long = HOLD_DURATION_MS
     ): Boolean {
-        val distance = 300f * power
-        return pinch(
-            startX1 = centerX - distance / 4f, startY1 = centerY - distance / 4f,
-            destX1 = centerX - distance, destY1 = centerY - distance,
-            startX2 = centerX + distance / 4f, startY2 = centerY + distance / 4f,
-            destX2 = centerX + distance, destY2 = centerY + distance,
-            duration = duration,
-            startTime = startTime
+        val displayMetrics = service.resources.displayMetrics
+        val height = displayMetrics.heightPixels.toFloat()
+
+        val minGap = height * PINCH_MIN_GAP_RATIO
+        val maxGap = height * PINCH_MAX_GAP_RATIO
+
+        val start1Y = (centerY - minGap).coerceIn(0f, height)
+        val end1Y = (centerY - maxGap).coerceIn(0f, height)
+
+        val start2Y = (centerY + minGap).coerceIn(0f, height)
+        val end2Y = (centerY + maxGap).coerceIn(0f, height)
+
+        return performPinchWithHold(
+            start1X = centerX, start1Y = start1Y, end1X = centerX, end1Y = end1Y,
+            start2X = centerX, start2Y = start2Y, end2X = centerX, end2Y = end2Y,
+            moveDuration = moveDuration,
+            holdDuration = holdDuration
         )
     }
 
     fun pinchOut(
         center: ScreenPoint,
         power: Float = DEFAULT_PINCH_POWER,
-        duration: Long = DEFAULT_PINCH_HOLD_DURATION,
-        startTime: Long = DEFAULT_START_TIME
+        moveDuration: Long = MOVE_DURATION_MS,
+        holdDuration: Long = HOLD_DURATION_MS
     ): Boolean {
-        return pinchOut(center.x, center.y, power, duration, startTime)
+        return pinchOut(center.x, center.y, power, moveDuration, holdDuration)
     }
 
-
-    private fun performSwipeWithHold(
+    fun performSwipeWithHold(
         startX: Float,
         startY: Float,
         endX: Float,
@@ -351,7 +383,7 @@ class TouchExecutor(
     }
 
 
-    private fun performPinchWithHold(
+    fun performPinchWithHold(
         start1X: Float, start1Y: Float, end1X: Float, end1Y: Float,
         start2X: Float, start2Y: Float, end2X: Float, end2Y: Float,
         moveDuration: Long = MOVE_DURATION_MS,
