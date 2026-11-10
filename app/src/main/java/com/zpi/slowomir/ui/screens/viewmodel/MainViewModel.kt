@@ -5,7 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.zpi.slowomir.overlay.commands.CommandResult
 import com.zpi.slowomir.overlay.commands.touch.TapCommand
-import com.zpi.slowomir.overlay.commands.grid.ToggleGridCommand
+import com.zpi.slowomir.overlay.commands.grid.GridToggleCommand
 import com.zpi.slowomir.overlay.services.VoiceRecognitionService
 import com.zpi.slowomir.overlay.ui.voice.PickerOverlayManager
 import com.zpi.slowomir.overlay.ui.voice.VoiceOverlayManager
@@ -32,7 +32,7 @@ class MainViewModel @Inject constructor(
     private val preferencesManager: PreferencesManager,
     private val mediator: CommandMediator,
     private val tapCommandFactory: TapCommand.Factory,
-    private val toggleGridCommandFactory: ToggleGridCommand.Factory,
+    private val gridToggleCommandFactory: GridToggleCommand.Factory,
     private val voiceSessionManager: VoiceSessionManager,
     private val voiceOverlayManager: VoiceOverlayManager,
     pickerOverlayManager: PickerOverlayManager, // injected so it starts observing selections
@@ -114,7 +114,7 @@ class MainViewModel @Inject constructor(
 
     fun toggleGrid() {
         viewModelScope.launch {
-            val toggleGridCommand = toggleGridCommandFactory.create()
+            val toggleGridCommand = gridToggleCommandFactory.create()
             val result = mediator.dispatch(toggleGridCommand)
             _uiState.value = result
         }

@@ -11,7 +11,7 @@ import com.zpi.slowomir.overlay.commands.phoneCalls.*
 import com.zpi.slowomir.overlay.commands.grid.*
 import com.zpi.slowomir.overlay.commands.textEdit.KeyboardHideCommand
 import com.zpi.slowomir.overlay.commands.textEdit.KeyboardShowCommand
-import com.zpi.slowomir.utils.ScreenCoordinatesProvider
+import com.zpi.slowomir.overlay.commands.textEdit.KeyboardToggleCommand
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -26,6 +26,7 @@ class CommandResolver @Inject constructor(
     private val navigateBackCommandFactory: NavigateBackCommand.Factory,
     private val keyboardHideCommandFactory: KeyboardHideCommand.Factory,
     private val keyboardShowCommandFactory: KeyboardShowCommand.Factory,
+    private val keyboardToggleCommandFactory: KeyboardToggleCommand.Factory,
     private val pickUpCommandFactory: PickUpCommand.Factory,
     private val declineCommandFactory: DeclineCommand.Factory,
     private val endCommandFactory: EndCommand.Factory,
@@ -41,20 +42,19 @@ class CommandResolver @Inject constructor(
     private val volumeUpCommandFactory: VolumeUpCommand.Factory,
     private val volumeDownCommandFactory: VolumeDownCommand.Factory,
     private val openAppCommandFactory: OpenAppCommand.Factory,
-    private val enableGridCommandFactory: EnableGridCommand.Factory,
-    private val disableGridCommandFactory: EnableGridCommand.Factory,
-    private val resetGridCommandFactory: ResetGridCommand.Factory,
+    private val gridEnableCommandFactory: GridEnableCommand.Factory,
+    private val disableGridCommandFactory: GridEnableCommand.Factory,
+    private val gridToggleCommandFactory: GridToggleCommand.Factory,
+    private val gridResetCommandFactory: GridResetCommand.Factory,
     private val selectCellCommandFactory: SelectCellCommand.Factory,
     private val divideCellCommandFactory: DivideCellCommand.Factory,
     private val undivideCellCommandFactory: UndivideCellCommand.Factory,
     private val tapCellCommandFactory: TapCellCommand.Factory,
     private val longTapCellCommandFactory: LongTapCellCommand.Factory,
-    private val screenCoordinatesProvider: ScreenCoordinatesProvider,
 ) {
 
     fun resolve(intent: VoiceIntent): Command = when (intent.identifier) {
         // Navigation
-
         CommandIdentifier.NOTIFICATIONS -> notificationsCommandFactory.create()
         CommandIdentifier.QUICK_SETTINGS -> quickSettingsCommandFactory.create()
         CommandIdentifier.LOCK_SCREEN -> lockScreenCommandFactory.create()
@@ -65,13 +65,11 @@ class CommandResolver @Inject constructor(
         // NAVIGATE_APP_OPEN
         CommandIdentifier.NAVIGATE_APP_OPEN -> openAppCommandFactory.create(intent.textArgument())
 
-
         // Grid
-
-        //TODO maybe add GRID_TOGGLE command? just "siatka"
-        CommandIdentifier.GRID_SHOW -> enableGridCommandFactory.create()
+        CommandIdentifier.GRID_TOGGLE -> gridToggleCommandFactory.create()
+        CommandIdentifier.GRID_SHOW -> gridEnableCommandFactory.create()
         CommandIdentifier.GRID_HIDE -> disableGridCommandFactory.create()
-        CommandIdentifier.GRID_RESET -> resetGridCommandFactory.create()
+        CommandIdentifier.GRID_RESET -> gridResetCommandFactory.create()
         CommandIdentifier.CELL_SELECT -> {
             val arg = intent.intArgument()
             if (arg != null)
@@ -96,8 +94,9 @@ class CommandResolver @Inject constructor(
         CommandIdentifier.ZOOM_OUT -> zoomOutNavCommandFactory.create()
 
         // Text editing
-        CommandIdentifier.HIDE_KEYBOARD -> keyboardHideCommandFactory.create()
-        CommandIdentifier.SHOW_KEYBOARD -> keyboardShowCommandFactory.create()
+        CommandIdentifier.KEYBOARD_HIDE -> keyboardHideCommandFactory.create()
+        CommandIdentifier.KEYBOARD_SHOW -> keyboardShowCommandFactory.create()
+        CommandIdentifier.KEYBOARD_TOGGLE -> keyboardToggleCommandFactory.create()
 
         // Phone calls
         CommandIdentifier.PHONE_PICK_UP -> pickUpCommandFactory.create()

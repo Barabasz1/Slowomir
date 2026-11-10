@@ -8,7 +8,7 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import javax.inject.Provider
 
-class EnableGridCommand @AssistedInject constructor(
+class GridEnableCommand @AssistedInject constructor(
     private val gridExecutorProvider: Provider<GridExecutor?>
 ) : Command {
 
@@ -27,6 +27,6 @@ class EnableGridCommand @AssistedInject constructor(
     @AssistedFactory
     interface Factory {
         fun create(
-        ): EnableGridCommand
+        ): GridEnableCommand
     }
 }

@@ -93,7 +93,7 @@ class CommandExecutorService : AccessibilityService() {
         mediaExecutor = MediaExecutor(this)
         navigationExecutor = NavigationExecutor(this, touch)
         predictionExecutor = PredictionExecutor(this)
-        textEditExecutor = TextEditExecutor(this)
+        textEditExecutor = TextEditExecutor(this, touch)
         phoneCallExecutor = PhoneCallExecutor(this, touch)
         instance = this
     }

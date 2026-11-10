@@ -7,6 +7,7 @@ import android.telecom.TelecomManager
 import android.util.Log
 import android.view.accessibility.AccessibilityNodeInfo
 import androidx.core.net.toUri
+import com.zpi.slowomir.utils.AccessibilityUtils
 
 /**
  * Executes phone call related operations using system services and Accessibility UI interaction.
@@ -194,7 +195,7 @@ class PhoneCallExecutor(
 
         // 2. Comprehensive path: Full hierarchy search
         for (root in rootNodes) {
-            val target = findNode(root) { node ->
+            val target = AccessibilityUtils.findNode(root) { node ->
                 val pkg = node.packageName?.toString().orEmpty().lowercase()
                 if (!isRelevantPackage(pkg)) return@findNode false
 
@@ -247,27 +248,6 @@ class PhoneCallExecutor(
             Log.w(TAG, "Could not retrieve interactive windows", e)
         }
         return roots
-    }
-
-    /**
-     * Finds a node in the given root that matches the given predicate.
-     *
-     * @param root The root to search in.
-     * @param predicate A function that takes an [AccessibilityNodeInfo] and returns a boolean.
-     * @return The first node that matches the predicate, or null if no match is found.
-     */
-    private fun findNode(
-        root: AccessibilityNodeInfo?,
-        predicate: (AccessibilityNodeInfo) -> Boolean,
-    ): AccessibilityNodeInfo? {
-        if (root == null) return null
-        if (predicate(root)) return root
-
-        for (i in 0 until root.childCount) {
-            val child = root.getChild(i) ?: continue
-            findNode(child, predicate)?.let { return it }
-        }
-        return null
     }
 
     companion object {

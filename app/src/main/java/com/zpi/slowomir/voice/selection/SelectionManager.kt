@@ -118,6 +118,8 @@ class SelectionManager @Inject constructor(
         return cancelled
     }
 
+    var timeoutMs: Long = DEFAULT_TIMEOUT_MS
+
     /**
      * Publishes [selection] and starts its timeout.
      */
@@ -125,7 +127,7 @@ class SelectionManager @Inject constructor(
         timeoutJob?.cancel()
         _selection.value = selection
         timeoutJob = scope.launch {
-            delay(DEFAULT_TIMEOUT_MS)
+            delay(timeoutMs.milliseconds)
             val current = _selection.value
             if (current === selection && _selection.compareAndSet(current, null)) {
                 Log.i(TAG, "Selection timed out")

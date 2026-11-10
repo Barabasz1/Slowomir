@@ -119,6 +119,8 @@ class CommandIntentParser @Inject constructor(
         val noArgIdentifier = when (text) {
             "pokaż siatkę", "wyświetl siatkę", "włącz siatkę", "pokaż podział ekranu", "wyświetl pola" -> CommandIdentifier.GRID_SHOW
             "ukryj siatkę", "schowaj siatkę", "wyłącz siatkę", "usuń siatkę z ekranu", "nie pokazuj siatki" -> CommandIdentifier.GRID_HIDE
+            "siatka" -> CommandIdentifier.GRID_TOGGLE
+            "reset siatki", "zresetuj siatkę", "wyczyść podziały siatki", "przywróć siatkę", "zacznij siatkę od nowa", "resetuj siatkę" -> CommandIdentifier.GRID_RESET
             "wyłącz", "wyłącz sterowanie", "uśpij nakładkę", "zatrzymaj sterowanie głosowe", "przejdź w stan uśpienia", "uśpij" -> CommandIdentifier.OVERLAY_STOP
             "słowomirek powstań", "słowomirek obudź się", "słowomirek wstań", "słowomirek aktywuj się", "włącz sterowanie słowomirek", "powstań" -> CommandIdentifier.OVERLAY_START
             "przewiń w górę", "przesuń w górę", "przewijaj w górę", "w górę", "przesuń ekran do góry", "do góry", "przesuń góra", "góra" -> CommandIdentifier.SWIPE_UP
@@ -135,7 +137,6 @@ class CommandIntentParser @Inject constructor(
             "zablokuj", "zablokuj ekran", "zgaś i zablokuj ekran", "włącz blokadę ekranu", "zamknij ekran" -> CommandIdentifier.LOCK_SCREEN
             "zrzut ekranu", "zrób zrzut ekranu", "zrób screenshota", "zapisz zrzut ekranu", "przechwyć ekran", "screen" -> CommandIdentifier.SCREENSHOT
             "cofnij podział", "wróć do poprzedniego podziału", "usuń ostatni podział", "połącz podzielone pole" -> CommandIdentifier.CELL_UNDIVIDE
-            "reset siatki", "zresetuj siatkę", "wyczyść podziały siatki", "przywróć siatkę", "zacznij siatkę od nowa", "resetuj siatkę" -> CommandIdentifier.GRID_RESET
             "kliknij", "naciśnij", "dotknij", "wybierz zaznaczone pole", "kliknij zaznaczone", "stuknij" -> CommandIdentifier.CELL_PRESS
             "przytrzymaj", "naciśnij i przytrzymaj", "długo naciśnij", "przytrzymaj zaznaczone pole", "wykonaj długie naciśnięcie" -> CommandIdentifier.CELL_LONG_PRESS
             "pauza", "wstrzymaj", "zatrzymaj odtwarzanie", "zapauzuj", "wstrzymaj odtwarzanie", "zatrzymaj" -> CommandIdentifier.MEDIA_PAUSE
@@ -156,8 +157,9 @@ class CommandIntentParser @Inject constructor(
             "usuń", "usuń znak", "skasuj znak", "wykasuj literę", "usuń poprzedni znak" -> CommandIdentifier.TEXT_DELETE_CHARACTER
             "usuń słowo", "skasuj słowo", "usuń poprzednie słowo", "wykasuj słowo", "usuń wyraz" -> CommandIdentifier.TEXT_DELETE_WORD
             "zatwierdź", "zatwierdź tekst", "potwierdź wpisany tekst", "zakończ wpisywanie", "zaakceptuj tekst" -> CommandIdentifier.TEXT_CONFIRM
-            "schowaj klawiaturę", "ukryj klawiaturę", "zamknij klawiaturę", "wyłącz klawiaturę ekranową", "schowaj klawiaturę ekranową" -> CommandIdentifier.HIDE_KEYBOARD
-            "pokaż klawiaturę", "wyświetl klawiaturę", "otwórz klawiaturę", "włącz klawiaturę ekranową", "pokaż klawiaturę ekranową" -> CommandIdentifier.SHOW_KEYBOARD
+            "schowaj klawiaturę", "ukryj klawiaturę", "zamknij klawiaturę", "wyłącz klawiaturę ekranową", "schowaj klawiaturę ekranową" -> CommandIdentifier.KEYBOARD_HIDE
+            "pokaż klawiaturę", "wyświetl klawiaturę", "otwórz klawiaturę", "włącz klawiaturę ekranową", "pokaż klawiaturę ekranową" -> CommandIdentifier.KEYBOARD_SHOW
+            "klawiatura", "przełącz klawiaturę" -> CommandIdentifier.KEYBOARD_TOGGLE
             "odbierz", "odbierz telefon", "odbierz połączenie", "przyjmij połączenie", "odbierz rozmowę" -> CommandIdentifier.PHONE_PICK_UP
             "odrzuć", "odrzuć połączenie", "nie odbieraj", "odmów połączenia", "odrzuć rozmowę" -> CommandIdentifier.PHONE_DECLINE
             "rozłącz", "zakończ połączenie", "rozłącz się", "zakończ rozmowę", "odłóż słuchawkę" -> CommandIdentifier.PHONE_END_CALL
