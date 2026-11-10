@@ -165,10 +165,11 @@ class SelectionManager @Inject constructor(
                 SelectionResult.Pending
             }
 
-            ApplicationLookupResult.NotFound -> SelectionResult.Failed("Could not find a contact: $query")
-            ApplicationLookupResult.EmptyQuery -> SelectionResult.Failed("No contact was given.")
+            ApplicationLookupResult.NotFound -> SelectionResult.Failed("Could not find application: $query")
+            ApplicationLookupResult.EmptyQuery -> SelectionResult.Failed("No application was given.")
         }
     }
+
 
     companion object {
         private const val TAG = "SelectionManager"

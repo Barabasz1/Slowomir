@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.content.pm.ResolveInfo
 import android.graphics.drawable.Drawable
 import android.os.Build
+import android.util.Log
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 
@@ -96,9 +97,9 @@ class ApplicationUtils @Inject constructor(
     }
 
     companion object {
+        const val TAG = "ApplicationUtils"
         const val THRESHOLD = 0.8
         const val MIN_THRESHOLD = 0.35
         const val MAX_AMBIGUOUS_OPTIONS = 5
     }
-
 }

@@ -4,6 +4,7 @@ import com.zpi.slowomir.overlay.OverlayContext
 import com.zpi.slowomir.overlay.commands.Command
 import com.zpi.slowomir.overlay.commands.CommandResult
 import com.zpi.slowomir.overlay.executors.NavigationExecutor
+import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import javax.inject.Provider
@@ -15,12 +16,17 @@ import javax.inject.Provider
  */
 class OpenAppCommand @AssistedInject constructor(
     private val navigationExecutorProvider: Provider<NavigationExecutor?>,
+    @Assisted("packageName") private val packageName: String?
 ) : Command {
     override fun execute(): CommandResult {
+        if (packageName == null) {
+            return CommandResult.Failure("No package name provided")
+        }
+
         val executor = navigationExecutorProvider.get()
             ?: return CommandResult.Failure("Accessibility Service is not enabled")
 
-        val success = executor.openApp()
+        val success = executor.openApp(packageName)
         return if (success) CommandResult.Success() else CommandResult.Failure("Navigation open app failed")
     }
 
@@ -30,6 +36,8 @@ class OpenAppCommand @AssistedInject constructor(
 
     @AssistedFactory
     interface Factory {
-        fun create(): OpenAppCommand
+        fun create(
+            @Assisted("packageName") packageName: String?
+        ): OpenAppCommand
     }
 }

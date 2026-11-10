@@ -1,6 +1,5 @@
 package com.zpi.slowomir.overlay.executors
 
-
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK
 import android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_HOME
@@ -11,13 +10,20 @@ import android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_RECENTS
 import android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_TAKE_SCREENSHOT
 import com.zpi.slowomir.overlay.services.CommandExecutorService
 import com.zpi.slowomir.utils.ScreenPoint
+import android.content.Intent
+import android.graphics.Path
+import android.util.Log
 
+/**
+ * Executor for navigation commands.
+ *
+ * @param service The accessibility service.
+ */
 //TODO use ScreenCoordinatesProvider
 class NavigationExecutor(
     private val service: AccessibilityService,
     private val touchExecutor: TouchExecutor,
 ) {
-
     companion object {
         private const val DEFAULT_SCREEN_WIDTH = 1080f
         private const val DEFAULT_SCREEN_HEIGHT = 2400f
@@ -111,8 +117,17 @@ class NavigationExecutor(
      *
      * @return `true` if the app was successfully opened.
      */
-    fun openApp(): Boolean {
-        return true
+    fun openApp(packageName: String): Boolean {
+        val launchIntent =
+            service.packageManager.getLaunchIntentForPackage(packageName) ?: return false
+        launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        return try {
+            service.startActivity(launchIntent)
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to launch package: $packageName", e)
+            false
+        }
     }
 
     /**
