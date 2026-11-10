@@ -106,9 +106,11 @@ class VoiceSessionManager @Inject constructor(
                     is ContactSelectionSpeechResult.Selected -> {
                         inbox.send(InternalEvent.IntentParsed(result.intent, result.command))
                     }
+
                     is ContactSelectionSpeechResult.Cancelled -> {
                         inbox.send(InternalEvent.IntentFailed(result.rawText))
                     }
+
                     is ContactSelectionSpeechResult.Unrecognized -> {
                         inbox.send(InternalEvent.IntentFailed(result.rawText))
                     }
@@ -140,7 +142,12 @@ class VoiceSessionManager @Inject constructor(
             mediator.handleEvent(OverlayEvent.CommandInterpreted(command))
             val returnToKws = intent.identifier == CommandIdentifier.OVERLAY_STOP
 
-            inbox.send(InternalEvent.CommandFinished(CommandResult.Success(), returnToKws = returnToKws))
+            inbox.send(
+                InternalEvent.CommandFinished(
+                    CommandResult.Success(),
+                    returnToKws = returnToKws
+                )
+            )
         }
     }
 

@@ -1,32 +1,28 @@
-package com.zpi.slowomir.overlay.commands.navigation
+package com.zpi.slowomir.overlay.commands.touch
 
 import com.zpi.slowomir.overlay.OverlayContext
 import com.zpi.slowomir.overlay.commands.Command
 import com.zpi.slowomir.overlay.commands.CommandResult
-import com.zpi.slowomir.overlay.executors.NavigationExecutor
+import com.zpi.slowomir.overlay.executors.TouchExecutor
+import com.zpi.slowomir.overlay.executors.TouchExecutor.Companion.DEFAULT_PINCH_POWER
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import javax.inject.Provider
 
-/**
- * A command that swipes up from the specified screen coordinates.
- *
- * @param navigationExecutorProvider A provider for the navigation executor.
- * @param x The x-coordinate of the swipe start location.
- * @param y The y-coordinate of the swipe start location.
- */
-class SwipeUpCommand @AssistedInject constructor(
-    private val navigationExecutorProvider: Provider<NavigationExecutor?>,
+class PinchInCommand @AssistedInject constructor(
+    private val touchExecutorProvider: Provider<TouchExecutor?>,
     @Assisted("x") private val x: Float,
     @Assisted("y") private val y: Float,
+    @Assisted("power") private val power: Float = DEFAULT_PINCH_POWER,
 ) : Command {
+
     override fun execute(): CommandResult {
-        val executor = navigationExecutorProvider.get()
+        val executor = touchExecutorProvider.get()
             ?: return CommandResult.Failure("Accessibility Service is not enabled")
 
-        val success = executor.swipeUp(x, y)
-        return if (success) CommandResult.Success() else CommandResult.Failure("Navigation swipe up failed")
+        val success = executor.pinchIn(x, y, power)
+        return if (success) CommandResult.Success() else CommandResult.Failure("Pinch in failed")
     }
 
     override fun canExecute(context: OverlayContext): Boolean {
@@ -38,6 +34,7 @@ class SwipeUpCommand @AssistedInject constructor(
         fun create(
             @Assisted("x") x: Float,
             @Assisted("y") y: Float,
-        ): SwipeUpCommand
+            @Assisted("power") power: Float = DEFAULT_PINCH_POWER,
+        ): PinchInCommand
     }
 }

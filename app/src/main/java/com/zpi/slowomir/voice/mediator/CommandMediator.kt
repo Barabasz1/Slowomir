@@ -8,6 +8,7 @@ import com.zpi.slowomir.utils.ContactOption
 import com.zpi.slowomir.voice.OverlayState
 import com.zpi.slowomir.voice.OverlayEvent
 import com.zpi.slowomir.voice.VoiceIntent
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.flow.StateFlow
 
 
@@ -55,4 +56,6 @@ interface CommandMediator {
      * @return The resulting [CommandResult].
      */
     suspend fun dispatch(command: Command): CommandResult
+
+    fun dispatchScoped(command: Command): Deferred<CommandResult>
 }
