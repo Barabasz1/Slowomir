@@ -1,17 +1,12 @@
 package com.zpi.slowomir.overlay.executors
 
 import android.accessibilityservice.AccessibilityService
-import android.accessibilityservice.GestureDescription
 import android.content.res.Resources
-import android.graphics.Path
 import android.util.DisplayMetrics
 import com.zpi.slowomir.utils.ScreenPoint
 import org.junit.Assert.assertTrue
-import org.junit.After
 import org.junit.Before
 import org.junit.Test
-import org.mockito.MockedConstruction
-import org.mockito.Mockito.mockConstruction
 import org.mockito.kotlin.*
 
 class NavigationExecutorTest {
@@ -21,10 +16,6 @@ class NavigationExecutorTest {
     private lateinit var displayMetrics: DisplayMetrics
     private lateinit var mockTouchExecutor: TouchExecutor
     private lateinit var executor: NavigationExecutor
-
-    private lateinit var builderConstruction: MockedConstruction<GestureDescription.Builder>
-    private lateinit var strokeConstruction: MockedConstruction<GestureDescription.StrokeDescription>
-    private lateinit var pathConstruction: MockedConstruction<Path>
 
     @Before
     fun setUp() {
@@ -39,38 +30,16 @@ class NavigationExecutorTest {
         whenever(resources.displayMetrics).thenReturn(displayMetrics)
         
         whenever(service.performGlobalAction(any())).thenReturn(true)
-        whenever(service.dispatchGesture(anyOrNull(), anyOrNull(), anyOrNull())).thenReturn(true)
-
-        val mockGesture = mock<GestureDescription>()
-        builderConstruction = mockConstruction(GestureDescription.Builder::class.java) { mock, _ ->
-            whenever(mock.addStroke(anyOrNull())).thenReturn(mock)
-            whenever(mock.build()).thenReturn(mockGesture)
-        }
-
-        strokeConstruction = mockConstruction(GestureDescription.StrokeDescription::class.java) { mock, _ ->
-            whenever(mock.continueStroke(anyOrNull(), any(), any(), any())).thenReturn(mock)
-        }
-
-        pathConstruction = mockConstruction(Path::class.java) { mock, _ ->
-            // do nothing
-        }
 
         mockTouchExecutor = mock()
-        whenever(mockTouchExecutor.swipeUp(any<ScreenPoint>(), any(), any(), any())).thenReturn(true)
-        whenever(mockTouchExecutor.swipeDown(any<ScreenPoint>(), any(), any(), any())).thenReturn(true)
-        whenever(mockTouchExecutor.swipeLeft(any<ScreenPoint>(), any(), any(), any())).thenReturn(true)
-        whenever(mockTouchExecutor.swipeRight(any<ScreenPoint>(), any(), any(), any())).thenReturn(true)
+        whenever(mockTouchExecutor.swipeUp(any<ScreenPoint>(), anyOrNull(), any(), any())).thenReturn(true)
+        whenever(mockTouchExecutor.swipeDown(any<ScreenPoint>(), anyOrNull(), any(), any())).thenReturn(true)
+        whenever(mockTouchExecutor.swipeLeft(any<ScreenPoint>(), anyOrNull(), any(), any())).thenReturn(true)
+        whenever(mockTouchExecutor.swipeRight(any<ScreenPoint>(), anyOrNull(), any(), any())).thenReturn(true)
         whenever(mockTouchExecutor.pinchIn(any<ScreenPoint>(), any(), any(), any())).thenReturn(true)
         whenever(mockTouchExecutor.pinchOut(any<ScreenPoint>(), any(), any(), any())).thenReturn(true)
 
         executor = NavigationExecutor(service, mockTouchExecutor)
-    }
-
-    @After
-    fun tearDown() {
-        builderConstruction.close()
-        strokeConstruction.close()
-        pathConstruction.close()
     }
 
     @Test
@@ -134,7 +103,7 @@ class NavigationExecutorTest {
         val result = executor.swipeUp(0.5f, 0.8f)
 
         assertTrue(result)
-        verify(mockTouchExecutor).swipeUp(any<ScreenPoint>(), any(), any(), any())
+        verify(mockTouchExecutor).swipeUp(any<ScreenPoint>(), anyOrNull(), any(), any())
     }
 
     @Test
@@ -142,7 +111,7 @@ class NavigationExecutorTest {
         val result = executor.swipeDown(0.5f, 0.2f)
 
         assertTrue(result)
-        verify(mockTouchExecutor).swipeDown(any<ScreenPoint>(), any(), any(), any())
+        verify(mockTouchExecutor).swipeDown(any<ScreenPoint>(), anyOrNull(), any(), any())
     }
 
     @Test
@@ -150,7 +119,7 @@ class NavigationExecutorTest {
         val result = executor.swipeLeft(0.8f, 0.5f)
 
         assertTrue(result)
-        verify(mockTouchExecutor).swipeLeft(any<ScreenPoint>(), any(), any(), any())
+        verify(mockTouchExecutor).swipeLeft(any<ScreenPoint>(), anyOrNull(), any(), any())
     }
 
     @Test
@@ -158,7 +127,7 @@ class NavigationExecutorTest {
         val result = executor.swipeRight(0.2f, 0.5f)
 
         assertTrue(result)
-        verify(mockTouchExecutor).swipeRight(any<ScreenPoint>(), any(), any(), any())
+        verify(mockTouchExecutor).swipeRight(any<ScreenPoint>(), anyOrNull(), any(), any())
     }
 
     @Test
