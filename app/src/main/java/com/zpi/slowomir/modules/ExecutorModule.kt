@@ -1,6 +1,5 @@
 package com.zpi.slowomir.modules
 
-import com.zpi.slowomir.overlay.executors.GridExecutor
 import com.zpi.slowomir.overlay.executors.MacroExecutor
 import com.zpi.slowomir.overlay.executors.MediaExecutor
 import com.zpi.slowomir.overlay.executors.NavigationExecutor

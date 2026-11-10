@@ -12,6 +12,11 @@ import com.zpi.slowomir.voice.OverlayState
 import com.zpi.slowomir.voice.OverlayState.*
 import com.zpi.slowomir.voice.OverlayEvent
 import com.zpi.slowomir.voice.VoiceIntent
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -27,8 +32,16 @@ import javax.inject.Singleton
 @Singleton
 class DefaultCommandMediator @Inject constructor() : CommandMediator {
 
+    private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+
     private val _mediatorState = MutableStateFlow(MediatorState())
     override val mediatorState: StateFlow<MediatorState> = _mediatorState.asStateFlow()
+
+    override fun dispatchScoped(command: Command): Deferred<CommandResult> {
+        return scope.async {
+            dispatch(command)
+        }
+    }
 
     override fun updateContext(context: OverlayContext) {
         _mediatorState.update { currentState ->

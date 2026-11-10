@@ -11,27 +11,25 @@ import javax.inject.Provider
 
 
 class DivideCellCommand @AssistedInject constructor(
-    private val gridExcecutorProvider: Provider<GridExecutor?>,
-    @Assisted("cell") private val cell: Int,
+    private val gridExecutorProvider: Provider<GridExecutor?>,
     @Assisted("divisionPower") private val divisionPower: Int = 2
     ) : Command {
 
     override fun execute(): CommandResult {
-        val gridExecutor = gridExcecutorProvider.get()
+        val gridExecutor = gridExecutorProvider.get()
             ?: return CommandResult.Failure("Grid executor is null")
 
-        gridExecutor.divide(cell,divisionPower)
+        gridExecutor.divide(divisionPower)
         return CommandResult.Success()
     }
 
     override fun canExecute(context: OverlayContext): Boolean {
-        return true
+        return gridExecutorProvider.get()?.canExecuteActionOnCell() ?: false
     }
 
     @AssistedFactory
     interface Factory {
         fun create(
-            @Assisted("cell") cell: Int,
             @Assisted("divisionPower") divisionPower: Int = 2
         ): DivideCellCommand
     }

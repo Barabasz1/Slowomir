@@ -8,14 +8,24 @@ import android.view.View
 
 class GridView(
     context: Context,
-    var rows: Int = 10,
-    var cols: Int = 6,
-    var lineOpacity: Int = 255,
-    var labelOpacity: Int = 255,
-    var overlayOpacity: Int = 0,
-    var lineWidthPx: Float = 2f,
-    var labelTextSizePx: Float = 32f
+    var rows: Int,
+    var cols: Int,
+    var lineOpacity: Int = DEFAULT_LINE_OPACITY,
+    var labelOpacity: Int = DEFAULT_LABEL_OPACITY,
+    var overlayOpacity: Int = DEFAULT_OVERLAY_OPACITY,
+    var lineWidthPx: Float = DEFAULT_LINE_WIDTH_PX,
+    var labelTextSizePx: Float = DEFAULT_LABEL_TEXT_SIZE_PX
 ) : View(context) {
+
+    companion object {
+        private const val DIM_ALPHA_FACTOR = 0.1f
+        private const val DEFAULT_LINE_OPACITY = 180
+        private const val DEFAULT_LABEL_OPACITY = 220
+        private const val DEFAULT_OVERLAY_OPACITY = 0
+        private const val DEFAULT_LINE_WIDTH_PX = 2f
+        private const val DEFAULT_LABEL_TEXT_SIZE_PX = 32f
+    }
+
     private val linePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
         color = Color.argb(lineOpacity, 0, 0, 0)
@@ -25,13 +35,24 @@ class GridView(
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textAlign = Paint.Align.CENTER
         textSize = labelTextSizePx
-        color = Color.argb(labelOpacity, 255, 255, 255)
+        color = Color.argb(labelOpacity, 0, 0, 0)
     }
 
     private val dimPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textAlign = Paint.Align.CENTER
         textSize = labelTextSizePx
-        color = Color.argb((labelOpacity * 0.1f).toInt(), 255, 255, 255)
+        color = Color.argb(
+            (labelOpacity * DIM_ALPHA_FACTOR).toInt(),
+            0,
+            0,
+            0
+        )
+    }
+
+    private val selectedOutlinePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        color = Color.GREEN
+        strokeWidth = lineWidthPx * 3f
     }
 
     private val backgroundPaint = Paint().apply {
@@ -39,10 +60,12 @@ class GridView(
     }
 
     private var selectedCell: Int? = null
+    private var parentCell: Int? = null
     private var divisions: List<Pair<Int, Int>> = emptyList()
 
-    fun update(selectedCell: Int?, divisions: List<Pair<Int, Int>>) {
+    fun update(selectedCell: Int?, parentCell: Int?, divisions: List<Pair<Int, Int>>) {
         this.selectedCell = selectedCell
+        this.parentCell = parentCell
         this.divisions = divisions
         invalidate()
     }
@@ -69,9 +92,19 @@ class GridView(
                 val cell = row * cols + col + 1
                 val x = col * cw
                 val y = row * ch
-                val paint = if (selectedCell == null || cell == selectedCell) textPaint else dimPaint
+
+                val isSelected = divisions.isEmpty() && cell == selectedCell
+                val paint = if (cell == parentCell || parentCell == null || isSelected) {
+                    textPaint
+                } else {
+                    dimPaint
+                }
 
                 drawLabel(canvas, cell.toString(), x, y, cw, ch, paint)
+
+                if (isSelected) {
+                    drawCellHighlight(canvas, x, y, cw, ch)
+                }
 
                 if (divisions.firstOrNull()?.first == cell) {
                     drawDivision(canvas, x, y, cw, ch, 0)
@@ -99,14 +132,23 @@ class GridView(
             canvas.drawLine(x + i * sw, y, x + i * sw, y + h, linePaint)
         }
 
+        val isActiveLevel = level == divisions.size - 1
+
         for (row in 0 until n) {
             for (col in 0 until n) {
                 val cell = row * n + col + 1
                 val cx = x + col * sw
                 val cy = y + row * sh
-                val paint = if (next == null || next.first == cell) textPaint else dimPaint
+
+                val isSelected = isActiveLevel && cell == selectedCell
+                val paint =
+                    if (next == null || next.first == cell || isSelected) textPaint else dimPaint
 
                 drawLabel(canvas, cell.toString(), cx, cy, sw, sh, paint)
+
+                if (isSelected) {
+                    drawCellHighlight(canvas, cx, cy, sw, sh)
+                }
 
                 if (next?.first == cell) {
                     drawDivision(canvas, cx, cy, sw, sh, level + 1)
@@ -126,5 +168,22 @@ class GridView(
     ) {
         val baseline = y + h / 2f - (paint.ascent() + paint.descent()) / 2f
         canvas.drawText(label, x + w / 2f, baseline, paint)
+    }
+
+    private fun drawCellHighlight(
+        canvas: Canvas,
+        x: Float,
+        y: Float,
+        w: Float,
+        h: Float
+    ) {
+        val halfStroke = selectedOutlinePaint.strokeWidth / 2f
+        canvas.drawRect(
+            x + halfStroke,
+            y + halfStroke,
+            x + w - halfStroke,
+            y + h - halfStroke,
+            selectedOutlinePaint
+        )
     }
 }
