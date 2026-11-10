@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Słowomir</string>
+    <string name="app_name">SłowoMIR</string>
     <string name="contact_picker_title_call">Do kogo zadzwonić?</string>
     <string name="contact_picker_title_sms">Do kogo napisać SMS?</string>
     <string name="contact_picker_subtitle">Powiedz numer z listy, np. „dwa”</string>
