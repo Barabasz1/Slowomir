@@ -5,6 +5,7 @@ import com.zpi.slowomir.overlay.OverlayContext
 import com.zpi.slowomir.overlay.commands.Command
 import com.zpi.slowomir.overlay.commands.CommandArgument
 import com.zpi.slowomir.overlay.commands.CommandResult
+import com.zpi.slowomir.overlay.log.ICommandLogger
 import com.zpi.slowomir.voice.OverlayState
 import com.zpi.slowomir.voice.OverlayState.*
 import com.zpi.slowomir.voice.OverlayEvent
@@ -27,7 +28,9 @@ import javax.inject.Singleton
  * Coordinates context state and validates/executes commands.
  */
 @Singleton
-class DefaultCommandMediator @Inject constructor() : CommandMediator {
+class DefaultCommandMediator @Inject constructor(
+    private val commandLogger: ICommandLogger
+) : CommandMediator {
 
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
@@ -111,11 +114,12 @@ class DefaultCommandMediator @Inject constructor() : CommandMediator {
         }
 
         val result = try {
-            command.execute()
+            command.execute().also {
+                commandLogger.log(command)
+            }
         } catch (e: Exception) {
             CommandResult.Failure("Unhandled exception during execution of ${command::class.simpleName}:\n ${e.message}")
         }
-
 
         return result
     }
