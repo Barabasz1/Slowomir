@@ -1,11 +1,5 @@
 package com.zpi.slowomir.overlay.ui
 
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -23,16 +17,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.zpi.slowomir.R
 import com.zpi.slowomir.overlay.commands.CommandIdentifier
 import com.zpi.slowomir.utils.ContactOption
 
@@ -45,12 +35,12 @@ fun ContactPickerView(
     onCancel: () -> Unit,
 ) {
     val titleRes = if (action == CommandIdentifier.SMS_WRITE) {
-        R.string.contact_picker_title_sms
+        "Do kogo napisać SMS?"
     } else {
-        R.string.contact_picker_title_call
+        "Do kogo zadzwonić?"
     }
 
-    Box(modifier = modifier.padding(12.dp)) {
+    Box(modifier = modifier.padding(16.dp)) {
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(24.dp),
@@ -61,17 +51,15 @@ fun ContactPickerView(
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
-                ListeningHeader()
-
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(
-                        text = stringResource(titleRes),
+                        text = titleRes,
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface,
                     )
                     Text(
-                        text = stringResource(R.string.contact_picker_subtitle),
+                        text = "Powiedz numer z listy, np. „dwa”",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -91,42 +79,10 @@ fun ContactPickerView(
                     onClick = onCancel,
                     modifier = Modifier.align(Alignment.End),
                 ) {
-                    Text(stringResource(R.string.contact_picker_cancel))
+                    Text("Anuluj")
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun ListeningHeader() {
-    val transition = rememberInfiniteTransition(label = "listening")
-    val scale by transition.animateFloat(
-        initialValue = 0.7f,
-        targetValue = 1.25f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 800, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "pulse",
-    )
-
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Box(
-            modifier = Modifier
-                .size(10.dp)
-                .scale(scale)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.primary),
-        )
-        Text(
-            text = stringResource(R.string.contact_picker_listening),
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.primary,
-        )
     }
 }
 
