@@ -8,10 +8,8 @@ import android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_NOTIFICAT
 import android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_QUICK_SETTINGS
 import android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_RECENTS
 import android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_TAKE_SCREENSHOT
-import com.zpi.slowomir.overlay.services.CommandExecutorService
 import com.zpi.slowomir.utils.ScreenPoint
 import android.content.Intent
-import android.graphics.Path
 import android.util.Log
 
 /**
@@ -25,6 +23,7 @@ class NavigationExecutor(
     private val touchExecutor: TouchExecutor,
 ) {
     companion object {
+        private const val TAG = "NavigationExecutor"
         private const val DEFAULT_SCREEN_WIDTH = 1080f
         private const val DEFAULT_SCREEN_HEIGHT = 2400f
     }
