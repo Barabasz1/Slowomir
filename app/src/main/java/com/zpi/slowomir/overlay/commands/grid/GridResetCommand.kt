@@ -9,12 +9,8 @@ import dagger.assisted.AssistedInject
 import javax.inject.Provider
 
 
-/**
- * A command that toggles the visibility of the screen grid overlay.
- *
- * @param gridExecutorProvider A provider for the [GridExecutor].
- */
-class ToggleGridCommand @AssistedInject constructor(
+
+class GridResetCommand @AssistedInject constructor(
     private val gridExecutorProvider: Provider<GridExecutor?>
 ) : Command {
 
@@ -22,7 +18,7 @@ class ToggleGridCommand @AssistedInject constructor(
         val gridExecutor = gridExecutorProvider.get()
             ?: return CommandResult.Failure("Grid executor is null")
 
-        gridExecutor.toggle()
+        gridExecutor.reset()
         return CommandResult.Success()
     }
 
@@ -33,6 +29,6 @@ class ToggleGridCommand @AssistedInject constructor(
     @AssistedFactory
     interface Factory {
         fun create(
-        ): ToggleGridCommand
+        ): GridResetCommand
     }
 }

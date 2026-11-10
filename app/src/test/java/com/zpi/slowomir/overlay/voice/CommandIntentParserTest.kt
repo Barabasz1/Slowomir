@@ -272,9 +272,18 @@ class CommandIntentParserTest {
         assertEquals(CommandIdentifier.TEXT_ENTER, dictation2?.identifier)
 
         val hideKb = parser.parse("Schowaj klawiaturę ekranową")
-        assertEquals(CommandIdentifier.HIDE_KEYBOARD, hideKb?.identifier)
+        assertEquals(CommandIdentifier.KEYBOARD_HIDE, hideKb?.identifier)
 
         val showKb = parser.parse("Wyświetl klawiaturę")
-        assertEquals(CommandIdentifier.SHOW_KEYBOARD, showKb?.identifier)
+        assertEquals(CommandIdentifier.KEYBOARD_SHOW, showKb?.identifier)
+
+        val toggleKb1 = parser.parse("Klawiatura")
+        assertEquals(CommandIdentifier.KEYBOARD_TOGGLE, toggleKb1?.identifier)
+
+        val toggleKb2 = parser.parse("Przełącz klawiaturę")
+        assertEquals(CommandIdentifier.KEYBOARD_TOGGLE, toggleKb2?.identifier)
+
+        val toggleGrid = parser.parse("Siatka")
+        assertEquals(CommandIdentifier.GRID_TOGGLE, toggleGrid?.identifier)
     }
 }

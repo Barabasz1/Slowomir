@@ -1,9 +1,7 @@
 package com.zpi.slowomir.overlay.executors
 
 import com.zpi.slowomir.overlay.ui.grid.GridView
-import android.accessibilityservice.AccessibilityService
 import android.content.Context
-import android.content.Context.WINDOW_SERVICE
 import android.graphics.PixelFormat
 import android.view.Gravity
 import android.view.View

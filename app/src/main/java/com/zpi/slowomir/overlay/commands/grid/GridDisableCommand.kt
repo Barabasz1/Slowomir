@@ -10,7 +10,7 @@ import javax.inject.Provider
 
 
 
-class ResetGridCommand @AssistedInject constructor(
+class GridDisableCommand @AssistedInject constructor(
     private val gridExecutorProvider: Provider<GridExecutor?>
 ) : Command {
 
@@ -18,17 +18,17 @@ class ResetGridCommand @AssistedInject constructor(
         val gridExecutor = gridExecutorProvider.get()
             ?: return CommandResult.Failure("Grid executor is null")
 
-        gridExecutor.reset()
+        gridExecutor.disable()
         return CommandResult.Success()
     }
 
     override fun canExecute(context: OverlayContext): Boolean {
-        return true
+        return gridExecutorProvider.get()?.isEnabled() ?: false
     }
 
     @AssistedFactory
     interface Factory {
         fun create(
-        ): ResetGridCommand
+        ): GridDisableCommand
     }
 }

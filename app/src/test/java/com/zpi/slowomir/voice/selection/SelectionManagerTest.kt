@@ -23,7 +23,8 @@ class SelectionManagerTest {
 
     private val context = mock<Context>()
     private val contactUtils = mock<ContactUtils>()
-    private val manager = SelectionManager(context, contactUtils, PolishTextNormalizer())
+    private val applicationUtils = mock<com.zpi.slowomir.utils.ApplicationUtils>()
+    private val manager = SelectionManager(context, contactUtils, applicationUtils, PolishTextNormalizer())
 
     private val options = listOf(
         ContactOption("Kasia Dom", "111222333"),
