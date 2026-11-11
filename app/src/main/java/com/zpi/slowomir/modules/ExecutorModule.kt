@@ -23,11 +23,6 @@ class ExecutorModule {
     }
 
     @Provides
-    fun provideMacroExecutor(): MacroExecutor? {
-        return CommandExecutorService.instance?.macroExecutor
-    }
-
-    @Provides
     fun provideMediaExecutor(): MediaExecutor? {
         return CommandExecutorService.instance?.mediaExecutor
     }
