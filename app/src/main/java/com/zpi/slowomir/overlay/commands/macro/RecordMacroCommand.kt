@@ -1,4 +1,4 @@
-package com.zpi.slowomir.overlay.commands.macros
+package com.zpi.slowomir.overlay.commands.macro
 
 import com.zpi.slowomir.overlay.OverlayContext
 import com.zpi.slowomir.overlay.commands.Command
@@ -13,7 +13,7 @@ import javax.inject.Provider
  *
  * @param macroExecutorProvider A provider for the macro executor.
  */
-class RecordCommand @AssistedInject constructor(
+class RecordMacroCommand @AssistedInject constructor(
     private val macroExecutorProvider: Provider<MacroExecutor?>,
 ) : Command {
     override fun execute(): CommandResult {
@@ -21,7 +21,7 @@ class RecordCommand @AssistedInject constructor(
             ?: return CommandResult.Failure("Accessibility Service is not enabled")
 
         val success = executor.record()
-        return if (success) CommandResult.Success() else CommandResult.Failure("Macro record start failed")
+        return if (success) CommandResult.Success() else CommandResult.Failure("Macro record failed")
     }
 
     override fun canExecute(context: OverlayContext): Boolean {
@@ -30,6 +30,6 @@ class RecordCommand @AssistedInject constructor(
 
     @AssistedFactory
     interface Factory {
-        fun create(): RecordCommand
+        fun create(): RecordMacroCommand
     }
 }

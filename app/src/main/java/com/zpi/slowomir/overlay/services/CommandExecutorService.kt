@@ -49,15 +49,14 @@ class CommandExecutorService : AccessibilityService() {
     @Inject
     lateinit var voiceOverlayManager: VoiceOverlayManager
 
-
     @Inject
     lateinit var gridExecutor: GridExecutor
 
+    @Inject
+    lateinit var macroExecutor: MacroExecutor
+
     // Executors for different modules
     var touchExecutor: TouchExecutor? = null
-        private set
-
-    var macroExecutor: MacroExecutor? = null
         private set
 
     var mediaExecutor: MediaExecutor? = null
@@ -89,12 +88,12 @@ class CommandExecutorService : AccessibilityService() {
         softKeyboardController.setShowMode(SHOW_MODE_AUTO)
         val touch = TouchExecutor(this)
         touchExecutor = touch
-        macroExecutor = MacroExecutor(this)
         mediaExecutor = MediaExecutor(this)
         navigationExecutor = NavigationExecutor(this, touch)
         predictionExecutor = PredictionExecutor(this)
         textEditExecutor = TextEditExecutor(this, touch)
         phoneCallExecutor = PhoneCallExecutor(this, touch)
+
         instance = this
     }
 
@@ -120,7 +119,6 @@ class CommandExecutorService : AccessibilityService() {
 
     private fun clearExecutors() {
         touchExecutor = null
-        macroExecutor = null
         mediaExecutor = null
         navigationExecutor = null
         predictionExecutor = null
