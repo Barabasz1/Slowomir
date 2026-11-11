@@ -1,6 +1,8 @@
 package com.zpi.slowomir.modules
 
 import com.zpi.slowomir.kws.KeywordSpotter
+import com.zpi.slowomir.voice.intent.CommandIntentResolver
+import com.zpi.slowomir.voice.intent.CommandIntentResolverManager
 import com.zpi.slowomir.kws.KeywordSpotterManager
 import com.zpi.slowomir.voice.stt.VoskSpeechRecognizer
 import com.zpi.slowomir.voice.VoiceSessionManager
@@ -24,6 +26,9 @@ abstract class VoiceModule {
 
     @Binds
     abstract fun bindKeywordSpotter(impl: KeywordSpotterManager): KeywordSpotter
+
+    @Binds
+    abstract fun bindCommandIntentResolver(impl: CommandIntentResolverManager): CommandIntentResolver
 
     @Binds
     abstract fun bindSpeechRecognizer(impl: VoskSpeechRecognizer): SpeechRecognizer

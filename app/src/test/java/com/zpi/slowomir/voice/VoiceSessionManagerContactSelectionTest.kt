@@ -3,6 +3,8 @@ package com.zpi.slowomir.voice
 import com.zpi.slowomir.overlay.commands.CommandArgument
 import com.zpi.slowomir.overlay.commands.CommandIdentifier
 import com.zpi.slowomir.overlay.commands.phoneCalls.CallCommand
+import com.zpi.slowomir.voice.intent.CommandIntentParser
+import com.zpi.slowomir.voice.intent.CommandIntentResolver
 import com.zpi.slowomir.voice.mediator.CommandMediator
 import com.zpi.slowomir.voice.mediator.MediatorState
 import com.zpi.slowomir.voice.selection.SelectionResult
@@ -25,6 +27,7 @@ class VoiceSessionManagerContactSelectionTest {
     private val mockIntentParser = mock<CommandIntentParser>()
     private val mockCommandResolver = mock<CommandResolver>()
     private val mockSelectionManager = mock<SelectionManager>()
+    private val mockIntentResolver = mock<CommandIntentResolver>()
 
     private fun createSessionManager(): VoiceSessionManager {
         whenever(mockMediator.mediatorState).thenReturn(MutableStateFlow(MediatorState()))
@@ -34,6 +37,8 @@ class VoiceSessionManagerContactSelectionTest {
             intentParser = mockIntentParser,
             commandResolver = mockCommandResolver,
             selectionManager = mockSelectionManager,
+            intentResolver = mockIntentResolver,
+            normalizer = PolishTextNormalizer(),
         )
     }
 

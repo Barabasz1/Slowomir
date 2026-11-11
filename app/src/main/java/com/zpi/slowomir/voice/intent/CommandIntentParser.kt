@@ -1,11 +1,13 @@
-package com.zpi.slowomir.voice
+package com.zpi.slowomir.voice.intent
 
 import com.zpi.slowomir.overlay.commands.CommandArgument
 import com.zpi.slowomir.overlay.commands.CommandIdentifier
+import com.zpi.slowomir.voice.PolishTextNormalizer
+import com.zpi.slowomir.voice.VoiceIntent
 import javax.inject.Inject
 
 /**
- * Performs an analysis of normalized speech input and transforms it into structurized [VoiceIntent]
+ * Performs an analysis of normalized speech input and transforms it into structurized [com.zpi.slowomir.voice.VoiceIntent]
  * containing command identifier and argument.
  */
 class CommandIntentParser @Inject constructor(
