@@ -111,12 +111,18 @@ class CommandExecutorService : AccessibilityService() {
         return super.onUnbind(intent)
     }
 
+    /**
+     * Releases all resources associated with the service.
+     */
     private fun release() {
         overlayHostProvider.useApplication()
         clearExecutors()
         instance = null
     }
 
+    /**
+     * Clears all executors associated with the service by setting them to `null`.
+     */
     private fun clearExecutors() {
         touchExecutor = null
         mediaExecutor = null

@@ -50,6 +50,9 @@ class TextEditExecutorTest {
     @Test
     fun `keyboardShow delegates to touchExecutor tapNode with focused input node`() {
         val mockNode = mock<AccessibilityNodeInfo>()
+        whenever(mockService.rootInActiveWindow).thenReturn(mockNode)
+        whenever(mockNode.isFocused).thenReturn(true)
+        whenever(mockNode.isEditable).thenReturn(true)
         whenever(mockService.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)).thenReturn(mockNode)
         whenever(mockTouchExecutor.tapNode(mockNode)).thenReturn(true)
 
@@ -100,6 +103,9 @@ class TextEditExecutorTest {
         // 1. When hidden -> calls keyboardShow
         whenever(mockService.windows).thenReturn(emptyList())
         val mockNode = mock<AccessibilityNodeInfo>()
+        whenever(mockService.rootInActiveWindow).thenReturn(mockNode)
+        whenever(mockNode.isFocused).thenReturn(true)
+        whenever(mockNode.isEditable).thenReturn(true)
         whenever(mockService.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)).thenReturn(mockNode)
         whenever(mockTouchExecutor.tapNode(mockNode)).thenReturn(true)
 

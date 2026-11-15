@@ -9,6 +9,14 @@ import com.zpi.slowomir.overlay.commands.media.VolumeUpCommand
 import com.zpi.slowomir.overlay.commands.navigation.*
 import com.zpi.slowomir.overlay.commands.phoneCalls.*
 import com.zpi.slowomir.overlay.commands.grid.*
+import com.zpi.slowomir.overlay.commands.textEdit.ConfirmCommand
+import com.zpi.slowomir.overlay.commands.textEdit.CursorBackwardCommand
+import com.zpi.slowomir.overlay.commands.textEdit.CursorForwardCommand
+import com.zpi.slowomir.overlay.commands.textEdit.CursorWordNextCommand
+import com.zpi.slowomir.overlay.commands.textEdit.CursorWordPreviousCommand
+import com.zpi.slowomir.overlay.commands.textEdit.DeleteCharCommand
+import com.zpi.slowomir.overlay.commands.textEdit.DeleteWordCommand
+import com.zpi.slowomir.overlay.commands.textEdit.EnterCommand
 import com.zpi.slowomir.overlay.commands.textEdit.KeyboardHideCommand
 import com.zpi.slowomir.overlay.commands.textEdit.KeyboardShowCommand
 import com.zpi.slowomir.overlay.commands.textEdit.KeyboardToggleCommand
@@ -27,6 +35,14 @@ class CommandResolver @Inject constructor(
     private val keyboardHideCommandFactory: KeyboardHideCommand.Factory,
     private val keyboardShowCommandFactory: KeyboardShowCommand.Factory,
     private val keyboardToggleCommandFactory: KeyboardToggleCommand.Factory,
+    private val textCursorForwardCommandFactory: CursorForwardCommand.Factory,
+    private val textCursorBackwardCommandFactory: CursorBackwardCommand.Factory,
+    private val textCursorWordNextCommandFactory: CursorWordNextCommand.Factory,
+    private val textCursorWordPreviousCommandFactory: CursorWordPreviousCommand.Factory,
+    private val textDeleteCharCommandFactory: DeleteCharCommand.Factory,
+    private val textDeleteWordCommandFactory: DeleteWordCommand.Factory,
+    private val textEnterCommandFactory: EnterCommand.Factory,
+    private val textConfirmCommandFactory: ConfirmCommand.Factory,
     private val pickUpCommandFactory: PickUpCommand.Factory,
     private val declineCommandFactory: DeclineCommand.Factory,
     private val endCommandFactory: EndCommand.Factory,
@@ -97,6 +113,14 @@ class CommandResolver @Inject constructor(
         CommandIdentifier.KEYBOARD_HIDE -> keyboardHideCommandFactory.create()
         CommandIdentifier.KEYBOARD_SHOW -> keyboardShowCommandFactory.create()
         CommandIdentifier.KEYBOARD_TOGGLE -> keyboardToggleCommandFactory.create()
+        CommandIdentifier.TEXT_CURSOR_FORWARD -> textCursorForwardCommandFactory.create()
+        CommandIdentifier.TEXT_CURSOR_BACKWARD -> textCursorBackwardCommandFactory.create()
+        CommandIdentifier.TEXT_CURSOR_NEXT_WORD -> textCursorWordNextCommandFactory.create()
+        CommandIdentifier.TEXT_CURSOR_PREVIOUS_WORD -> textCursorWordPreviousCommandFactory.create()
+        CommandIdentifier.TEXT_DELETE_CHARACTER -> textDeleteCharCommandFactory.create()
+        CommandIdentifier.TEXT_DELETE_WORD -> textDeleteWordCommandFactory.create()
+        CommandIdentifier.TEXT_ENTER -> textEnterCommandFactory.create()
+        CommandIdentifier.TEXT_CONFIRM -> textConfirmCommandFactory.create()
 
         // Phone calls
         CommandIdentifier.PHONE_PICK_UP -> pickUpCommandFactory.create()

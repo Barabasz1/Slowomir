@@ -16,6 +16,8 @@ import javax.inject.Provider
 class CursorBackwardCommand @AssistedInject constructor(
     private val textEditExecutorProvider: Provider<TextEditExecutor?>,
 ) : Command {
+    override val requiresBackgroundExecution: Boolean = true
+
     override fun execute(): CommandResult {
         val executor = textEditExecutorProvider.get()
             ?: return CommandResult.Failure("Accessibility Service is not enabled")
