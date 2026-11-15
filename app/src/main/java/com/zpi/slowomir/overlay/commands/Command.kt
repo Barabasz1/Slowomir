@@ -7,6 +7,12 @@ import com.zpi.slowomir.overlay.OverlayContext
  */
 interface Command {
     /**
+     * Requests execution off the main thread when confirming asynchronous platform effects.
+     */
+    val requiresBackgroundExecution: Boolean
+        get() = false
+
+    /**
      * Executes the encapsulated logic and returns the outcome.
      *
      * @return A [CommandResult] indicating whether the execution succeeded, failed or encountered an error.

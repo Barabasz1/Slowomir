@@ -67,6 +67,7 @@ import com.zpi.slowomir.ui.theme.SlowomirTeal
 import com.zpi.slowomir.voice.OverlayState
 import com.zpi.slowomir.voice.stt.VoiceState
 import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 
 enum class SlowomirState(val title: String) {
     Off("SłowoMIR wyłączony"),
@@ -162,7 +163,7 @@ fun HomeScreen(
             return@LaunchedEffect
         }
         showTransientResult = true
-        delay(3000L)
+        delay(3000L.milliseconds)
         showTransientResult = false
     }
 

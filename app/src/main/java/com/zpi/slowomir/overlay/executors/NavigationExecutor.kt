@@ -114,6 +114,7 @@ class NavigationExecutor(
     /**
      * Opens an app.
      *
+     * @param packageName The package name of the app to open.
      * @return `true` if the app was successfully opened.
      */
     fun openApp(packageName: String): Boolean {

@@ -1,20 +1,21 @@
 package com.zpi.slowomir.utils
 
 import android.accessibilityservice.AccessibilityService
+import android.util.Log
 import android.view.accessibility.AccessibilityNodeInfo
 
 /**
  * Utility functions for traversing and querying the Android Accessibility hierarchy.
  */
 object AccessibilityUtils {
+    private const val TAG = "AccessibilityUtils"
 
     /**
-     * Recursively traverses the view hierarchy starting at [root] and returns the first node
-     * that matches the specified [predicate], or `null` if no match is found.
+     * Finds a node in the accessibility hierarchy that matches the given predicate.
      *
-     * @param root The root [AccessibilityNodeInfo] to search from.
-     * @param predicate The condition to test each node against.
-     * @return The first matching [AccessibilityNodeInfo], or `null`.
+     * @param root The root node to start the search from.
+     * @param predicate A function that takes an AccessibilityNodeInfo and returns a Boolean.
+     * @return The first node that matches the predicate, or null if no match is found.
      */
     fun findNode(
         root: AccessibilityNodeInfo?,
@@ -31,10 +32,10 @@ object AccessibilityUtils {
     }
 
     /**
-     * Determines whether an [AccessibilityNodeInfo] represents an editable text input candidate.
+     * Checks if a node is an input candidate for user input.
      *
-     * @param node The node to evaluate.
-     * @return `true` if the node is editable or supports text input actions.
+     * @param node The node to check.
+     * @return True if the node is an input candidate, false otherwise.
      */
     fun isInputCandidate(node: AccessibilityNodeInfo): Boolean {
         val hasSetTextAction = node.actionList?.any { it.id == AccessibilityNodeInfo.ACTION_SET_TEXT } == true
@@ -43,17 +44,49 @@ object AccessibilityUtils {
     }
 
     /**
-     * Finds the currently focused or active text input node in the active window of the given [service].
+     * Finds the active input node in the accessibility hierarchy.
      *
-     * @param service The accessibility service used to inspect windows and focus.
-     * @return The active [AccessibilityNodeInfo] suitable for text input, or `null` if none is found.
+     * @param service The accessibility service to query.
+     * @return The active input node, or null if no match is found.
      */
     fun findActiveInputNode(service: AccessibilityService): AccessibilityNodeInfo? {
-        service.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)?.let { return it }
+        val root = service.rootInActiveWindow
+        if (root == null) {
+            Log.w(TAG, "Root in active window is null")
+            return null
+        }
 
-        val root = service.rootInActiveWindow ?: return null
-        root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)?.let { return it }
+        // 1. Try to find a node that is both focused and an input candidate
+        val focusedCandidate = findNode(root) { it.isFocused && isInputCandidate(it) }
+        if (focusedCandidate != null) {
+            Log.i(TAG, "Found focused input candidate: ${focusedCandidate.className}")
+            return focusedCandidate
+        }
 
-        return findNode(root) { it.isFocused && isInputCandidate(it) } ?: if (root.isFocused) root else null
+        // 2. Check if the system thinks there's a focused input node and if it's a valid candidate
+        val systemFocused = service.findFocus(AccessibilityNodeInfo.FOCUS_INPUT) ?: root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
+        if (systemFocused != null) {
+            if (isInputCandidate(systemFocused)) {
+                Log.i(TAG, "Found system focused candidate: ${systemFocused.className}")
+                return systemFocused
+            }
+            
+            // Sometimes the system focused node is a wrapper so its children are worth-checking
+            val childCandidate = findNode(systemFocused) { isInputCandidate(it) }
+            if (childCandidate != null) {
+                Log.i(TAG, "Found input candidate inside system focused node: ${childCandidate.className}")
+                return childCandidate
+            }
+        }
+
+        // 3. Fallback: Find any input candidate on the screen (only safe if there's only one, but better than nothing)
+        val anyCandidate = findNode(root) { isInputCandidate(it) }
+        if (anyCandidate != null) {
+            Log.i(TAG, "Fallback to first available input candidate: ${anyCandidate.className}")
+            return anyCandidate
+        }
+
+        Log.w(TAG, "No input candidate found.")
+        return null
     }
 }

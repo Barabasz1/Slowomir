@@ -106,6 +106,8 @@ class AccessibilityUtilsTest {
     fun `findActiveInputNode returns focused node from service findFocus`() {
         val service = mock<AccessibilityService>()
         val focusedNode = mock<AccessibilityNodeInfo>()
+        whenever(service.rootInActiveWindow).thenReturn(mock())
+        whenever(focusedNode.isEditable).thenReturn(true)
         whenever(service.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)).thenReturn(focusedNode)
 
         val result = AccessibilityUtils.findActiveInputNode(service)

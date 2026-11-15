@@ -10,11 +10,13 @@ import com.zpi.slowomir.voice.OverlayState
 import com.zpi.slowomir.voice.OverlayState.*
 import com.zpi.slowomir.voice.OverlayEvent
 import com.zpi.slowomir.voice.VoiceIntent
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -114,9 +116,16 @@ class DefaultCommandMediator @Inject constructor(
         }
 
         val result = try {
-            command.execute().also {
+            val executionResult = if (command.requiresBackgroundExecution) {
+                withContext(Dispatchers.Default) { command.execute() }
+            } else {
+                command.execute()
+            }
+            executionResult.also {
                 commandLogger.log(command)
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             CommandResult.Failure("Unhandled exception during execution of ${command::class.simpleName}:\n ${e.message}")
         }

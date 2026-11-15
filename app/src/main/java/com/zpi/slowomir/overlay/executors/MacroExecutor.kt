@@ -1,6 +1,5 @@
 package com.zpi.slowomir.overlay.executors
 
-import android.text.BoringLayout
 import com.zpi.slowomir.overlay.macro.MacroPlayer
 import com.zpi.slowomir.overlay.macro.MacroRecorder
 import com.zpi.slowomir.overlay.macro.MacroSupplier

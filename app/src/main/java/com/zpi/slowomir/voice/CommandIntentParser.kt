@@ -152,8 +152,8 @@ class CommandIntentParser @Inject constructor(
             "pisz", "dyktuj", "rozpocznij dyktowanie", "wpisz tekst głosem", "zacznij pisać" -> CommandIdentifier.TEXT_ENTER
             "do przodu", "przesuń kursor do przodu", "kursor w prawo", "jeden znak w prawo", "przesuń o znak do przodu" -> CommandIdentifier.TEXT_CURSOR_FORWARD
             "do tyłu", "przesuń kursor do tyłu", "kursor w lewo", "jeden znak w lewo", "przesuń o znak wstecz" -> CommandIdentifier.TEXT_CURSOR_BACKWARD
-            "następne słowo", "przejdź do następnego słowa", "kursor o słowo w prawo", "przesuń kursor do kolejnego słowa", "o słowo do przodu" -> CommandIdentifier.TEXT_CURSOR_NEXT_WORD
-            "poprzednie słowo", "przejdź do poprzedniego słowa", "kursor o słowo w lewo", "przesuń kursor do wcześniejszego słowa", "o słowo do tyłu" -> CommandIdentifier.TEXT_CURSOR_PREVIOUS_WORD
+            "następne słowo", "przejdź do następnego słowa", "kursor o słowo w prawo", "przesuń kursor do kolejnego słowa", "o słowo do przodu", "następny wyraz" -> CommandIdentifier.TEXT_CURSOR_NEXT_WORD
+            "poprzednie słowo", "przejdź do poprzedniego słowa", "kursor o słowo w lewo", "przesuń kursor do wcześniejszego słowa", "o słowo do tyłu", "poprzedni wyraz" -> CommandIdentifier.TEXT_CURSOR_PREVIOUS_WORD
             "usuń", "usuń znak", "skasuj znak", "wykasuj literę", "usuń poprzedni znak" -> CommandIdentifier.TEXT_DELETE_CHARACTER
             "usuń słowo", "skasuj słowo", "usuń poprzednie słowo", "wykasuj słowo", "usuń wyraz" -> CommandIdentifier.TEXT_DELETE_WORD
             "zatwierdź", "zatwierdź tekst", "potwierdź wpisany tekst", "zakończ wpisywanie", "zaakceptuj tekst" -> CommandIdentifier.TEXT_CONFIRM

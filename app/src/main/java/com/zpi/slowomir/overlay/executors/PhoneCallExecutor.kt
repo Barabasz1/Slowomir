@@ -220,6 +220,12 @@ class PhoneCallExecutor(
         return false
     }
 
+    /**
+     * Checks if a package name is relevant for interaction.
+     *
+     * @param pkg The package name to check.
+     * @return `true` if the package is relevant, `false` otherwise.
+     */
     private fun isRelevantPackage(pkg: String): Boolean {
         return pkg.contains("dialer") ||
             pkg.contains("telecom") ||

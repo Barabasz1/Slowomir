@@ -15,7 +15,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import com.zpi.slowomir.BuildConfig
 import com.zpi.slowomir.ui.screens.dev.DevScreen
 import com.zpi.slowomir.ui.screens.viewmodel.MainViewModel
 import com.zpi.slowomir.ui.screens.home.CommandsScreen
@@ -57,12 +57,17 @@ fun MainScreen(
     BackHandler(enabled = selectedTab == AppTab.HOME && homeDestination != null) {
         homeDestination = null
     }
+    
+    // Obliczamy widoczne zakładki, by użyć ich w obu miejscach i zapobiec nawigacji
+    val visibleTabs = AppTab.entries.filter { tab ->
+        tab != AppTab.DEV || BuildConfig.DEBUG
+    }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
         bottomBar = {
             NavigationBar {
-                AppTab.entries.forEach { tab ->
+                visibleTabs.forEach { tab ->
                     NavigationBarItem(
                         selected = selectedTab == tab,
                         onClick = {
@@ -114,14 +119,16 @@ fun MainScreen(
                 modifier = contentModifier
             )
 
-            AppTab.DEV -> DevScreen(
-                onSpeechInput = { mainViewModel.simulateSpeechInput(it) },
-                onSpeechCompleted = { mainViewModel.simulateSpeechCompletion(it) },
-                onWakeWord = { mainViewModel.simulateWakeWord() },
-                onToggleGrid = { mainViewModel.toggleGrid() },
-                onTapAt = { x, y -> mainViewModel.executeTapAt(x, y) },
-                modifier = contentModifier
-            )
+            AppTab.DEV -> if (BuildConfig.DEBUG) { 
+                DevScreen(
+                    onSpeechInput = { mainViewModel.simulateSpeechInput(it) },
+                    onSpeechCompleted = { mainViewModel.simulateSpeechCompletion(it) },
+                    onWakeWord = { mainViewModel.simulateWakeWord() },
+                    onToggleGrid = { mainViewModel.toggleGrid() },
+                    onTapAt = { x, y -> mainViewModel.executeTapAt(x, y) },
+                    modifier = contentModifier
+                )
+            }
         }
     }
 }

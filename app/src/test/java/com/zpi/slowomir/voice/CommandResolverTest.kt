@@ -14,6 +14,14 @@ import com.zpi.slowomir.overlay.commands.media.VolumeDownCommand
 import com.zpi.slowomir.overlay.commands.media.VolumeUpCommand
 import com.zpi.slowomir.overlay.commands.navigation.*
 import com.zpi.slowomir.overlay.commands.phoneCalls.*
+import com.zpi.slowomir.overlay.commands.textEdit.ConfirmCommand
+import com.zpi.slowomir.overlay.commands.textEdit.CursorBackwardCommand
+import com.zpi.slowomir.overlay.commands.textEdit.CursorForwardCommand
+import com.zpi.slowomir.overlay.commands.textEdit.CursorWordNextCommand
+import com.zpi.slowomir.overlay.commands.textEdit.CursorWordPreviousCommand
+import com.zpi.slowomir.overlay.commands.textEdit.DeleteCharCommand
+import com.zpi.slowomir.overlay.commands.textEdit.DeleteWordCommand
+import com.zpi.slowomir.overlay.commands.textEdit.EnterCommand
 import com.zpi.slowomir.overlay.commands.textEdit.KeyboardHideCommand
 import com.zpi.slowomir.overlay.commands.textEdit.KeyboardShowCommand
 import com.zpi.slowomir.overlay.commands.textEdit.KeyboardToggleCommand
@@ -35,6 +43,14 @@ class CommandResolverTest {
     private val keyboardHideCommandFactory = mock<KeyboardHideCommand.Factory>()
     private val keyboardShowCommandFactory = mock<KeyboardShowCommand.Factory>()
     private val keyboardToggleCommandFactory = mock<KeyboardToggleCommand.Factory>()
+    private val textCursorForwardCommandFactory = mock<CursorForwardCommand.Factory>()
+    private val textCursorBackwardCommandFactory = mock<CursorBackwardCommand.Factory>()
+    private val textCursorWordNextCommandFactory = mock<CursorWordNextCommand.Factory>()
+    private val textCursorWordPreviousCommandFactory = mock<CursorWordPreviousCommand.Factory>()
+    private val textDeleteCharCommandFactory = mock<DeleteCharCommand.Factory>()
+    private val textDeleteWordCommandFactory = mock<DeleteWordCommand.Factory>()
+    private val textEnterCommandFactory = mock<EnterCommand.Factory>()
+    private val textConfirmCommandFactory = mock<ConfirmCommand.Factory>()
     private val pickUpCommandFactory = mock<PickUpCommand.Factory>()
     private val declineCommandFactory = mock<DeclineCommand.Factory>()
     private val endCommandFactory = mock<EndCommand.Factory>()
@@ -71,6 +87,14 @@ class CommandResolverTest {
         keyboardHideCommandFactory = keyboardHideCommandFactory,
         keyboardShowCommandFactory = keyboardShowCommandFactory,
         keyboardToggleCommandFactory = keyboardToggleCommandFactory,
+        textCursorForwardCommandFactory = textCursorForwardCommandFactory,
+        textCursorBackwardCommandFactory = textCursorBackwardCommandFactory,
+        textCursorWordNextCommandFactory = textCursorWordNextCommandFactory,
+        textCursorWordPreviousCommandFactory = textCursorWordPreviousCommandFactory,
+        textDeleteCharCommandFactory = textDeleteCharCommandFactory,
+        textDeleteWordCommandFactory = textDeleteWordCommandFactory,
+        textEnterCommandFactory = textEnterCommandFactory,
+        textConfirmCommandFactory = textConfirmCommandFactory,
         pickUpCommandFactory = pickUpCommandFactory,
         declineCommandFactory = declineCommandFactory,
         endCommandFactory = endCommandFactory,

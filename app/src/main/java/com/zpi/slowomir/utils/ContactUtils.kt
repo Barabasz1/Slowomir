@@ -7,7 +7,6 @@ import android.provider.ContactsContract.CommonDataKinds.Phone
 import android.util.Log
 import androidx.core.content.ContextCompat
 import java.text.Normalizer
-import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -26,25 +25,26 @@ sealed class ContactLookupResult {
  */
 @Singleton
 class ContactUtils @Inject constructor() {
+    companion object {
+        private const val TAG = "ContactUtils"
+        private const val MAX_OPTIONS = 5
 
-    private val TAG = "ContactUtils"
-    private val MAX_OPTIONS = 5
+        // TODO
+        private const val USE_TEST_CONTACTS = true
+        private val TEST_CONTACTS = listOf(
+            "Mama Ania" to "600100001",
+            "Mama Basia" to "600100002",
+        )
 
-    // TODO
-    private val USE_TEST_CONTACTS = true
-    private val TEST_CONTACTS = listOf(
-        "Mama Ania" to "600100001",
-        "Mama Basia" to "600100002",
-    )
+        private val PREPOSITIONS = setOf("do", "z", "ze", "dla", "od")
+        private val PHONE_CHARS = Regex("""^[\d+\-() ]+$""")
+        private val ENDINGS = listOf(
+            "iego", "iemu", "iej", "ego", "emu", "iem", "ami", "ach", "owi", "ich", "ych",
+            "ej", "om", "em", "ie", "ia", "ii", "im", "ym",
+            "a", "e", "i", "y", "u", "o",
+        )
+    }
 
-    private val PREPOSITIONS = setOf("do", "z", "ze", "dla", "od")
-    private val PHONE_CHARS = Regex("""^[\d+\-() ]+$""")
-    private val POLISH = Locale.forLanguageTag("pl")
-    private val ENDINGS = listOf(
-        "iego", "iemu", "iej", "ego", "emu", "iem", "ami", "ach", "owi", "ich", "ych",
-        "ej", "om", "em", "ie", "ia", "ii", "im", "ym",
-        "a", "e", "i", "y", "u", "o",
-    )
     private data class Entry(
         val name: String,
         val tokens: List<String>,
@@ -181,7 +181,7 @@ class ContactUtils @Inject constructor() {
      * @return The folded string.
      */
     private fun fold(s: String): String {
-        val lower = s.lowercase(POLISH).replace('ł', 'l')
+        val lower = s.lowercase(AppLocales.POLISH).replace('ł', 'l')
         return Normalizer.normalize(lower, Normalizer.Form.NFD).replace(Regex("\\p{Mn}+"), "")
     }
 

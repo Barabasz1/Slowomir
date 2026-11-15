@@ -3,87 +3,276 @@ package com.zpi.slowomir.overlay.executors
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK
 import android.accessibilityservice.AccessibilityService.SHOW_MODE_AUTO
+import android.os.Bundle
+import android.os.Looper
 import android.util.Log
+import android.view.accessibility.AccessibilityNodeInfo
 import android.view.accessibility.AccessibilityWindowInfo
+import com.zpi.slowomir.BuildConfig
 import com.zpi.slowomir.utils.AccessibilityUtils
+import com.zpi.slowomir.utils.EditorState
+import com.zpi.slowomir.utils.TextEditEngine
 
 /**
  * Handles text editing and cursor manipulation actions using the Accessibility API.
  *
- * @param service The accessibility service to use for text actions.
- * @param touchExecutor The touch executor used to dispatch gestures (e.g. tap to focus and summon keyboard).
+ * @property service The accessibility service instance.
+ * @property touchExecutor The touch executor instance.
  */
 class TextEditExecutor(
     private val service: AccessibilityService,
     private val touchExecutor: TouchExecutor,
 ) {
-    /**
-     * Checks whether a soft keyboard (Input Method) window is currently visible on the screen.
-     */
+    private val engine = TextEditEngine()
+    private var lastOperationId = 0L
+
     val isKeyboardVisible: Boolean
         get() = runCatching {
             service.windows.any { it.type == AccessibilityWindowInfo.TYPE_INPUT_METHOD }
         }.getOrDefault(false)
 
     /**
-     * Sends an enter action or line break.
+     * Enters text dictation mode.
+     *
+     * @return True if dictation mode was entered, false otherwise.
      */
     fun enter(): Boolean {
-        return true // TODO: implementation needed
-    }
-
-    /**
-     * Moves cursor forward by one character.
-     */
-    fun cursorForward(): Boolean {
-        return true // TODO: implementation needed
-    }
-
-    /**
-     * Moves cursor backward by one character.
-     */
-    fun cursorBackward(): Boolean {
+        // TODO: `enter()` should start dictation
         return true
     }
 
     /**
-     * Moves cursor forward to the next word.
-     */
-    fun cursorWordNext(): Boolean {
-        return true
-    }
-
-    /**
-     * Moves cursor backward to the previous word.
-     */
-    fun cursorWordPrevious(): Boolean {
-        return true
-    }
-
-    /**
-     * Deletes the preceding character.
-     */
-    fun deleteChar(): Boolean {
-        return true
-    }
-
-    /**
-     * Deletes the preceding word.
-     */
-    fun deleteWord(): Boolean {
-        return true
-    }
-
-    /**
-     * Confirms current text input.
+     * Exits text dictation mode.
+     *
+     * @return True if dictation mode was exited, false otherwise.
      */
     fun confirm(): Boolean {
-        return true
+        // TODO: `confirm()` should commit dictated text, for now, we simulate committing a predefined text
+        return applyEngineOperation("TEXT_CONFIRM") { state ->
+            engine.insertText(state, "Test input.")
+        }
     }
 
     /**
-     * Displays the soft keyboard by locating the active or focused text input node
-     * and performing a physical tap gesture at its center coordinates to trigger the IME.
+     * Performs a backspace action.
+     *
+     * @return True if the backspace action was performed, false otherwise.
+     */
+    fun cursorForward(): Boolean = applyEngineOperation("TEXT_CURSOR_FORWARD") { engine.cursorForward(it) }
+
+    /**
+     * Performs a backspace action.
+     *
+     * @return True if the backspace action was performed, false otherwise.
+     */
+    fun cursorBackward(): Boolean = applyEngineOperation("TEXT_CURSOR_BACKWARD") { engine.cursorBackward(it) }
+
+    /**
+     * Performs a backspace action.
+     *
+     * @return True if the backspace action was performed, false otherwise.
+     */
+    fun cursorWordNext(): Boolean = applyEngineOperation("TEXT_CURSOR_NEXT_WORD") { engine.cursorWordNext(it) }
+
+    /**
+     * Performs a backspace action.
+     *
+     * @return True if the backspace action was performed, false otherwise.
+     */
+    fun cursorWordPrevious(): Boolean = applyEngineOperation("TEXT_CURSOR_PREVIOUS_WORD") { engine.cursorWordPrevious(it) }
+
+    /**
+     * Performs a backspace action.
+     *
+     * @return True if the backspace action was performed, false otherwise.
+     */
+    fun deleteChar(): Boolean = applyEngineOperation("TEXT_DELETE_CHARACTER") { engine.deleteChar(it) }
+
+    /**
+     * Performs a backspace action.
+     *
+     * @return True if the backspace action was performed, false otherwise.
+     */
+    fun deleteWord(): Boolean = applyEngineOperation("TEXT_DELETE_WORD") { engine.deleteWord(it) }
+
+    /**
+     * Applies an engine operation to the active input node.
+     *
+     * @param operationName A description of the operation being applied.
+     * @param operation The operation to apply.
+     * @return True if the operation was applied successfully, false otherwise.
+     */
+    @Synchronized
+    private fun applyEngineOperation(
+        operationName: String,
+        operation: (EditorState) -> EditorState,
+    ): Boolean {
+        val operationId = ++lastOperationId
+        val label = "[$operationName#$operationId]"
+        val targetNode = AccessibilityUtils.findActiveInputNode(service) ?: run {
+            Log.w(TAG, "$label No active input node found.")
+            return false
+        }
+
+        if (!targetNode.refresh() || !isActiveEditor(targetNode)) {
+            Log.w(TAG, "$label Editor is stale or no longer focused.")
+            return false
+        }
+
+        // Snapshot the text so later node updates cannot change the engine's input.
+        val currentState = readState(targetNode)
+        logState(label, "before", currentState)
+        if (!currentState.isSelectionValid) {
+            Log.w(TAG, "$label Invalid selection; operation skipped.")
+            return false
+        }
+
+        val newState = operation(currentState)
+        val textChanged = newState.textString != currentState.textString
+        val selectionChanged = newState.selectionStart != currentState.selectionStart ||
+            newState.selectionEnd != currentState.selectionEnd
+        logState(label, "target", newState)
+        logDebug("$label textChanged=$textChanged, selectionChanged=$selectionChanged")
+        if (!textChanged && !selectionChanged) {
+            Log.i(TAG, "$label No-op at text boundary.")
+            return false
+        }
+
+        if (textChanged) {
+            if (!supportsAction(targetNode, AccessibilityNodeInfo.ACTION_SET_TEXT)) {
+                Log.w(TAG, "$label Editor does not support ACTION_SET_TEXT.")
+                return false
+            }
+            val args = Bundle().apply {
+                putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, newState.text)
+            }
+            val accepted = targetNode.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
+            logDebug("$label setTextAccepted=$accepted")
+            if (!accepted) return false
+
+            // Only observe the same editor; the destructive action is never repeated.
+            val afterText = awaitState(targetNode) { it.textString == newState.textString }
+            logDebug("$label textVerified=${afterText != null}")
+            if (afterText == null) return false
+            logState(label, "afterText", afterText)
+            if (matchesState(afterText, newState)) return true
+        }
+
+        if (!supportsAction(targetNode, AccessibilityNodeInfo.ACTION_SET_SELECTION)) {
+            Log.w(TAG, "$label Selection unsupported; textChanged=$textChanged.")
+            return false
+        }
+        val selectionArgs = Bundle().apply {
+            putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_START_INT, newState.selectionStart)
+            putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_END_INT, newState.selectionEnd)
+        }
+        val accepted = targetNode.performAction(AccessibilityNodeInfo.ACTION_SET_SELECTION, selectionArgs)
+        logDebug("$label selectionAccepted=$accepted")
+        if (!accepted) {
+            Log.w(TAG, "$label Selection rejected; textChanged=$textChanged. No text retry.")
+            return false
+        }
+
+        val actualState = awaitState(targetNode) { matchesState(it, newState) }
+        if (actualState != null) logState(label, "afterSelection", actualState)
+        logDebug("$label selectionVerified=${actualState != null}")
+        return actualState != null
+    }
+
+    /**
+     * Checks if the given editor state matches the expected state.
+     *
+     * @param actual The actual editor state.
+     * @param expected The expected editor state.
+     * @return True if the states match, false otherwise.
+     */
+    private fun matchesState(actual: EditorState, expected: EditorState): Boolean =
+        actual.textString == expected.textString &&
+            actual.selectionStart == expected.selectionStart &&
+            actual.selectionEnd == expected.selectionEnd
+
+    /**
+     * Polls for the effect, not for permission to repeat an action.
+     * Legacy direct calls on the main thread only perform an immediate check.
+     *
+     * @param node The node to poll.
+     * @param matches A function that takes an editor state and returns a boolean indicating if the state matches.
+     * @return The editor state if it matches, null otherwise.
+     */
+    private fun awaitState(
+        node: AccessibilityNodeInfo,
+        matches: (EditorState) -> Boolean,
+    ): EditorState? {
+        val mainLooper = Looper.getMainLooper()
+        val canWait = mainLooper != null && Looper.myLooper() != mainLooper
+        val deadline = System.nanoTime() + VERIFICATION_TIMEOUT_MS * 1_000_000
+        while (true) {
+            if (!node.refresh() || !isActiveEditor(node)) return null
+            val state = readState(node)
+            if (matches(state)) return state
+            if (!canWait || System.nanoTime() >= deadline) return null
+            try {
+                Thread.sleep(VERIFICATION_POLL_MS)
+            } catch (_: InterruptedException) {
+                Thread.currentThread().interrupt()
+                return null
+            }
+        }
+    }
+
+    /**
+     * Checks if the given node is the active editor.
+     *
+     * @param node The node to check.
+     * @return True if the node is the active editor, false otherwise.
+     */
+    private fun isActiveEditor(node: AccessibilityNodeInfo): Boolean =
+        node.isFocused && node.isEnabled && AccessibilityUtils.isInputCandidate(node)
+
+    /**
+     * Checks if the given node supports the given action.
+     *
+     * @param node The node to check.
+     * @param action The action to check for.
+     * @return True if the node supports the action, false otherwise.
+     */
+    private fun supportsAction(node: AccessibilityNodeInfo, action: Int): Boolean =
+        node.actionList?.any { it.id == action } == true
+
+    /**
+     * Reads the current state of the active editor.
+     *
+     * @param node The node to read the state from.
+     * @return The current editor state.
+     */
+    private fun readState(node: AccessibilityNodeInfo): EditorState =
+        EditorState(node.text?.toString().orEmpty(), node.textSelectionStart, node.textSelectionEnd)
+
+    /**
+     * Logs the current state of the active editor.
+     *
+     * @param label A label to prepend to the log message.
+     * @param stage A description of the stage being logged.
+     * @param state The current editor state.
+     */
+    private fun logState(label: String, stage: String, state: EditorState) {
+        logDebug("$label ${stage}Len=${state.text.length}, ${stage}Selection=${state.selectionStart}..${state.selectionEnd}")
+    }
+
+    /**
+     * Logs a debug message if the app is in debug mode.
+     *
+     * @param message The message to log.
+     * @return The message to log.
+     */
+    private fun logDebug(message: String) {
+        if (BuildConfig.DEBUG) Log.d(TAG, message)
+    }
+
+    /**
+     * Shows the soft keyboard if it's not already visible.
+     *
+     * @return True if the keyboard was shown, false otherwise.
      */
     fun keyboardShow(): Boolean {
         ensureAutoShowMode()
@@ -102,10 +291,9 @@ class TextEditExecutor(
     }
 
     /**
-     * Hides the soft keyboard for the current input field without locking
-     * the system in a persistent SHOW_MODE_HIDDEN policy state.
+     * Hides the soft keyboard if it's visible.
      *
-     * Skips back navigation if the keyboard is already hidden to avoid navigating away from the current screen.
+     * @return True if the keyboard was hidden, false otherwise.
      */
     fun keyboardHide(): Boolean {
         ensureAutoShowMode()
@@ -120,16 +308,23 @@ class TextEditExecutor(
 
     /**
      * Toggles the soft keyboard visibility.
+     *
+     * @return True if the keyboard was shown, false if it was hidden.
      */
     fun keyboardToggle(): Boolean {
         return if (isKeyboardVisible) keyboardHide() else keyboardShow()
     }
 
+    /**
+     * Ensures that the soft keyboard is in auto-show mode.
+     */
     private fun ensureAutoShowMode() {
         service.softKeyboardController.setShowMode(SHOW_MODE_AUTO)
     }
 
     companion object {
         private const val TAG = "TextEditExecutor"
+        private const val VERIFICATION_TIMEOUT_MS = 350L
+        private const val VERIFICATION_POLL_MS = 16L
     }
 }
