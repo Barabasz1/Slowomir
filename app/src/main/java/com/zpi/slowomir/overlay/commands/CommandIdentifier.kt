@@ -64,5 +64,8 @@ enum class CommandIdentifier {
     SMS_WRITE,
     MACRO_RECORD,
     MACRO_FINISH,
-    MACRO_PLAY
+    MACRO_PLAY,
+    MACRO_SHOW,
+    MACRO_HIDE,
+    MACRO_TOGGLE
 }

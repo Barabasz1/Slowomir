@@ -10,6 +10,7 @@ import com.zpi.slowomir.overlay.commands.Command
 import com.zpi.slowomir.overlay.commands.touch.LongTapCommand
 import com.zpi.slowomir.overlay.commands.touch.PinchInCommand
 import com.zpi.slowomir.overlay.commands.touch.PinchOutCommand
+import com.zpi.slowomir.overlay.commands.touch.SwipeCommand
 import com.zpi.slowomir.overlay.commands.touch.SwipeDownCommand
 import com.zpi.slowomir.overlay.commands.touch.SwipeLeftCommand
 import com.zpi.slowomir.overlay.commands.touch.SwipeRightCommand
@@ -37,13 +38,14 @@ class GridExecutor @Inject constructor(
     private val swipeUpCommandFactory: SwipeUpCommand.Factory,
     private val pinchInCommandFactory: PinchInCommand.Factory,
     private val pinchOutCommandFactory: PinchOutCommand.Factory,
+    private val swipeCommandFactory: SwipeCommand.Factory,
 ) : OverlayWindowManager(hostProvider) {
 
     override val tag = "GridManager"
 
     companion object {
-        const val DEFAULT_ROWS = 10
-        const val DEFAULT_COLS = 6
+        const val DEFAULT_ROWS = 8
+        const val DEFAULT_COLS = 4
     }
 
     private var gridView: GridView? = null
@@ -54,8 +56,8 @@ class GridExecutor @Inject constructor(
     override fun onCreateView(context: Context): View {
         return GridView(
             context = context,
-            rows = 10,
-            cols = 6,
+            rows = DEFAULT_ROWS,
+            cols = DEFAULT_COLS,
             lineOpacity = 180,
             labelOpacity = 220,
             overlayOpacity = 0,
@@ -307,6 +309,12 @@ class GridExecutor @Inject constructor(
 
     //TODO
     fun swipe(cell0: Int, cell1: Int): Boolean {
+        val (x0,y0) = getTouchCoords(cell0)
+        val (x1,y1) = getTouchCoords(cell1)
+        swipeCommandFactory.create(
+            x0,y0,
+            x1,y1
+        )
         return true
     }
 

@@ -21,7 +21,7 @@ class GridEnableCommand @AssistedInject constructor(
     }
 
     override fun canExecute(context: OverlayContext): Boolean {
-        return !(gridExecutorProvider.get()?.isEnabled() ?: true)
+        return true
     }
 
     @AssistedFactory

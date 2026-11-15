@@ -19,6 +19,13 @@ import com.zpi.slowomir.overlay.commands.textEdit.CursorWordPreviousCommand
 import com.zpi.slowomir.overlay.commands.textEdit.DeleteCharCommand
 import com.zpi.slowomir.overlay.commands.textEdit.DeleteWordCommand
 import com.zpi.slowomir.overlay.commands.textEdit.EnterCommand
+import com.zpi.slowomir.overlay.commands.macro.FinishMacroCommand
+import com.zpi.slowomir.overlay.commands.macro.HideMacroOverlayCommand
+import com.zpi.slowomir.overlay.commands.macro.PlayMacroCommand
+import com.zpi.slowomir.overlay.commands.macro.RecordMacroCommand
+import com.zpi.slowomir.overlay.commands.macro.ShowMacroOverlayCommand
+import com.zpi.slowomir.overlay.commands.macro.StopMacroCommand
+import com.zpi.slowomir.overlay.commands.macro.ToggleMacroOverlayCommand
 import com.zpi.slowomir.overlay.commands.textEdit.KeyboardHideCommand
 import com.zpi.slowomir.overlay.commands.textEdit.KeyboardShowCommand
 import com.zpi.slowomir.overlay.commands.textEdit.KeyboardToggleCommand
@@ -63,7 +70,7 @@ class CommandResolver @Inject constructor(
     private val volumeDownCommandFactory: VolumeDownCommand.Factory,
     private val openAppCommandFactory: OpenAppCommand.Factory,
     private val gridEnableCommandFactory: GridEnableCommand.Factory,
-    private val disableGridCommandFactory: GridEnableCommand.Factory,
+    private val disableGridCommandFactory: GridDisableCommand.Factory,
     private val gridToggleCommandFactory: GridToggleCommand.Factory,
     private val gridResetCommandFactory: GridResetCommand.Factory,
     private val selectCellCommandFactory: SelectCellCommand.Factory,
@@ -71,7 +78,13 @@ class CommandResolver @Inject constructor(
     private val undivideCellCommandFactory: UndivideCellCommand.Factory,
     private val tapCellCommandFactory: TapCellCommand.Factory,
     private val longTapCellCommandFactory: LongTapCellCommand.Factory,
-) {
+    private val showMacroOverlayCommandFactory: ShowMacroOverlayCommand.Factory,
+    private val hideMacroOverlayCommandFactory: HideMacroOverlayCommand.Factory,
+    private val toggleMacroOverlayCommandFactory: ToggleMacroOverlayCommand.Factory,
+    private val playMacroCommandFactory: PlayMacroCommand.Factory,
+    private val recordMacroCommandFactory: RecordMacroCommand.Factory,
+    private val finishMacroCommandFactory: FinishMacroCommand.Factory,
+    ) {
 
     fun resolve(intent: VoiceIntent): Command = when (intent.identifier) {
         // Navigation
@@ -142,6 +155,22 @@ class CommandResolver @Inject constructor(
         // Media
         CommandIdentifier.VOLUME_UP -> volumeUpCommandFactory.create()
         CommandIdentifier.VOLUME_DOWN -> volumeDownCommandFactory.create()
+
+        // Macro
+
+        CommandIdentifier.MACRO_SHOW -> showMacroOverlayCommandFactory.create()
+        CommandIdentifier.MACRO_HIDE -> hideMacroOverlayCommandFactory.create()
+        CommandIdentifier.MACRO_TOGGLE -> toggleMacroOverlayCommandFactory.create()
+        CommandIdentifier.MACRO_PLAY -> {
+            val arg = intent.intArgument()
+            if (arg != null)
+                playMacroCommandFactory.create(arg - 1)
+            else
+                voidCommand(intent)
+        }
+        CommandIdentifier.MACRO_RECORD -> recordMacroCommandFactory.create()
+        CommandIdentifier.MACRO_FINISH -> finishMacroCommandFactory.create()
+
 
         else -> LogCommand(intent.identifier, intent.argument)
     }
