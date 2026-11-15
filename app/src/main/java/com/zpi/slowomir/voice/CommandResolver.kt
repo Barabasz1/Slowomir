@@ -111,7 +111,17 @@ class CommandResolver @Inject constructor(
                 voidCommand(intent)
         }
 
-        CommandIdentifier.CELL_DIVIDE -> divideCellCommandFactory.create()
+        CommandIdentifier.CELL_DIVIDE-> {
+            val arg = intent.intArgument()
+            val pow =
+                if(arg!=null && arg == 9)
+                    3
+                else
+                    2
+
+            divideCellCommandFactory.create(pow)
+        }
+
         CommandIdentifier.CELL_UNDIVIDE -> undivideCellCommandFactory.create()
         CommandIdentifier.CELL_PRESS -> tapCellCommandFactory.create()
         CommandIdentifier.CELL_LONG_PRESS -> longTapCellCommandFactory.create()
