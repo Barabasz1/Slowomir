@@ -6,9 +6,14 @@ import javax.inject.Singleton
 
 /**
  * Logger for commands. It saves and logs commands.
+ *
+ * Commands that implement [ActionLoggable] are additionally stored in the action log
+ * (tables `action_def` / `action_event`) through [ActionRecorder].
  */
 @Singleton
-class CommandLogger @Inject constructor() : ICommandLogger {
+class CommandLogger @Inject constructor(
+    private val actionRecorder: ActionRecorder,
+) : ICommandLogger {
     interface ICommandLoggerListener {
         fun update(command: Command)
     }
@@ -24,12 +29,14 @@ class CommandLogger @Inject constructor() : ICommandLogger {
     }
 
     /**
-     * Saves the command.
+     * Saves the command in the action log.
+     * Only successfully executed [ActionLoggable] commands produce an entry.
      *
      * @param command The command to save.
      */
     private fun save(command: Command) {
-
+        val action = (command as? ActionLoggable)?.consumeLoggedAction() ?: return
+        actionRecorder.record(action, System.currentTimeMillis())
     }
 
     /**
