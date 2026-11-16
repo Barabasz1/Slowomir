@@ -28,14 +28,14 @@ class GridView(
 
     private val linePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
-        color = Color.argb(lineOpacity, 0, 0, 0)
+        color = Color.argb(lineOpacity, 255, 255, 0)
         strokeWidth = lineWidthPx
     }
 
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textAlign = Paint.Align.CENTER
         textSize = labelTextSizePx
-        color = Color.argb(labelOpacity, 0, 0, 0)
+        color = Color.argb(labelOpacity, 255, 255, 0)
     }
 
     private val dimPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -43,8 +43,8 @@ class GridView(
         textSize = labelTextSizePx
         color = Color.argb(
             (labelOpacity * DIM_ALPHA_FACTOR).toInt(),
-            0,
-            0,
+            255,
+            255,
             0
         )
     }
