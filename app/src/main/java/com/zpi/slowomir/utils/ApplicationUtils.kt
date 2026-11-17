@@ -34,6 +34,7 @@ class ApplicationUtils @Inject constructor(
 
         val apps = getInstalledApps()
         val ordered = orderApps(name, apps)
+        Log.d(TAG, "For: $name found applications: ${ordered.joinToString(separator = ", ") { it.first.packageName }}")
 
         if (ordered.isEmpty()) {
             return ApplicationLookupResult.NotFound
@@ -43,7 +44,16 @@ class ApplicationUtils @Inject constructor(
         val topScore = topMatch.second
 
         if (topScore >= THRESHOLD) {
-            return ApplicationLookupResult.Found(topMatch.first.packageName)
+            val tied = ordered
+                .takeWhile { topScore - it.second < TIE_EPSILON }
+                .map { it.first }
+                .distinctBy { it.packageName }
+
+            return if (tied.size > 1) {
+                ApplicationLookupResult.Ambiguous(tied.take(MAX_AMBIGUOUS_OPTIONS))
+            } else {
+                ApplicationLookupResult.Found(topMatch.first.packageName)
+            }
         }
 
         val candidates = ordered
@@ -101,5 +111,6 @@ class ApplicationUtils @Inject constructor(
         const val THRESHOLD = 0.8
         const val MIN_THRESHOLD = 0.35
         const val MAX_AMBIGUOUS_OPTIONS = 5
+        const val TIE_EPSILON = 1e-6
     }
 }
