@@ -10,6 +10,7 @@ import org.json.JSONObject
 class UnigramTokenizer(
     context: Context,
     private val assetPath: String,
+    private val prependSpace: Boolean = false,
 ) : TextTokenizer {
 
     private val appContext = context.applicationContext
@@ -32,7 +33,7 @@ class UnigramTokenizer(
         model ?: run {
             val json =
                 appContext.assets.open(assetPath).use { it.readBytes().toString(Charsets.UTF_8) }
-            UnigramModel.fromTokenizerJson(json)
+            UnigramModel.fromTokenizerJson(json, prependSpace)
         }.also { model = it }
     }
 }
@@ -43,6 +44,7 @@ class UnigramModel(
     private val unkId: Int,
     private val bosId: Int,
     private val eosId: Int,
+    private val prependSpace: Boolean = false,
 ) {
     private val pieceToId: Map<String, Int> = HashMap<String, Int>(pieces.size * 2).also { map ->
         pieces.forEachIndexed { i, p -> map.putIfAbsent(p, i) }
@@ -77,7 +79,9 @@ class UnigramModel(
         return TokenEncoding(ids.toLongArray(), offsets)
     }
 
-    private fun segment(word: String, baseOffset: Int): List<Pair<Int, IntRange>> {
+    private fun segment(rawWord: String, baseOffset: Int): List<Pair<Int, IntRange>> {
+        val word = if (prependSpace) "▁$rawWord" else rawWord
+        val shift = if (prependSpace) 1 else 0
         val n = word.length
         val best = FloatArray(n + 1) { Float.NEGATIVE_INFINITY }
         val prevStart = IntArray(n + 1) { -1 }
@@ -112,7 +116,8 @@ class UnigramModel(
         var end = n
         while (end > 0) {
             val start = prevStart[end]
-            result += prevId[end] to (baseOffset + start until baseOffset + end)
+            val from = maxOf(start - shift, 0)
+            result += prevId[end] to (baseOffset + from until baseOffset + end - shift)
             end = start
         }
         result.reverse()
@@ -132,7 +137,7 @@ class UnigramModel(
     companion object {
         private const val UNK_PENALTY = 10f
 
-        fun fromTokenizerJson(json: String): UnigramModel {
+        fun fromTokenizerJson(json: String, prependSpace: Boolean = false): UnigramModel {
             val model = JSONObject(json).getJSONObject("model")
             check(model.getString("type") == "Unigram") { "Expected a Unigram tokenizer" }
 
@@ -152,6 +157,7 @@ class UnigramModel(
                 unkId = model.getInt("unk_id"),
                 bosId = checkNotNull(lookup["<s>"]) { "<s> missing from vocab" },
                 eosId = checkNotNull(lookup["</s>"]) { "</s> missing from vocab" },
+                prependSpace = prependSpace,
             )
         }
     }
