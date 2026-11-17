@@ -9,6 +9,8 @@ import com.zpi.slowomir.overlay.commands.phoneCalls.WriteSMSCommand
 import com.zpi.slowomir.utils.ContactLookupResult
 import com.zpi.slowomir.utils.ContactOption
 import com.zpi.slowomir.utils.ContactUtils
+import com.zpi.slowomir.voice.intent.CommandIntentParser
+import com.zpi.slowomir.voice.intent.CommandIntentResolver
 import com.zpi.slowomir.voice.mediator.CommandMediator
 import com.zpi.slowomir.voice.mediator.MediatorState
 import com.zpi.slowomir.voice.selection.SelectionManager
@@ -36,6 +38,7 @@ class VoiceSessionManagerSelectionFlowTest {
     private val mediator = mock<CommandMediator>()
     private val intentParser = mock<CommandIntentParser>()
     private val commandResolver = mock<CommandResolver>()
+    private val intentResolver = mock<CommandIntentResolver>()
     private val contactUtils = mock<ContactUtils>()
     private val applicationUtils = mock<com.zpi.slowomir.utils.ApplicationUtils>()
 
@@ -53,7 +56,7 @@ class VoiceSessionManagerSelectionFlowTest {
         whenever(mediator.mediatorState).thenReturn(MutableStateFlow(MediatorState()))
         whenever(contactUtils.lookup(any(), eq("Jan"))).thenReturn(ContactLookupResult.Ambiguous(jan))
 
-        sessionManager = VoiceSessionManager(mediator, intentParser, commandResolver, selectionManager)
+        sessionManager = VoiceSessionManager(mediator, intentParser, commandResolver, selectionManager, intentResolver, PolishTextNormalizer())
         sessionManager.accept(VoiceInput.ServiceStarted)
         sessionManager.accept(VoiceInput.KeywordDetected)
         eventually("session is listening") { sessionManager.state.value is VoiceState.Listening }

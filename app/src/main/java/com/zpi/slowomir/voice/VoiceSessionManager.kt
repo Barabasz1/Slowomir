@@ -4,6 +4,10 @@ import android.util.Log
 import com.zpi.slowomir.overlay.commands.Command
 import com.zpi.slowomir.overlay.commands.CommandIdentifier
 import com.zpi.slowomir.overlay.commands.CommandResult
+import com.zpi.slowomir.overlay.commands.CommandArgument
+import com.zpi.slowomir.voice.intent.CommandIntentParser
+import com.zpi.slowomir.voice.intent.CommandIntentResolver
+import com.zpi.slowomir.voice.intent.IntentResolution
 import com.zpi.slowomir.voice.mediator.CommandMediator
 import com.zpi.slowomir.voice.selection.SelectionResult
 import com.zpi.slowomir.voice.selection.Selection
@@ -36,6 +40,8 @@ class VoiceSessionManager @Inject constructor(
     private val intentParser: CommandIntentParser,
     private val commandResolver: CommandResolver,
     private val selectionManager: SelectionManager,
+    private val intentResolver: CommandIntentResolver,
+    private val normalizer: PolishTextNormalizer,
 ) : VoiceInputSink, VoiceStateSource {
 
     val selection: StateFlow<Selection?> = selectionManager.selection
@@ -49,6 +55,11 @@ class VoiceSessionManager @Inject constructor(
     init {
         scope.launch {
             for (input in inbox) handle(input)
+        }
+        scope.launch {
+            intentResolver.initialize().onFailure {
+                Log.w(TAG, "Intent model unavailable, using the rule-based parser only", it)
+            }
         }
     }
 
@@ -126,7 +137,7 @@ class VoiceSessionManager @Inject constructor(
                 return@launch
             }
 
-            val intent = intentParser.parse(text)
+            val intent = intentParser.parse(text) ?: resolveWithModel(text)
 
             if (intent == null) {
                 mediator.handleEvent(OverlayEvent.InvalidCommand(text))
@@ -151,6 +162,37 @@ class VoiceSessionManager @Inject constructor(
 
             proceed(intent)
         }
+    }
+
+    /**
+     * Fallback for utterances the rule-based parser rejects: asks the intent model for the
+     * command and its argument. Returns null when the model is unsure, unavailable, or did not
+     * extract the argument that command needs.
+     */
+    private suspend fun resolveWithModel(text: String): VoiceIntent? {
+        val result = intentResolver.resolve(normalizer.normalize(text))
+        if (result !is IntentResolution.Resolved) {
+            Log.d(TAG, "Model could not resolve '$text': $result")
+            return null
+        }
+
+        val intent = VoiceIntent(result.identifier, result.argument, text)
+        if (!hasRequiredArgument(intent)) {
+            Log.d(TAG, "Model resolved ${result.identifier} for '$text' without a usable argument")
+            return null
+        }
+        Log.d(TAG, "Model resolved '$text' -> ${result.identifier} (${result.confidence})")
+        return intent
+    }
+
+    private fun hasRequiredArgument(intent: VoiceIntent): Boolean = when (intent.identifier) {
+        CommandIdentifier.CELL_SELECT -> intent.argument is CommandArgument.Number
+        CommandIdentifier.CELL_SWIPE -> intent.argument is CommandArgument.TwoNumbers
+        CommandIdentifier.NAVIGATE_APP_OPEN,
+        CommandIdentifier.PHONE_CALL,
+        CommandIdentifier.SMS_WRITE,
+        CommandIdentifier.MACRO_PLAY -> intent.argument is CommandArgument.Text
+        else -> true
     }
 
     /**
