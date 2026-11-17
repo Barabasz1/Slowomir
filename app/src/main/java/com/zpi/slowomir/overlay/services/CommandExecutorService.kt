@@ -1,6 +1,7 @@
 package com.zpi.slowomir.overlay.services
 
 import android.accessibilityservice.AccessibilityService
+import android.accessibilityservice.InputMethod
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.view.accessibility.AccessibilityEvent
@@ -91,11 +92,17 @@ class CommandExecutorService : AccessibilityService() {
         mediaExecutor = MediaExecutor(this)
         navigationExecutor = NavigationExecutor(this, touch)
         predictionExecutor = PredictionExecutor(this)
-        textEditExecutor = TextEditExecutor(this, touch)
+        textEditExecutor = TextEditExecutor(this, touch) { textInputMethod?.currentInputConnection }
         phoneCallExecutor = PhoneCallExecutor(this, touch)
 
         instance = this
     }
+
+    @Volatile
+    private var textInputMethod: InputMethod? = null
+
+    override fun onCreateInputMethod(): InputMethod =
+        InputMethod(this).also { textInputMethod = it }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {}
 
@@ -130,5 +137,6 @@ class CommandExecutorService : AccessibilityService() {
         predictionExecutor = null
         textEditExecutor = null
         phoneCallExecutor = null
+        textInputMethod = null
     }
 }

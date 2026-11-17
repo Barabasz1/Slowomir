@@ -14,6 +14,7 @@ import com.zpi.slowomir.overlay.commands.media.VolumeDownCommand
 import com.zpi.slowomir.overlay.commands.media.VolumeUpCommand
 import com.zpi.slowomir.overlay.commands.navigation.*
 import com.zpi.slowomir.overlay.commands.phoneCalls.*
+import com.zpi.slowomir.overlay.commands.textEdit.CancelCommand
 import com.zpi.slowomir.overlay.commands.textEdit.ConfirmCommand
 import com.zpi.slowomir.overlay.commands.textEdit.CursorBackwardCommand
 import com.zpi.slowomir.overlay.commands.textEdit.CursorForwardCommand
@@ -51,6 +52,7 @@ class CommandResolverTest {
     private val textDeleteWordCommandFactory = mock<DeleteWordCommand.Factory>()
     private val textEnterCommandFactory = mock<EnterCommand.Factory>()
     private val textConfirmCommandFactory = mock<ConfirmCommand.Factory>()
+    private val textCancelCommandFactory = mock<CancelCommand.Factory>()
     private val pickUpCommandFactory = mock<PickUpCommand.Factory>()
     private val declineCommandFactory = mock<DeclineCommand.Factory>()
     private val endCommandFactory = mock<EndCommand.Factory>()
@@ -95,6 +97,7 @@ class CommandResolverTest {
         textDeleteWordCommandFactory = textDeleteWordCommandFactory,
         textEnterCommandFactory = textEnterCommandFactory,
         textConfirmCommandFactory = textConfirmCommandFactory,
+        textCancelCommandFactory = textCancelCommandFactory,
         pickUpCommandFactory = pickUpCommandFactory,
         declineCommandFactory = declineCommandFactory,
         endCommandFactory = endCommandFactory,

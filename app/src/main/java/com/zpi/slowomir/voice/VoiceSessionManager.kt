@@ -28,6 +28,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import com.zpi.slowomir.overlay.commands.textEdit.DictateCommand
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -42,6 +43,7 @@ class VoiceSessionManager @Inject constructor(
     private val selectionManager: SelectionManager,
     private val intentResolver: CommandIntentResolver,
     private val normalizer: PolishTextNormalizer,
+    private val dictateCommandFactory: DictateCommand.Factory,
 ) : VoiceInputSink, VoiceStateSource {
 
     val selection: StateFlow<Selection?> = selectionManager.selection
@@ -109,6 +111,10 @@ class VoiceSessionManager @Inject constructor(
                 dispatchCommand(newState.intent, newState.command)
             }
 
+            is VoiceState.DictationProcessing -> {
+                dictate(newState.rawText)
+            }
+
             else -> {}
         }
     }
@@ -161,6 +167,24 @@ class VoiceSessionManager @Inject constructor(
             }
 
             proceed(intent)
+        }
+    }
+
+    /**
+     * Types recognized speech into the focused text field (as recognized, without punctuation restoration).
+     * Only the dictation exit commands are recognized meanwhile; everything else is text.
+     */
+    private fun dictate(text: String) {
+        scope.launch {
+            val exit = intentParser.parse(text)?.takeIf { it.identifier in DICTATION_EXIT }
+            if (exit != null) {
+                proceed(exit)
+                return@launch
+            }
+            val result = mediator.dispatch(dictateCommandFactory.create(text))
+            Log.d(TAG, "Dictated '$text': $result")
+            if (result !is CommandResult.Success) mediator.handleEvent(OverlayEvent.CommandRejected("Nie można wpisać tekstu"))
+            inbox.send(InternalEvent.DictationHandled)
         }
     }
 
@@ -240,6 +264,12 @@ class VoiceSessionManager @Inject constructor(
 
     companion object {
         private const val TAG = "VoiceSessionManager"
+
+        private val DICTATION_EXIT = setOf(
+            CommandIdentifier.TEXT_CONFIRM,
+            CommandIdentifier.TEXT_CANCEL,
+            CommandIdentifier.OVERLAY_STOP,
+        )
 
         private val SELECTABLE_INTENTS = setOf(
             CommandIdentifier.PHONE_CALL,

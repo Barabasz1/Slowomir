@@ -39,6 +39,7 @@ class VoiceSessionManagerContactSelectionTest {
             selectionManager = mockSelectionManager,
             intentResolver = mockIntentResolver,
             normalizer = PolishTextNormalizer(),
+            dictateCommandFactory = mock(),
         )
     }
 

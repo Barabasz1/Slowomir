@@ -4,6 +4,7 @@ import android.content.Context
 import com.zpi.slowomir.overlay.commands.Command
 import com.zpi.slowomir.overlay.commands.CommandArgument
 import com.zpi.slowomir.overlay.commands.CommandIdentifier
+import com.zpi.slowomir.overlay.commands.CommandResult
 import com.zpi.slowomir.overlay.commands.phoneCalls.CallCommand
 import com.zpi.slowomir.overlay.commands.phoneCalls.WriteSMSCommand
 import com.zpi.slowomir.utils.ContactLookupResult
@@ -54,9 +55,10 @@ class VoiceSessionManagerSelectionFlowTest {
     @Before
     fun setUp() {
         whenever(mediator.mediatorState).thenReturn(MutableStateFlow(MediatorState()))
+        runBlocking { whenever(mediator.dispatch(any())).thenReturn(CommandResult.Success()) }
         whenever(contactUtils.lookup(any(), eq("Jan"))).thenReturn(ContactLookupResult.Ambiguous(jan))
 
-        sessionManager = VoiceSessionManager(mediator, intentParser, commandResolver, selectionManager, intentResolver, PolishTextNormalizer())
+        sessionManager = VoiceSessionManager(mediator, intentParser, commandResolver, selectionManager, intentResolver, PolishTextNormalizer(), mock())
         sessionManager.accept(VoiceInput.ServiceStarted)
         sessionManager.accept(VoiceInput.KeywordDetected)
         eventually("session is listening") { sessionManager.state.value is VoiceState.Listening }
@@ -185,9 +187,7 @@ class VoiceSessionManagerSelectionFlowTest {
 
     private fun verifyExecuted(command: Command) {
         runBlocking {
-            verify(mediator, timeout(2000)).handleEvent(argThat {
-                this is OverlayEvent.CommandInterpreted && this.command === command
-            })
+            verify(mediator, timeout(2000)).dispatch(argThat { this === command })
         }
     }
 

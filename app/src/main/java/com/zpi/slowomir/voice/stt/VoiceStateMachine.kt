@@ -1,5 +1,8 @@
 package com.zpi.slowomir.voice.stt
 
+import com.zpi.slowomir.overlay.commands.CommandIdentifier
+import com.zpi.slowomir.overlay.commands.CommandResult
+
 internal object VoiceStateMachine {
 
     fun reduce(state: VoiceState, event: SessionEvent): VoiceState {
@@ -34,6 +37,21 @@ internal object VoiceStateMachine {
                 else -> state
             }
 
+            is VoiceState.Dictating -> when (event) {
+                is VoiceInput.SpeechPartial -> VoiceState.Dictating(partialText = event.text)
+                is VoiceInput.SpeechFinal ->
+                    if (event.text.isNotBlank()) VoiceState.DictationProcessing(rawText = event.text) else VoiceState.Dictating()
+                VoiceInput.EnableKwsMode -> VoiceState.KeywordSpotting
+                else -> state
+            }
+
+            is VoiceState.DictationProcessing -> when (event) {
+                InternalEvent.DictationHandled -> VoiceState.Dictating()
+                is InternalEvent.IntentParsed -> VoiceState.CommandExecuting(intent = event.intent, command = event.command)
+                VoiceInput.EnableKwsMode -> VoiceState.KeywordSpotting
+                else -> state
+            }
+
             is VoiceState.IntentParsing -> when (event) {
                 is InternalEvent.IntentParsed -> VoiceState.CommandExecuting(intent = event.intent, command = event.command)
                 is InternalEvent.IntentFailed -> VoiceState.Listening()
@@ -44,6 +62,7 @@ internal object VoiceStateMachine {
             is VoiceState.CommandExecuting -> when (event) {
                 is InternalEvent.CommandFinished -> {
                     if (event.returnToKws) VoiceState.KeywordSpotting
+                    else if (state.intent.identifier == CommandIdentifier.TEXT_ENTER && event.result is CommandResult.Success) VoiceState.Dictating()
                     else VoiceState.Listening()
                 }
                 VoiceInput.EnableKwsMode -> VoiceState.KeywordSpotting

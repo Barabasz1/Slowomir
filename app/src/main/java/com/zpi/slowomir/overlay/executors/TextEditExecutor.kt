@@ -3,6 +3,7 @@ package com.zpi.slowomir.overlay.executors
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK
 import android.accessibilityservice.AccessibilityService.SHOW_MODE_AUTO
+import android.accessibilityservice.InputMethod
 import android.os.Bundle
 import android.os.Looper
 import android.util.Log
@@ -22,6 +23,7 @@ import com.zpi.slowomir.utils.TextEditEngine
 class TextEditExecutor(
     private val service: AccessibilityService,
     private val touchExecutor: TouchExecutor,
+    private val inputConnection: () -> InputMethod.AccessibilityInputConnection? = { null },
 ) {
     private val engine = TextEditEngine()
     private var lastOperationId = 0L
@@ -31,27 +33,85 @@ class TextEditExecutor(
             service.windows.any { it.type == AccessibilityWindowInfo.TYPE_INPUT_METHOD }
         }.getOrDefault(false)
 
+    @Volatile
+    private var dictatedLength: Int? = null
+
+    val isDictating: Boolean
+        get() = dictatedLength != null
+
     /**
-     * Enters text dictation mode.
+     * Enters text dictation mode. Fails when no text field is connected to the service's input method,
+     * i.e. when no editable field has focus. Calling it again starts a fresh session.
      *
-     * @return True if dictation mode was entered, false otherwise.
+     * @return True if dictation mode is on, false otherwise.
      */
+    @Synchronized
     fun enter(): Boolean {
-        // TODO: `enter()` should start dictation
+        if (inputConnection() == null) {
+            Log.w(TAG, "Cannot start dictation: no focused text field.")
+            return false
+        }
+        dictatedLength = 0
         return true
     }
 
     /**
-     * Exits text dictation mode.
+     * Ends dictation and keeps the text typed in the field.
      *
-     * @return True if dictation mode was exited, false otherwise.
+     * @return True if dictation was on, false if there was nothing to confirm.
      */
+    @Synchronized
     fun confirm(): Boolean {
-        // TODO: `confirm()` should commit dictated text, for now, we simulate committing a predefined text
-        return applyEngineOperation("TEXT_CONFIRM") { state ->
-            engine.insertText(state, "Test input.")
-        }
+        if (!isDictating) return false
+        dictatedLength = null
+        return true
     }
+
+    /**
+     * Ends dictation and deletes everything typed since [enter].
+     *
+     * @return True if dictation was on and the text was removed, false otherwise.
+     */
+    @Synchronized
+    fun cancel(): Boolean {
+        val length = dictatedLength ?: return false
+        dictatedLength = null
+        if (length == 0) return true
+        val connection = inputConnection() ?: return false
+        return runCatching { connection.deleteSurroundingText(length, 0) }
+            .onFailure { Log.e(TAG, "deleteSurroundingText failed", it) }
+            .isSuccess
+    }
+
+    /**
+     * Types [text] at the cursor of the focused text field
+     *
+     * @return True if the text was committed, false if no text field is connected or the text is blank.
+     */
+    fun insertText(text: String): Boolean {
+        if (text.isBlank()) return false
+
+        val connection = inputConnection() ?: run {
+            Log.w(TAG, "No input connection: no text field is focused.")
+            return false
+        }
+
+        val typed = if (needsLeadingSpace(connection)) " $text" else text
+        val committed = runCatching { connection.commitText(typed, 1, null) }
+            .onFailure { Log.e(TAG, "commitText failed", it) }
+            .isSuccess
+
+        if (committed) dictatedLength = dictatedLength?.plus(typed.length)
+
+        return committed
+    }
+
+    private fun needsLeadingSpace(connection: InputMethod.AccessibilityInputConnection): Boolean = runCatching {
+        val context = connection.getSurroundingText(1, 0, 0) ?: return false
+        val cursor = minOf(context.selectionStart, context.selectionEnd)
+        val before = context.text.takeIf { cursor in 1..it.length }?.get(cursor - 1)
+        before != null && !before.isWhitespace()
+    }.getOrDefault(false)
 
     /**
      * Performs a backspace action.
