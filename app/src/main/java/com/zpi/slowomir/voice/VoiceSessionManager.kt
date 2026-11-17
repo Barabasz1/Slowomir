@@ -210,10 +210,11 @@ class VoiceSessionManager @Inject constructor(
      */
     private fun dispatchCommand(intent: VoiceIntent, command: Command) {
         scope.launch {
-            mediator.handleEvent(OverlayEvent.CommandInterpreted(command))
+            val result = mediator.dispatch(command)
+            mediator.handleEvent(OverlayEvent.CommandExecuted(command, result))
             val returnToKws = intent.identifier == CommandIdentifier.OVERLAY_STOP
 
-            inbox.send(InternalEvent.CommandFinished(CommandResult.Success(), returnToKws = returnToKws))
+            inbox.send(InternalEvent.CommandFinished(result, returnToKws = returnToKws))
         }
     }
 

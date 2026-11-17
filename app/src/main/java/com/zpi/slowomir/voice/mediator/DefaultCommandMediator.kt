@@ -67,9 +67,8 @@ class DefaultCommandMediator @Inject constructor(
                 ListeningToSpeech(event.text)
             }
 
-            is OverlayEvent.CommandInterpreted -> {
-                val result = dispatch(event.command)
-                formatCommandResult(event.command, result, mediatorState.value.intent)
+            is OverlayEvent.CommandExecuted -> {
+                formatCommandResult(event.command, event.result, mediatorState.value.intent)
             }
 
             is OverlayEvent.InvalidCommand -> {
