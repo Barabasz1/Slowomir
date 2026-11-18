@@ -18,6 +18,7 @@ import com.zpi.slowomir.voice.stt.SessionEvent
 import com.zpi.slowomir.voice.stt.VoiceInput
 import com.zpi.slowomir.voice.stt.VoiceInputSink
 import com.zpi.slowomir.voice.stt.VoiceState
+import com.zpi.slowomir.voice.stt.TextMode
 import com.zpi.slowomir.voice.stt.VoiceStateMachine
 import com.zpi.slowomir.voice.stt.VoiceStateSource
 import kotlinx.coroutines.CoroutineScope
@@ -107,8 +108,8 @@ class VoiceSessionManager @Inject constructor(
      * and released when it ends (exit command, keyword spotting, service stopped).
      */
     private fun updatePunctuationModel(oldState: VoiceState, newState: VoiceState) {
-        val wasDictating = oldState.isDictation()
-        val isDictating = newState.isDictation()
+        val wasDictating = oldState.isTextSession()
+        val isDictating = newState.isTextSession()
         when {
             !wasDictating && isDictating -> scope.launch {
                 punctuationRestorer.initialize().onFailure {
@@ -120,7 +121,8 @@ class VoiceSessionManager @Inject constructor(
         }
     }
 
-    private fun VoiceState.isDictation() = this is VoiceState.Dictating || this is VoiceState.DictationProcessing
+    private fun VoiceState.isTextSession() =
+        this is VoiceState.Dictating || this is VoiceState.Editing || this is VoiceState.TextProcessing
 
     /**
      * Handles a state transition.
@@ -137,8 +139,8 @@ class VoiceSessionManager @Inject constructor(
                 dispatchCommand(newState.intent, newState.command)
             }
 
-            is VoiceState.DictationProcessing -> {
-                dictate(newState.rawText)
+            is VoiceState.TextProcessing -> {
+                handleTextInput(newState.rawText, newState.mode)
             }
 
             else -> {}
@@ -197,26 +199,43 @@ class VoiceSessionManager @Inject constructor(
     }
 
     /**
-     * Types recognized speech into the focused text field.
-     * Only the dictation exit commands are recognized meanwhile; everything else is text.
+     * Handles speech inside a text input session. Only the commands that belong to the current [mode] are
+     * recognized: in dictation mode the rest is typed into the field, in edit mode anything else is rejected.
      */
-    private fun dictate(text: String) {
+    private fun handleTextInput(text: String, mode: TextMode) {
         scope.launch {
-            val exit = intentParser.parse(text)?.takeIf { it.identifier in DICTATION_EXIT }
-            if (exit != null) {
-                proceed(exit)
-                return@launch
+            val allowed = if (mode == TextMode.EDIT) EDIT_MODE_COMMANDS else DICTATION_MODE_COMMANDS
+
+            val spoken = intentParser.parse(text) ?: if (mode == TextMode.EDIT) resolveWithModel(text) else null
+            val intent = spoken?.takeIf { it.identifier in allowed }
+            when {
+                intent != null -> proceed(intent)
+
+                mode == TextMode.EDIT -> {
+                    mediator.handleEvent(OverlayEvent.InvalidCommand(text))
+                    inbox.send(InternalEvent.TextHandled)
+                }
+
+                else -> {
+                    dictate(text)
+                    inbox.send(InternalEvent.TextHandled)
+                }
             }
-            val profile = fieldProfileHolder.profile
-            Log.d(TAG, "[DICTATION] raw='$text' profile=$profile")
-            var restored = punctuationRestorer.restore(text, profile.punctuation)
-            Log.d(TAG, "[DICTATION] restored='$restored'")
-            if (profile.uppercaseAll) restored = restored.uppercase(POLISH)
-            val result = mediator.dispatch(dictateCommandFactory.create(restored))
-            Log.d(TAG, "Dictated '$text' -> '$restored': $result")
-            if (result !is CommandResult.Success) mediator.handleEvent(OverlayEvent.CommandRejected("Nie można wpisać tekstu"))
-            inbox.send(InternalEvent.DictationHandled)
         }
+    }
+
+    /**
+     * Restores punctuation and casing in recognized speech and types it into the focused text field.
+     */
+    private suspend fun dictate(text: String) {
+        val profile = fieldProfileHolder.profile
+        Log.d(TAG, "[DICTATION] raw='$text' profile=$profile")
+        var restored = punctuationRestorer.restore(text, profile.punctuation)
+        Log.d(TAG, "[DICTATION] restored='$restored'")
+        if (profile.uppercaseAll) restored = restored.uppercase(POLISH)
+        val result = mediator.dispatch(dictateCommandFactory.create(restored))
+        Log.d(TAG, "Dictated '$text' -> '$restored': $result")
+        if (result !is CommandResult.Success) mediator.handleEvent(OverlayEvent.CommandRejected("Nie można wpisać tekstu"))
     }
 
     /**
@@ -298,9 +317,22 @@ class VoiceSessionManager @Inject constructor(
 
         private val POLISH = Locale.forLanguageTag("pl-PL")
 
-        private val DICTATION_EXIT = setOf(
+        private val DICTATION_MODE_COMMANDS = setOf(
+            CommandIdentifier.TEXT_EDIT,
             CommandIdentifier.TEXT_CONFIRM,
             CommandIdentifier.TEXT_CANCEL,
+            CommandIdentifier.OVERLAY_STOP,
+        )
+
+        private val EDIT_MODE_COMMANDS = setOf(
+            CommandIdentifier.TEXT_ENTER,
+            CommandIdentifier.TEXT_CURSOR_FORWARD,
+            CommandIdentifier.TEXT_CURSOR_BACKWARD,
+            CommandIdentifier.TEXT_CURSOR_NEXT_WORD,
+            CommandIdentifier.TEXT_CURSOR_PREVIOUS_WORD,
+            CommandIdentifier.TEXT_DELETE_CHARACTER,
+            CommandIdentifier.TEXT_DELETE_WORD,
+            CommandIdentifier.TEXT_CONFIRM,
             CommandIdentifier.OVERLAY_STOP,
         )
 

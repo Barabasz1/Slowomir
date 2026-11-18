@@ -102,6 +102,7 @@ class CommandExecutorService : AccessibilityService() {
             service = this,
             touchExecutor = touch,
             fieldCapsModes = { fieldProfileHolder.profile.capsModes },
+            editorInfo = { textInputMethod?.currentInputEditorInfo },
             inputConnection = { textInputMethod?.currentInputConnection },
         )
         phoneCallExecutor = PhoneCallExecutor(this, touch)

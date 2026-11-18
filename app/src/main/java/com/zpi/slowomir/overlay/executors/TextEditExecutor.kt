@@ -10,6 +10,7 @@ import android.text.TextUtils
 import android.os.Looper
 import android.util.Log
 import android.view.accessibility.AccessibilityNodeInfo
+import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.SurroundingText
 import android.view.accessibility.AccessibilityWindowInfo
 import com.zpi.slowomir.BuildConfig
@@ -27,6 +28,7 @@ class TextEditExecutor(
     private val service: AccessibilityService,
     private val touchExecutor: TouchExecutor,
     private val fieldCapsModes: () -> Int = { DEFAULT_CAPS_MODES },
+    private val editorInfo: () -> EditorInfo? = { null },
     private val inputConnection: () -> InputMethod.AccessibilityInputConnection? = { null },
 ) {
     private val engine = TextEditEngine()
@@ -62,13 +64,49 @@ class TextEditExecutor(
     /**
      * Ends dictation and keeps the text typed in the field.
      *
-     * @return True if dictation was on, false if there was nothing to confirm.
+     * @return True if a text session was on, false otherwise.
+     */
+    @Synchronized
+    fun edit(): Boolean {
+        if (!isDictating) return false
+        dictatedLength = 0
+        return true
+    }
+
+    /**
+     * Ends the text session and keeps the typed text (it is already in the field).
+     * Runs enter action if it is not a new line.
+     *
+     * @return True if the session was on and the field's action, if it has one, ran; false otherwise.
      */
     @Synchronized
     fun confirm(): Boolean {
         if (!isDictating) return false
         dictatedLength = null
-        return true
+        val action = sendingAction() ?: return true
+        return performEditorAction(action)
+    }
+
+    /** The field's Enter action; null when Enter would only add a new line. */
+    private fun sendingAction(): Int? {
+        val options = editorInfo()?.imeOptions ?: return null
+        if (options and EditorInfo.IME_FLAG_NO_ENTER_ACTION != 0) return null
+        return (options and EditorInfo.IME_MASK_ACTION).takeIf { it in SENDING_ACTIONS }
+    }
+
+    private fun performEditorAction(action: Int): Boolean {
+        val connection = inputConnection()
+        if (connection != null) {
+            val done = runCatching { connection.performEditorAction(action) }
+                .onFailure { Log.e(TAG, "performEditorAction failed", it) }
+                .isSuccess
+            if (done) return true
+        }
+        val node = AccessibilityUtils.findActiveInputNode(service) ?: run {
+            Log.w(TAG, "Cannot run the field's action: no focused text field.")
+            return false
+        }
+        return node.refresh() && node.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_IME_ENTER.id)
     }
 
     /**
@@ -554,7 +592,7 @@ class TextEditExecutor(
         hasInputFocus(node) && node.isEnabled && AccessibilityUtils.isInputCandidate(node)
 
     /**
-     * Text fields wrapped in a layout (e.g. a TextInputLayout) often report focus on the wrapper while the
+     * Text fields wrapped in a layout often report focus on the wrapper while the
      * EditText itself says it is not focused, so a few ancestors are checked too.
      */
     private fun hasInputFocus(node: AccessibilityNodeInfo): Boolean {
@@ -683,6 +721,16 @@ class TextEditExecutor(
 
     companion object {
         private const val TAG = "TextEditExecutor"
+
+        private val SENDING_ACTIONS = setOf(
+            EditorInfo.IME_ACTION_GO,
+            EditorInfo.IME_ACTION_SEARCH,
+            EditorInfo.IME_ACTION_SEND,
+            EditorInfo.IME_ACTION_DONE,
+            EditorInfo.IME_ACTION_NEXT,
+            EditorInfo.IME_ACTION_PREVIOUS,
+        )
+
         private const val CONTEXT_CHARS = 1000
         private const val FOCUS_ANCESTOR_DEPTH = 3
         private const val DEFAULT_CAPS_MODES = TextUtils.CAP_MODE_SENTENCES

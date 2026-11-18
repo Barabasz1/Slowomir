@@ -52,6 +52,7 @@ enum class CommandIdentifier {
     TEXT_DELETE_WORD,
     TEXT_CONFIRM,
     TEXT_CANCEL,
+    TEXT_EDIT,
     KEYBOARD_HIDE,
     KEYBOARD_SHOW,
     KEYBOARD_TOGGLE,

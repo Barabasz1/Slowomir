@@ -53,6 +53,7 @@ class CommandResolverTest {
     private val textEnterCommandFactory = mock<EnterCommand.Factory>()
     private val textConfirmCommandFactory = mock<ConfirmCommand.Factory>()
     private val textCancelCommandFactory = mock<CancelCommand.Factory>()
+    private val textEditCommandFactory = mock<com.zpi.slowomir.overlay.commands.textEdit.EditCommand.Factory>()
     private val pickUpCommandFactory = mock<PickUpCommand.Factory>()
     private val declineCommandFactory = mock<DeclineCommand.Factory>()
     private val endCommandFactory = mock<EndCommand.Factory>()
@@ -98,6 +99,7 @@ class CommandResolverTest {
         textEnterCommandFactory = textEnterCommandFactory,
         textConfirmCommandFactory = textConfirmCommandFactory,
         textCancelCommandFactory = textCancelCommandFactory,
+        textEditCommandFactory = textEditCommandFactory,
         pickUpCommandFactory = pickUpCommandFactory,
         declineCommandFactory = declineCommandFactory,
         endCommandFactory = endCommandFactory,
