@@ -4,6 +4,7 @@ import com.zpi.slowomir.overlay.commands.Command
 import com.zpi.slowomir.overlay.commands.navigation.NavigateHomeCommand
 import com.zpi.slowomir.overlay.commands.navigation.OpenAppCommand
 import com.zpi.slowomir.voice.mediator.CommandMediator
+import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -28,7 +29,10 @@ class MacroPlayer @Inject constructor(
         onMacroStart(macro)
 
         if (macro.startingPoint != null) {
-            wait(macro.startingPoint)
+            if (!wait(macro.startingPoint)) {
+                onMacroBreak(macro)
+                return false
+            }
         }
 
         for (command in macro.commands) {
@@ -38,9 +42,14 @@ class MacroPlayer @Inject constructor(
                 return false
             }
 
-            mediator.dispatchScoped(command)
+            runBlocking {
+                mediator.dispatch(command)
+            }
 
-            wait(command)
+            if (!wait(command)) {
+                onMacroBreak(macro)
+                return false
+            }
         }
 
         onMacroFinish(macro)
@@ -83,29 +92,32 @@ class MacroPlayer @Inject constructor(
         var elapsed = 0L
         val sleepTime: Long = calculateSleepTime(previousCommand)
         while (elapsed < sleepTime) {
-            val sleepTime = minOf(WAIT_STEP, sleepTime - elapsed)
+            if (stopMacro) return false
+            val step = minOf(WAIT_STEP, sleepTime - elapsed)
             try {
-                Thread.sleep(sleepTime)
+                Thread.sleep(step)
             } catch (_: InterruptedException) {
                 Thread.currentThread().interrupt()
                 return false
             }
-            elapsed += sleepTime
+            elapsed += step
         }
         return true
     }
+
     private fun wait(startingPoint: MacroStartingPoint): Boolean {
         var elapsed = 0L
         val sleepTime: Long = calculateSleepTime(startingPoint)
         while (elapsed < sleepTime) {
-            val sleepTime = minOf(WAIT_STEP, sleepTime - elapsed)
+            if (stopMacro) return false
+            val step = minOf(WAIT_STEP, sleepTime - elapsed)
             try {
-                Thread.sleep(sleepTime)
+                Thread.sleep(step)
             } catch (_: InterruptedException) {
                 Thread.currentThread().interrupt()
                 return false
             }
-            elapsed += sleepTime
+            elapsed += step
         }
         return true
     }
@@ -115,10 +127,14 @@ class MacroPlayer @Inject constructor(
 
         when (macroStartingPoint) {
             is MacroStartingPoint.Home ->
-                mediator.dispatchScoped(navigateHomeCommandFactory.create())
+                runBlocking {
+                    mediator.dispatch(navigateHomeCommandFactory.create())
+                }
 
             is MacroStartingPoint.App ->
-                mediator.dispatchScoped(openAppCommandFactory.create(macroStartingPoint.appName))
+                runBlocking {
+                    mediator.dispatch(openAppCommandFactory.create(macroStartingPoint.appName))
+                }
         }
     }
 }

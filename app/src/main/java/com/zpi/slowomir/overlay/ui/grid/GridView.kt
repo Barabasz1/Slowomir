@@ -63,7 +63,9 @@ class GridView(
     private var parentCell: Int? = null
     private var divisions: List<Pair<Int, Int>> = emptyList()
 
-    fun update(selectedCell: Int?, parentCell: Int?, divisions: List<Pair<Int, Int>>) {
+    fun update(rowCount: Int, colCount: Int, selectedCell: Int?, parentCell: Int?, divisions: List<Pair<Int, Int>>) {
+        this.rows = rowCount
+        this.cols = colCount
         this.selectedCell = selectedCell
         this.parentCell = parentCell
         this.divisions = divisions

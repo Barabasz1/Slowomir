@@ -73,6 +73,10 @@ class CommandResolver @Inject constructor(
     private val disableGridCommandFactory: GridDisableCommand.Factory,
     private val gridToggleCommandFactory: GridToggleCommand.Factory,
     private val gridResetCommandFactory: GridResetCommand.Factory,
+    private val addColumnGridCommandFactory: AddColumnGridCommand.Factory,
+    private val addRowGridCommandFactory: AddRowGridCommand.Factory,
+    private val subtractColumnGridCommandFactory: SubtractColumnGridCommand.Factory,
+    private val subtractRowGridCommandFactory: SubtractRowGridCommand.Factory,
     private val selectCellCommandFactory: SelectCellCommand.Factory,
     private val divideCellCommandFactory: DivideCellCommand.Factory,
     private val undivideCellCommandFactory: UndivideCellCommand.Factory,
@@ -103,6 +107,11 @@ class CommandResolver @Inject constructor(
         CommandIdentifier.GRID_SHOW -> gridEnableCommandFactory.create()
         CommandIdentifier.GRID_HIDE -> disableGridCommandFactory.create()
         CommandIdentifier.GRID_RESET -> gridResetCommandFactory.create()
+        CommandIdentifier.GRID_ADD_COL ->  addColumnGridCommandFactory.create()
+        CommandIdentifier.GRID_ADD_ROW ->  addRowGridCommandFactory.create()
+        CommandIdentifier.GRID_SUBTRACT_COL ->  subtractColumnGridCommandFactory.create()
+        CommandIdentifier.GRID_SUBTRACT_ROW ->  subtractRowGridCommandFactory.create()
+
         CommandIdentifier.CELL_SELECT -> {
             val arg = intent.intArgument()
             if (arg != null)

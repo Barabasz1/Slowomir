@@ -25,6 +25,7 @@ import com.zpi.slowomir.utils.ScreenPoint
 import com.zpi.slowomir.voice.mediator.CommandMediator
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.math.max
 
 @Singleton
 class GridExecutor @Inject constructor(
@@ -52,12 +53,14 @@ class GridExecutor @Inject constructor(
     private var parentCell: Int? = null
     private val divisions = mutableListOf<Pair<Int, Int>>()
     private var selectedCell: Int? = null
+    private var rowsCount: Int = DEFAULT_ROWS
+    private var colsCount: Int = DEFAULT_COLS
 
     override fun onCreateView(context: Context): View {
         return GridView(
             context = context,
-            rows = DEFAULT_ROWS,
-            cols = DEFAULT_COLS,
+            rows = rowsCount,
+            cols = colsCount,
             lineOpacity = 180,
             labelOpacity = 220,
             overlayOpacity = 0,
@@ -121,6 +124,10 @@ class GridExecutor @Inject constructor(
         resetSelection()
     }
 
+    fun resetDimensions(){
+        rowsCount = DEFAULT_ROWS
+        colsCount = DEFAULT_COLS
+    }
     fun resetSelection() {
         parentCell = null
         selectedCell = null
@@ -128,17 +135,27 @@ class GridExecutor @Inject constructor(
     }
 
     fun reset() {
+        resetDimensions()
         resetSelection()
         redraw()
     }
 
     private fun redraw() {
-        gridView?.update(selectedCell, parentCell, divisions.toList())
+        gridView?.update(rowsCount, colsCount, selectedCell, parentCell, divisions.toList())
+    }
+
+    fun addRow(toAdd: Int){
+        rowsCount = max(1,rowsCount + toAdd)
+        redraw()
+    }
+    fun addCols(toAdd: Int){
+        colsCount = max(1,colsCount + toAdd)
+        redraw()
     }
 
     fun selectCell(cell: Int) {
         val maxCell = if (divisions.isEmpty()) {
-            (gridView?.cols ?: DEFAULT_COLS) * (gridView?.rows ?: DEFAULT_ROWS)
+            (gridView?.cols ?: colsCount) * (gridView?.rows ?: rowsCount)
         } else {
             divisions.last().second * divisions.last().second
         }
@@ -154,7 +171,7 @@ class GridExecutor @Inject constructor(
         require(n >= 2)
 
         val maxCell = divisions.lastOrNull()?.second?.let { it * it }
-            ?: ((gridView?.rows ?: DEFAULT_ROWS) * (gridView?.cols ?: DEFAULT_COLS))
+            ?: ((gridView?.rows ?: rowsCount) * (gridView?.cols ?: colsCount))
 
         require(cell in 1..maxCell)
 

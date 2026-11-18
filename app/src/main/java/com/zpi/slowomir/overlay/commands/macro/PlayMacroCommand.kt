@@ -18,6 +18,8 @@ class PlayMacroCommand @AssistedInject constructor(
     private val macroExecutorProvider: Provider<MacroExecutor?>,
     @Assisted("index") private val index: Int
 ) : Command {
+    override val requiresBackgroundExecution: Boolean = true
+
     override fun execute(): CommandResult {
         val executor = macroExecutorProvider.get()
             ?: return CommandResult.Failure("Accessibility Service is not enabled")

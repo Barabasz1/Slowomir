@@ -115,6 +115,10 @@ class CommandIntentParser @Inject constructor(
             "siatka", "siatkę" -> CommandIdentifier.GRID_TOGGLE
             "reset siatki", "zresetuj siatkę", "wyczyść podziały siatki", "przywróć siatkę", "zacznij siatkę od nowa", "resetuj siatkę" -> CommandIdentifier.GRID_RESET
             "podziel", "rozdziel" -> CommandIdentifier.CELL_DIVIDE
+            "dodaj kolumnę" -> CommandIdentifier.GRID_ADD_COL
+            "dodaj wiersz" -> CommandIdentifier.GRID_ADD_ROW
+            "usuń kolumnę" -> CommandIdentifier.GRID_SUBTRACT_COL
+            "usuń wiersz" -> CommandIdentifier.GRID_SUBTRACT_ROW
             "wyłącz", "wyłącz sterowanie", "uśpij nakładkę", "zatrzymaj sterowanie głosowe", "przejdź w stan uśpienia", "uśpij" -> CommandIdentifier.OVERLAY_STOP
             "słowomirek powstań", "słowomirek obudź się", "słowomirek wstań", "słowomirek aktywuj się", "włącz sterowanie słowomirek", "powstań" -> CommandIdentifier.OVERLAY_START
             "przewiń w górę", "przesuń w górę", "przewijaj w górę", "w górę", "przesuń ekran do góry", "do góry", "przesuń góra", "góra" -> CommandIdentifier.SWIPE_UP

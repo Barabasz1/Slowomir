@@ -67,6 +67,10 @@ class CommandResolverTest {
     private val disableGridCommandFactory = mock<GridDisableCommand.Factory>()
     private val gridToggleCommandFactory = mock<GridToggleCommand.Factory>()
     private val gridResetCommandFactory = mock<GridResetCommand.Factory>()
+    private val addColumnGridCommandFactory = mock<AddColumnGridCommand.Factory>()
+    private val addRowGridCommandFactory = mock<AddRowGridCommand.Factory>()
+    private val subtractColumnGridCommand = mock<SubtractColumnGridCommand.Factory>()
+    private val subtractRowGridCommand = mock<SubtractRowGridCommand.Factory>()
     private val selectCellCommandFactory = mock<SelectCellCommand.Factory>()
     private val divideCellCommandFactory = mock<DivideCellCommand.Factory>()
     private val undivideCellCommandFactory = mock<UndivideCellCommand.Factory>()
@@ -130,6 +134,10 @@ class CommandResolverTest {
         playMacroCommandFactory = playMacroCommandFactory,
         recordMacroCommandFactory = recordMacroCommandFactory,
         finishMacroCommandFactory = finishMacroCommandFactory,
+        addColumnGridCommandFactory = addColumnGridCommandFactory,
+        addRowGridCommandFactory = addRowGridCommandFactory,
+        subtractColumnGridCommandFactory = subtractColumnGridCommand,
+        subtractRowGridCommandFactory = subtractRowGridCommand
     )
 
     @Test
