@@ -24,12 +24,17 @@ class PunctuationRestorerManager @Inject constructor(
 
     override suspend fun initialize(): Result<Unit> = model.initialize()
 
-    override suspend fun restore(text: String): String {
+    override suspend fun restore(text: String, punctuation: Boolean): String {
         val words = text.trim().split(WHITESPACE).filter { it.isNotEmpty() }
         if (words.isEmpty()) return ""
+        model.initialize().onFailure {
+            Log.e(TAG, "Punctuation model unavailable", it)
+            return text.trim()
+        }
+
         return try {
             val parts = ArrayList<String>()
-            for (chunk in words.chunked(CHUNK_WORDS)) parts += restoreChunk(chunk)
+            for (chunk in words.chunked(CHUNK_WORDS)) parts += restoreChunk(chunk, punctuation)
             parts.joinToString(" ")
         } catch (t: Throwable) {
             Log.e(TAG, "Punctuation restoration failed", t)
@@ -39,17 +44,18 @@ class PunctuationRestorerManager @Inject constructor(
 
     override fun release() = model.release()
 
-    private suspend fun restoreChunk(words: List<String>): String {
+    private suspend fun restoreChunk(words: List<String>, punctuation: Boolean): String {
         val lower = words.map { it.lowercase() }
-        val joined = lower.joinToString(" ")
+        val joined = FILLER + " " + lower.joinToString(" ")
+        val total = words.size + 1
         val output = model.infer(joined) ?: return words.joinToString(" ")
 
         val punctLogits = output.tokenOutputs.firstOrNull { it.firstOrNull()?.size == PUNCT.size }
         val caseLogits = output.tokenOutputs.firstOrNull { it.firstOrNull()?.size == CASE_CLASSES }
         if (punctLogits == null || caseLogits == null) return words.joinToString(" ")
 
-        val punct = IntArray(words.size)
-        val case = IntArray(words.size)
+        val punct = IntArray(total)
+        val case = IntArray(total)
         var word = -1
         var lastStart = -1
         for (i in output.encoding.offsets.indices) {
@@ -57,24 +63,27 @@ class PunctuationRestorerManager @Inject constructor(
             if (!isWordStart(joined, range) || range.first == lastStart) continue
             lastStart = range.first
             word++
-            if (word >= words.size) break
+            if (word >= total) break
             punct[word] = argmax(punctLogits[i])
             case[word] = argmax(caseLogits[i])
         }
 
-        val labelled = (word + 1).coerceAtMost(words.size)
+        Log.d(TAG, "[RESTORE] input='$joined' labels(case/punct, first is the filler)=" +
+            (0 until total).joinToString(" ") { "${if (it == 0) FILLER else lower[it - 1]}:${case[it]}/${punct[it]}" })
+
+        val labelled = ((word + 1).coerceAtMost(total) - 1).coerceAtLeast(0)
 
         return buildString {
             for (w in 0 until words.size) {
                 if (w > 0) append(' ')
                 val token = lower[w]
                 if (w < labelled) {
-                    when (case[w]) {
+                    when (case[w + 1]) {
                         CASE_UPPER -> append(token.uppercase())
                         CASE_TITLE -> append(token.replaceFirstChar { it.uppercase() })
                         else -> append(token)
                     }
-                    append(PUNCT[punct[w]])
+                    if (punctuation) append(PUNCT[punct[w + 1]])
                 } else {
                     append(token)
                 }
@@ -87,6 +96,7 @@ class PunctuationRestorerManager @Inject constructor(
         const val ASSET_DIR = "sdadas-polish-distilroberta-punct"
         const val MAX_TOKENS = 160
         const val CHUNK_WORDS = 40
+        const val FILLER = "i"
         const val CASE_CLASSES = 3
         const val CASE_TITLE = 1
         const val CASE_UPPER = 2

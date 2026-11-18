@@ -12,6 +12,7 @@ import com.zpi.slowomir.utils.ContactOption
 import com.zpi.slowomir.utils.ContactUtils
 import com.zpi.slowomir.voice.intent.CommandIntentParser
 import com.zpi.slowomir.voice.intent.CommandIntentResolver
+import com.zpi.slowomir.voice.dictation.FieldProfileHolder
 import com.zpi.slowomir.voice.mediator.CommandMediator
 import com.zpi.slowomir.voice.mediator.MediatorState
 import com.zpi.slowomir.voice.selection.SelectionManager
@@ -58,7 +59,7 @@ class VoiceSessionManagerSelectionFlowTest {
         runBlocking { whenever(mediator.dispatch(any())).thenReturn(CommandResult.Success()) }
         whenever(contactUtils.lookup(any(), eq("Jan"))).thenReturn(ContactLookupResult.Ambiguous(jan))
 
-        sessionManager = VoiceSessionManager(mediator, intentParser, commandResolver, selectionManager, intentResolver, PolishTextNormalizer(), mock())
+        sessionManager = VoiceSessionManager(mediator, intentParser, commandResolver, selectionManager, intentResolver, PolishTextNormalizer(), mock(), mock(), FieldProfileHolder())
         sessionManager.accept(VoiceInput.ServiceStarted)
         sessionManager.accept(VoiceInput.KeywordDetected)
         eventually("session is listening") { sessionManager.state.value is VoiceState.Listening }

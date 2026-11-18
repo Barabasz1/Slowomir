@@ -4,7 +4,9 @@ import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.InputMethod
 import android.annotation.SuppressLint
 import android.content.Intent
+import android.util.Log
 import android.view.accessibility.AccessibilityEvent
+import android.view.inputmethod.EditorInfo
 import com.zpi.slowomir.overlay.executors.GridExecutor
 import com.zpi.slowomir.overlay.executors.MacroExecutor
 import com.zpi.slowomir.overlay.executors.MediaExecutor
@@ -15,6 +17,7 @@ import com.zpi.slowomir.overlay.executors.TextEditExecutor
 import com.zpi.slowomir.overlay.ui.common.OverlayHostProvider
 import com.zpi.slowomir.overlay.executors.TouchExecutor
 import com.zpi.slowomir.overlay.ui.voice.VoiceOverlayManager
+import com.zpi.slowomir.voice.dictation.FieldProfileHolder
 import com.zpi.slowomir.voice.mediator.CommandMediator
 import com.zpi.slowomir.voice.VoiceSessionManager
 import dagger.hilt.android.AndroidEntryPoint
@@ -40,6 +43,9 @@ class CommandExecutorService : AccessibilityService() {
 
     @Inject
     lateinit var mediator: CommandMediator
+
+    @Inject
+    lateinit var fieldProfileHolder: FieldProfileHolder
 
     @Inject
     lateinit var voiceSessionManager: VoiceSessionManager
@@ -92,7 +98,12 @@ class CommandExecutorService : AccessibilityService() {
         mediaExecutor = MediaExecutor(this)
         navigationExecutor = NavigationExecutor(this, touch)
         predictionExecutor = PredictionExecutor(this)
-        textEditExecutor = TextEditExecutor(this, touch) { textInputMethod?.currentInputConnection }
+        textEditExecutor = TextEditExecutor(
+            service = this,
+            touchExecutor = touch,
+            fieldCapsModes = { fieldProfileHolder.profile.capsModes },
+            inputConnection = { textInputMethod?.currentInputConnection },
+        )
         phoneCallExecutor = PhoneCallExecutor(this, touch)
 
         instance = this
@@ -101,8 +112,26 @@ class CommandExecutorService : AccessibilityService() {
     @Volatile
     private var textInputMethod: InputMethod? = null
 
-    override fun onCreateInputMethod(): InputMethod =
-        InputMethod(this).also { textInputMethod = it }
+    override fun onCreateInputMethod(): InputMethod {
+        val service = this
+        return object : InputMethod(service) {
+            override fun onStartInput(attribute: EditorInfo, restarting: Boolean) {
+                super.onStartInput(attribute, restarting)
+                fieldProfileHolder.update(attribute)
+                Log.d(
+                    "FieldProfile",
+                    "field started: pkg=${attribute.packageName} inputType=0x${attribute.inputType.toString(16)} " +
+                        "imeOptions=0x${attribute.imeOptions.toString(16)} hint='${attribute.hintText}' " +
+                        "label='${attribute.label}' -> ${fieldProfileHolder.profile}",
+                )
+            }
+
+            override fun onFinishInput() {
+                super.onFinishInput()
+                fieldProfileHolder.reset()
+            }
+        }.also { textInputMethod = it }
+    }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {}
 

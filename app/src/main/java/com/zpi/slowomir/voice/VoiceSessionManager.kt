@@ -29,6 +29,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import com.zpi.slowomir.overlay.commands.textEdit.DictateCommand
+import com.zpi.slowomir.voice.dictation.FieldProfileHolder
+import com.zpi.slowomir.voice.dictation.PunctuationRestorer
+import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -44,6 +47,8 @@ class VoiceSessionManager @Inject constructor(
     private val intentResolver: CommandIntentResolver,
     private val normalizer: PolishTextNormalizer,
     private val dictateCommandFactory: DictateCommand.Factory,
+    private val punctuationRestorer: PunctuationRestorer,
+    private val fieldProfileHolder: FieldProfileHolder,
 ) : VoiceInputSink, VoiceStateSource {
 
     val selection: StateFlow<Selection?> = selectionManager.selection
@@ -93,8 +98,29 @@ class VoiceSessionManager @Inject constructor(
         if (oldState != newState) {
             Log.d(TAG, "State transition: $oldState + $input -> $newState")
             onStateChanged(newState)
+            updatePunctuationModel(oldState, newState)
         }
     }
+
+    /**
+     * Keeps the punctuation model in memory only while dictating: it is loaded when dictation starts
+     * and released when it ends (exit command, keyword spotting, service stopped).
+     */
+    private fun updatePunctuationModel(oldState: VoiceState, newState: VoiceState) {
+        val wasDictating = oldState.isDictation()
+        val isDictating = newState.isDictation()
+        when {
+            !wasDictating && isDictating -> scope.launch {
+                punctuationRestorer.initialize().onFailure {
+                    Log.w(TAG, "Punctuation model unavailable, dictation will be typed as recognized", it)
+                }
+            }
+
+            wasDictating && !isDictating -> punctuationRestorer.release()
+        }
+    }
+
+    private fun VoiceState.isDictation() = this is VoiceState.Dictating || this is VoiceState.DictationProcessing
 
     /**
      * Handles a state transition.
@@ -181,8 +207,13 @@ class VoiceSessionManager @Inject constructor(
                 proceed(exit)
                 return@launch
             }
-            val result = mediator.dispatch(dictateCommandFactory.create(text))
-            Log.d(TAG, "Dictated '$text': $result")
+            val profile = fieldProfileHolder.profile
+            Log.d(TAG, "[DICTATION] raw='$text' profile=$profile")
+            var restored = punctuationRestorer.restore(text, profile.punctuation)
+            Log.d(TAG, "[DICTATION] restored='$restored'")
+            if (profile.uppercaseAll) restored = restored.uppercase(POLISH)
+            val result = mediator.dispatch(dictateCommandFactory.create(restored))
+            Log.d(TAG, "Dictated '$text' -> '$restored': $result")
             if (result !is CommandResult.Success) mediator.handleEvent(OverlayEvent.CommandRejected("Nie można wpisać tekstu"))
             inbox.send(InternalEvent.DictationHandled)
         }
@@ -264,6 +295,8 @@ class VoiceSessionManager @Inject constructor(
 
     companion object {
         private const val TAG = "VoiceSessionManager"
+
+        private val POLISH = Locale.forLanguageTag("pl-PL")
 
         private val DICTATION_EXIT = setOf(
             CommandIdentifier.TEXT_CONFIRM,

@@ -2,12 +2,15 @@ package com.zpi.slowomir.overlay.executors
 
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.InputMethod
+import android.text.TextUtils
 import android.view.inputmethod.SurroundingText
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.eq
+import org.mockito.kotlin.inOrder
 import org.mockito.kotlin.isNull
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.never
@@ -18,22 +21,43 @@ class TextEditInsertTextTest {
     private val service = mock<AccessibilityService>() // no active window: no leading space is added
     private val touch = mock<TouchExecutor>()
 
-    @Test
-    fun `insertText commits the text through the input connection`() {
-        val connection = mock<InputMethod.AccessibilityInputConnection>()
-        val executor = TextEditExecutor(service, touch) { connection }
+    private val capsOn = TextUtils.CAP_MODE_SENTENCES
 
-        assertTrue(executor.insertText("Ala ma kota."))
+    private fun connectionWithCaps(caps: Int): InputMethod.AccessibilityInputConnection {
+        val connection = mock<InputMethod.AccessibilityInputConnection>()
+        whenever(connection.getCursorCapsMode(any())).thenReturn(caps)
+        return connection
+    }
+
+    @Test
+    fun `insertText capitalizes the first letter when the editor asks for a capital`() {
+        val connection = connectionWithCaps(capsOn)
+        assertTrue(TextEditExecutor(service, touch) { connection }.insertText("ala ma kota."))
         verify(connection).commitText(eq("Ala ma kota."), eq(1), isNull())
     }
 
-    private fun connectionWithContext(text: String, selection: Int): InputMethod.AccessibilityInputConnection {
+    @Test
+    fun `insertText lowercases the first letter in the middle of a sentence`() {
+        val connection = connectionWithCaps(0)
+        assertTrue(TextEditExecutor(service, touch) { connection }.insertText("Ala ma kota."))
+        verify(connection).commitText(eq("ala ma kota."), eq(1), isNull())
+    }
+
+    @Test
+    fun `first letter case keeps acronyms and leaves the rest of the text alone`() {
+        assertEquals("NATO ma Kraków", TextEditExecutor.applyFirstLetterCase("NATO ma Kraków", capitalize = false))
+        assertEquals("ala ma Kraków", TextEditExecutor.applyFirstLetterCase("Ala ma Kraków", capitalize = false))
+        assertEquals("Ala ma Kraków", TextEditExecutor.applyFirstLetterCase("ala ma Kraków", capitalize = true))
+    }
+
+    private fun connectionWithContext(text: String, selection: Int, caps: Int = 0): InputMethod.AccessibilityInputConnection {
         val context = mock<SurroundingText>()
         whenever(context.text).thenReturn(text)
         whenever(context.selectionStart).thenReturn(selection)
         whenever(context.selectionEnd).thenReturn(selection)
         val connection = mock<InputMethod.AccessibilityInputConnection>()
         whenever(connection.getSurroundingText(eq(1), eq(0), eq(0))).thenReturn(context)
+        whenever(connection.getCursorCapsMode(any())).thenReturn(caps)
         return connection
     }
 
@@ -41,7 +65,8 @@ class TextEditInsertTextTest {
     fun `insertText adds a space after a non-whitespace character`() {
         val connection = connectionWithContext("a", selection = 1)
         assertTrue(TextEditExecutor(service, touch) { connection }.insertText("kota"))
-        verify(connection).commitText(eq(" kota"), eq(1), isNull())
+        verify(connection).commitText(eq(" "), eq(1), isNull())
+        verify(connection).commitText(eq("kota"), eq(1), isNull())
     }
 
     @Test
@@ -53,6 +78,17 @@ class TextEditInsertTextTest {
         val atStart = connectionWithContext("", selection = 0)
         TextEditExecutor(service, touch) { atStart }.insertText("kota")
         verify(atStart).commitText(eq("kota"), eq(1), isNull())
+    }
+
+    @Test
+    fun `the caps mode is read after the space so a sentence start is recognised`() {
+        val connection = connectionWithContext(".", selection = 1, caps = capsOn)
+        TextEditExecutor(service, touch) { connection }.insertText("kota")
+
+        val order = inOrder(connection)
+        order.verify(connection).commitText(eq(" "), eq(1), isNull())
+        order.verify(connection).getCursorCapsMode(any())
+        order.verify(connection).commitText(eq("Kota"), eq(1), isNull())
     }
 
     @Test

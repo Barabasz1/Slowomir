@@ -5,6 +5,7 @@ import com.zpi.slowomir.overlay.commands.CommandIdentifier
 import com.zpi.slowomir.overlay.commands.phoneCalls.CallCommand
 import com.zpi.slowomir.voice.intent.CommandIntentParser
 import com.zpi.slowomir.voice.intent.CommandIntentResolver
+import com.zpi.slowomir.voice.dictation.FieldProfileHolder
 import com.zpi.slowomir.voice.mediator.CommandMediator
 import com.zpi.slowomir.voice.mediator.MediatorState
 import com.zpi.slowomir.voice.selection.SelectionResult
@@ -40,6 +41,8 @@ class VoiceSessionManagerContactSelectionTest {
             intentResolver = mockIntentResolver,
             normalizer = PolishTextNormalizer(),
             dictateCommandFactory = mock(),
+            punctuationRestorer = mock(),
+            fieldProfileHolder = FieldProfileHolder(),
         )
     }
 
