@@ -3,6 +3,7 @@ package com.zpi.slowomir.overlay.executors
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.InputMethod
 import android.text.TextUtils
+import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.SurroundingText
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -156,5 +157,74 @@ class TextEditInsertTextTest {
         verify(connection).deleteSurroundingText(eq("Ala ma".length + "kota".length), eq(0))
         assertFalse(executor.isDictating)
         assertFalse(executor.cancel())
+    }
+
+    private fun field(imeOptions: Int): Pair<InputMethod.AccessibilityInputConnection, TextEditExecutor> {
+        val connection = mock<InputMethod.AccessibilityInputConnection>()
+        val info = EditorInfo().apply { this.imeOptions = imeOptions }
+        return connection to TextEditExecutor(service, touch, editorInfo = { info }) { connection }
+    }
+
+    @Test
+    fun `edit needs a running session and restarts the count of what cancel can undo`() {
+        val connection = mock<InputMethod.AccessibilityInputConnection>()
+        val executor = TextEditExecutor(service, touch) { connection }
+        assertFalse(executor.edit())
+
+        assertTrue(executor.enter())
+        assertTrue(executor.insertText("ala ma"))
+        assertTrue(executor.edit())
+        assertTrue(executor.isDictating)
+
+        assertTrue(executor.enter())
+        assertTrue(executor.insertText("kota"))
+        assertTrue(executor.cancel())
+        verify(connection).deleteSurroundingText(eq("kota".length), eq(0))
+    }
+
+    @Test
+    fun `confirm runs the action of the field and ends the session`() {
+        for (action in listOf(
+            EditorInfo.IME_ACTION_SEARCH,
+            EditorInfo.IME_ACTION_SEND,
+            EditorInfo.IME_ACTION_GO,
+            EditorInfo.IME_ACTION_DONE,
+            EditorInfo.IME_ACTION_NEXT,
+            EditorInfo.IME_ACTION_PREVIOUS,
+        )) {
+            val (connection, executor) = field(action)
+            assertTrue(executor.enter())
+
+            assertTrue("action $action", executor.confirm())
+            verify(connection).performEditorAction(eq(action))
+            assertFalse(executor.isDictating)
+        }
+    }
+
+    @Test
+    fun `confirm only finishes when enter would just add a new line`() {
+        for (options in listOf(
+            EditorInfo.IME_ACTION_NONE,
+            EditorInfo.IME_ACTION_UNSPECIFIED,
+            EditorInfo.IME_ACTION_SEND or EditorInfo.IME_FLAG_NO_ENTER_ACTION,
+        )) {
+            val (connection, executor) = field(options)
+            assertTrue(executor.enter())
+
+            assertTrue("options $options", executor.confirm())
+            verify(connection, never()).performEditorAction(any())
+            verify(connection, never()).sendKeyEvent(any())
+            assertFalse(executor.isDictating)
+        }
+    }
+
+    @Test
+    fun `confirm fails when the action cannot be run`() {
+        val (connection, executor) = field(EditorInfo.IME_ACTION_SEARCH)
+        whenever(connection.performEditorAction(any())).thenThrow(IllegalStateException("gone"))
+        assertTrue(executor.enter())
+
+        assertFalse(executor.confirm())
+        assertFalse(executor.isDictating)
     }
 }
