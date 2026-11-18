@@ -37,16 +37,36 @@ class TextEditInsertTextTest {
     }
 
     @Test
-    fun `insertText lowercases the first letter in the middle of a sentence`() {
-        val connection = connectionWithCaps(0)
-        assertTrue(TextEditExecutor(service, touch) { connection }.insertText("Ala ma kota."))
-        verify(connection).commitText(eq("ala ma kota."), eq(1), isNull())
+    fun `a field that asked for no capitals is not even asked and nothing is capitalized`() {
+        val connection = connectionWithCaps(0x3000)
+        val executor = TextEditExecutor(service, touch, fieldCapsModes = { 0 }) { connection }
+
+        assertTrue(executor.insertText("dwadzieścia"))
+        verify(connection).commitText(eq("dwadzieścia"), eq(1), isNull())
+        verify(connection, never()).getCursorCapsMode(any())
     }
 
     @Test
-    fun `first letter case keeps acronyms and leaves the rest of the text alone`() {
+    fun `only the modes the field asked for are passed to the editor`() {
+        val connection = connectionWithCaps(capsOn)
+        val executor = TextEditExecutor(service, touch, fieldCapsModes = { TextUtils.CAP_MODE_SENTENCES }) { connection }
+
+        assertTrue(executor.insertText("ala"))
+        verify(connection).getCursorCapsMode(eq(TextUtils.CAP_MODE_SENTENCES))
+        verify(connection).commitText(eq("Ala"), eq(1), isNull())
+    }
+
+    @Test
+    fun `insertText keeps the given case in the middle of a sentence so names survive`() {
+        val connection = connectionWithCaps(0)
+        assertTrue(TextEditExecutor(service, touch) { connection }.insertText("Kraków jest piękny."))
+        verify(connection).commitText(eq("Kraków jest piękny."), eq(1), isNull())
+    }
+
+    @Test
+    fun `first letter is only capitalized on request and the rest of the text is left alone`() {
         assertEquals("NATO ma Kraków", TextEditExecutor.applyFirstLetterCase("NATO ma Kraków", capitalize = false))
-        assertEquals("ala ma Kraków", TextEditExecutor.applyFirstLetterCase("Ala ma Kraków", capitalize = false))
+        assertEquals("ala ma Kraków", TextEditExecutor.applyFirstLetterCase("ala ma Kraków", capitalize = false))
         assertEquals("Ala ma Kraków", TextEditExecutor.applyFirstLetterCase("ala ma Kraków", capitalize = true))
     }
 
