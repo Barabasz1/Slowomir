@@ -1,7 +1,8 @@
 package com.zpi.slowomir.overlay.ui.macro
 
+import com.zpi.slowomir.overlay.commands.Command
 import com.zpi.slowomir.overlay.macro.MacroInfo
-import kotlin.text.removeSuffix
+import java.util.Locale
 
 data class ActionEntry(
     val text: String
@@ -11,15 +12,25 @@ data class MacroEntry(
     val list: List<ActionEntry>,
     val isGenerated: Boolean = false
 ) {
-    constructor(macroInfo: MacroInfo):
-            this(
-                macroInfo.commands
-                    .map {
-                        ActionEntry(it.javaClass.simpleName
-                            .removeSuffix("Command")
-                            .replace(Regex("(?<=[a-z])(?=[A-Z])"), " ")
-                        )
-                },
-                macroInfo.isGenerated)
-}
+    constructor(macroInfo: MacroInfo) : this(
+        macroInfo.commands.map { ActionEntry(formatCommand(it)) },
+        macroInfo.isGenerated
+    )
 
+    companion object {
+        private fun formatCommand(command: Command): String {
+            val baseName = command.javaClass.simpleName
+                .removeSuffix("Command")
+                .replace(Regex("(?<=[a-z])(?=[A-Z])"), " ")
+            val args = command.arguments.filterValues { it != null }
+            if (args.isEmpty()) return baseName
+            val formattedArgs = args.values.joinToString(", ") { value ->
+                when (value) {
+                    is Float -> if (value % 1f == 0f) value.toInt().toString() else "%.1f".format(Locale.US, value)
+                    else -> value.toString()
+                }
+            }
+            return "$baseName ($formattedArgs)"
+        }
+    }
+}

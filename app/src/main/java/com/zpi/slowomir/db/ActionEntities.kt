@@ -1,4 +1,4 @@
-package com.zpi.slowomir.overlay.log.db
+package com.zpi.slowomir.db
 
 import androidx.room.ColumnInfo
 import androidx.room.Entity
@@ -33,6 +33,12 @@ data class ActionDefEntity(
 
     @ColumnInfo(name = "label_hash")
     val labelHash: String? = null,
+
+    @ColumnInfo(name = "command_type")
+    val commandType: String? = null,
+
+    @ColumnInfo(name = "command_args")
+    val commandArgs: String? = null,
 )
 
 @Entity(

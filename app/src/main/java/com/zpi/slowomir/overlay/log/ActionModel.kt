@@ -5,6 +5,7 @@ enum class ActionType {
     HOME,
     BACK,
     LAST_APPS,
+    COMMAND,
 }
 
 data class ActionDescriptor(
@@ -13,10 +14,14 @@ data class ActionDescriptor(
     val resourceId: String? = null,
     val hierarchyPath: String? = null,
     val labelHash: String? = null,
+    val commandType: String? = null,
+    val commandArgs: String? = null,
 ) {
     companion object {
         fun system(type: ActionType): ActionDescriptor {
-            require(type != ActionType.UI_CLICK) { "Use ActionDescriptor(UI_CLICK, ...) for UI clicks" }
+            require(type != ActionType.UI_CLICK && type != ActionType.COMMAND) {
+                "Use ActionDescriptor(...) directly for UI_CLICK and COMMAND"
+            }
             return ActionDescriptor(type)
         }
     }

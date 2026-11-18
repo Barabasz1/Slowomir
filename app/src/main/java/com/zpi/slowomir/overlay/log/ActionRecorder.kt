@@ -1,9 +1,9 @@
 package com.zpi.slowomir.overlay.log
 
 import android.util.Log
-import com.zpi.slowomir.overlay.log.db.ActionDao
-import com.zpi.slowomir.overlay.log.db.ActionDefEntity
-import com.zpi.slowomir.overlay.log.db.LoggedAction
+import com.zpi.slowomir.db.ActionDao
+import com.zpi.slowomir.db.ActionDefEntity
+import com.zpi.slowomir.db.LoggedAction
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -70,7 +70,9 @@ class ActionRecorder @Inject constructor(
                         "package_name=${def.packageName}, " +
                         "resource_id=${def.resourceId}, " +
                         "hierarchy_path=${def.hierarchyPath}, " +
-                        "label_hash=${def.labelHash}"
+                        "label_hash=${def.labelHash}, " +
+                        "command_type=${def.commandType}, " +
+                        "command_args=${def.commandArgs}"
             )
         }
 
@@ -111,10 +113,12 @@ class ActionRecorder @Inject constructor(
         return ActionDefEntity(
             actionHash = ActionHasher.hash(this),
             actionType = type,
-            packageName = if (isClick) packageName else null,
+            packageName = packageName,
             resourceId = if (isClick) resourceId else null,
             hierarchyPath = if (isClick) hierarchyPath else null,
             labelHash = if (isClick) labelHash else null,
+            commandType = commandType,
+            commandArgs = commandArgs,
         )
     }
 

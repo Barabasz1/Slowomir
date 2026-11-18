@@ -136,7 +136,9 @@ class DefaultCommandMediator @Inject constructor(
                 command.execute()
             }
             executionResult.also {
-                commandLogger.log(command)
+                if (executionResult is CommandResult.Success) {
+                    commandLogger.log(command)
+                }
             }
         } catch (e: CancellationException) {
             throw e

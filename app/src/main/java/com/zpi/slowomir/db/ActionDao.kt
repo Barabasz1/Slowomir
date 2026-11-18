@@ -1,10 +1,11 @@
-package com.zpi.slowomir.overlay.log.db
+package com.zpi.slowomir.db
 
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
+import com.zpi.slowomir.overlay.log.ActionType
 
 @Dao
 abstract class ActionDao {
@@ -34,6 +35,17 @@ abstract class ActionDao {
         )
     }
 
+    @Query(
+        "SELECT e.id_action_event AS idActionEvent, e.timestamp AS timestamp, " +
+                "d.id_action_def AS idActionDef, d.action_hash AS actionHash, " +
+                "d.action_type AS actionType, d.package_name AS packageName, " +
+                "d.resource_id AS resourceId, d.hierarchy_path AS hierarchyPath, " +
+                "d.label_hash AS labelHash, d.command_type AS commandType, " +
+                "d.command_args AS commandArgs " +
+                "FROM action_event e INNER JOIN action_def d ON e.id_action_def = d.id_action_def " +
+                "ORDER BY e.timestamp ASC, e.id_action_event ASC"
+    )
+    abstract suspend fun getAllLoggedEvents(): List<LoggedActionEvent>
 
     @Query("DELETE FROM action_event WHERE timestamp < :cutoff")
     abstract suspend fun deleteEventsOlderThan(cutoff: Long): Int
@@ -67,4 +79,18 @@ data class LoggedAction(
     val def: ActionDefEntity,
     val defInserted: Boolean,
     val event: ActionEventEntity,
+)
+
+data class LoggedActionEvent(
+    val idActionEvent: Long,
+    val timestamp: Long,
+    val idActionDef: Long,
+    val actionHash: String,
+    val actionType: ActionType,
+    val packageName: String?,
+    val resourceId: String?,
+    val hierarchyPath: String?,
+    val labelHash: String?,
+    val commandType: String?,
+    val commandArgs: String?,
 )

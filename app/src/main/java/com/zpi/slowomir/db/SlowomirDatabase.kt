@@ -1,4 +1,4 @@
-package com.zpi.slowomir.overlay.log.db
+package com.zpi.slowomir.db
 
 import androidx.room.Database
 import androidx.room.RoomDatabase

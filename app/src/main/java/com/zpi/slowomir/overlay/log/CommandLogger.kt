@@ -1,18 +1,18 @@
 package com.zpi.slowomir.overlay.log
 
 import com.zpi.slowomir.overlay.commands.Command
+import com.zpi.slowomir.overlay.commands.CommandFactory
+import com.zpi.slowomir.overlay.services.CommandExecutorService
+import com.zpi.slowomir.voice.mediator.CommandMediator
 import javax.inject.Inject
+import javax.inject.Provider
 import javax.inject.Singleton
 
-/**
- * Logger for commands. It saves and logs commands.
- *
- * Commands that implement [ActionLoggable] are additionally stored in the action log
- * (tables `action_def` / `action_event`) through [ActionRecorder].
- */
 @Singleton
 class CommandLogger @Inject constructor(
     private val actionRecorder: ActionRecorder,
+    private val commandFactory: CommandFactory,
+    private val mediatorProvider: Provider<CommandMediator>,
 ) : ICommandLogger {
     interface ICommandLoggerListener {
         fun update(command: Command)
@@ -21,45 +21,53 @@ class CommandLogger @Inject constructor(
     private var listener: ICommandLoggerListener? = null
 
     override fun log(command: Command) {
-
-        // preprocess - filter, .. etc
+        if (!ActionLogConfig.shouldLog(command)) return
 
         notifyListener(command)
         save(command)
     }
 
-    /**
-     * Saves the command in the action log.
-     * Only successfully executed [ActionLoggable] commands produce an entry.
-     *
-     * @param command The command to save.
-     */
     private fun save(command: Command) {
-        val action = (command as? ActionLoggable)?.consumeLoggedAction() ?: return
-        actionRecorder.record(action, System.currentTimeMillis())
+        val serialized = commandFactory.serialize(command)
+        val currentPackage = resolveCurrentPackage()
+        val logged = (command as? ActionLoggable)?.consumeLoggedAction()
+
+        val descriptor = if (logged != null) {
+            logged.copy(
+                packageName = logged.packageName ?: currentPackage,
+                commandType = serialized.type,
+                commandArgs = serialized.argumentsJson,
+            )
+        } else {
+            ActionDescriptor(
+                type = ActionType.COMMAND,
+                packageName = currentPackage,
+                commandType = serialized.type,
+                commandArgs = serialized.argumentsJson,
+            )
+        }
+
+        actionRecorder.record(descriptor, System.currentTimeMillis())
     }
 
-    /**
-     * Attaches a listener to the logger.
-     *
-     * @param listener The listener to attach.
-     */
+    private fun resolveCurrentPackage(): String? {
+        val fromMediator = runCatching {
+            mediatorProvider.get().mediatorState.value.overlayContext.packageName
+        }.getOrNull()?.takeIf { it.isNotBlank() }
+
+        return fromMediator
+            ?: CommandExecutorService.instance?.rootInActiveWindow?.packageName?.toString()
+                ?.takeIf { it.isNotBlank() }
+    }
+
     fun attachListener(listener: ICommandLoggerListener) {
         this.listener = listener
     }
 
-    /**
-     * Detaches the listener from the logger.
-     */
     fun detachListener() {
         this.listener = null
     }
 
-    /**
-     * Notifies the listener about a new command.
-     *
-     * @param command The new command.
-     */
     private fun notifyListener(command: Command) {
         this.listener?.update(command)
     }
