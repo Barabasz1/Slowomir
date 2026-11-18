@@ -171,7 +171,7 @@ class VoiceSessionManager @Inject constructor(
     }
 
     /**
-     * Types recognized speech into the focused text field (as recognized, without punctuation restoration).
+     * Types recognized speech into the focused text field.
      * Only the dictation exit commands are recognized meanwhile; everything else is text.
      */
     private fun dictate(text: String) {
