@@ -27,7 +27,7 @@ class PlayMacroCommand @AssistedInject constructor(
     }
 
     override fun canExecute(context: OverlayContext): Boolean {
-        return macroExecutorProvider.get()?.isOverlayShown() ?: false
+        return macroExecutorProvider.get()?.hasMacroOption(index) ?: false
     }
 
     @AssistedFactory

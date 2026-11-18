@@ -8,11 +8,6 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import javax.inject.Provider
 
-/**
- * A command that finishes recording a new macro.
- *
- * @param macroExecutorProvider A provider for the macro executor.
- */
 class ToggleMacroOverlayCommand @AssistedInject constructor(
     private val macroExecutorProvider: Provider<MacroExecutor?>,
 ) : Command {

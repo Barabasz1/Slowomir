@@ -55,6 +55,11 @@ class MacroExecutor @Inject constructor(
     fun isOverlayShown(): Boolean {
         return macroOverlay.isShowing
     }
+
+    fun hasMacroOption(index: Int): Boolean {
+        return macroOverlay.hasOption(index)
+    }
+
     fun isRecordingEmpty(): Boolean {
         return macroRecorder.isRecordingEmpty()
     }

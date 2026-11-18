@@ -163,8 +163,7 @@ class CommandIntentParser @Inject constructor(
             "sms" -> CommandIdentifier.SMS_WRITE
             "nagraj makro", "rozpocznij nagrywanie makra", "zacznij nagrywać makro", "utwórz nowe makro", "zapisuj czynności jako makro" -> CommandIdentifier.MACRO_RECORD
             "zakończ makro", "zakończ nagrywanie makra", "zatrzymaj nagrywanie makra", "zapisz makro", "skończ nagrywać makro" -> CommandIdentifier.MACRO_FINISH
-            "makro", "makra",  "lista makr", "lista makro", "lista makra" -> CommandIdentifier.MACRO_TOGGLE
-            "pokaż makra", "pokaż makro","otwórz listę makr", "wyświetl zapisane makra",  -> CommandIdentifier.MACRO_SHOW
+            "makro", "makra",  "lista makr", "lista makro", "lista makra" , "pokaż makra", "pokaż makro","otwórz listę makr", "wyświetl makra","wyświetl makro"  -> CommandIdentifier.MACRO_SHOW
             "schowaj makra", "schowaj makro", "schowaj listę", "zamknij listę", "zamknij makra" -> CommandIdentifier.MACRO_HIDE
 
             else -> null
