@@ -9,6 +9,8 @@ import com.zpi.slowomir.voice.VoiceSessionManager
 import com.zpi.slowomir.voice.stt.SpeechRecognizer
 import com.zpi.slowomir.voice.stt.VoiceInputSink
 import com.zpi.slowomir.voice.stt.VoiceStateSource
+import com.zpi.slowomir.voice.dictation.PunctuationRestorer
+import com.zpi.slowomir.voice.dictation.PunctuationRestorerManager
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -32,5 +34,8 @@ abstract class VoiceModule {
 
     @Binds
     abstract fun bindSpeechRecognizer(impl: VoskSpeechRecognizer): SpeechRecognizer
+
+    @Binds
+    abstract fun bindPunctuationRestorer(impl: PunctuationRestorerManager): PunctuationRestorer
 
 }

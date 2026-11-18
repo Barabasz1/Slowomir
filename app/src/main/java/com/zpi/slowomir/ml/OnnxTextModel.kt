@@ -12,8 +12,10 @@ import java.nio.LongBuffer
 class ModelOutput(
     val encoding: TokenEncoding,
     val sequenceLogits: FloatArray?,
-    val tokenLogits: Array<FloatArray>?,
-)
+    val tokenOutputs: List<Array<FloatArray>> = emptyList(),
+) {
+    val tokenLogits: Array<FloatArray>? get() = tokenOutputs.lastOrNull()
+}
 
 /**
  * Generic wrapper on ONNX text encoder model.
@@ -54,7 +56,7 @@ class OnnxTextModel(
         val mask = LongArray(enc.ids.size) { 1L }
 
         var sequence: FloatArray? = null
-        var tokens: Array<FloatArray>? = null
+        val allTokens = ArrayList<Array<FloatArray>>()
 
         OnnxTensor.createTensor(ortEnv, LongBuffer.wrap(enc.ids), shape).use { idsTensor ->
             OnnxTensor.createTensor(ortEnv, LongBuffer.wrap(mask), shape).use { maskTensor ->
@@ -69,14 +71,14 @@ class OnnxTextModel(
                             is FloatArray -> sequence = first
                             is Array<*> -> {
                                 @Suppress("UNCHECKED_CAST")
-                                tokens = first as Array<FloatArray>
+                                allTokens += first as Array<FloatArray>
                             }
                         }
                     }
                 }
             }
         }
-        ModelOutput(enc, sequence, tokens)
+        ModelOutput(enc, sequence, allTokens)
     }
 
     fun release() {

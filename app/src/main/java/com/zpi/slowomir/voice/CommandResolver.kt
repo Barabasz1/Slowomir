@@ -9,6 +9,8 @@ import com.zpi.slowomir.overlay.commands.media.VolumeUpCommand
 import com.zpi.slowomir.overlay.commands.navigation.*
 import com.zpi.slowomir.overlay.commands.phoneCalls.*
 import com.zpi.slowomir.overlay.commands.grid.*
+import com.zpi.slowomir.overlay.commands.textEdit.CancelCommand
+import com.zpi.slowomir.overlay.commands.textEdit.EditCommand
 import com.zpi.slowomir.overlay.commands.textEdit.ConfirmCommand
 import com.zpi.slowomir.overlay.commands.textEdit.CursorBackwardCommand
 import com.zpi.slowomir.overlay.commands.textEdit.CursorForwardCommand
@@ -43,6 +45,8 @@ class CommandResolver @Inject constructor(
     private val textDeleteWordCommandFactory: DeleteWordCommand.Factory,
     private val textEnterCommandFactory: EnterCommand.Factory,
     private val textConfirmCommandFactory: ConfirmCommand.Factory,
+    private val textCancelCommandFactory: CancelCommand.Factory,
+    private val textEditCommandFactory: EditCommand.Factory,
     private val pickUpCommandFactory: PickUpCommand.Factory,
     private val declineCommandFactory: DeclineCommand.Factory,
     private val endCommandFactory: EndCommand.Factory,
@@ -121,6 +125,8 @@ class CommandResolver @Inject constructor(
         CommandIdentifier.TEXT_DELETE_WORD -> textDeleteWordCommandFactory.create()
         CommandIdentifier.TEXT_ENTER -> textEnterCommandFactory.create()
         CommandIdentifier.TEXT_CONFIRM -> textConfirmCommandFactory.create()
+        CommandIdentifier.TEXT_CANCEL -> textCancelCommandFactory.create()
+        CommandIdentifier.TEXT_EDIT -> textEditCommandFactory.create()
 
         // Phone calls
         CommandIdentifier.PHONE_PICK_UP -> pickUpCommandFactory.create()

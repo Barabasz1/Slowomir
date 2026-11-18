@@ -18,6 +18,7 @@ import com.zpi.slowomir.voice.stt.SessionEvent
 import com.zpi.slowomir.voice.stt.VoiceInput
 import com.zpi.slowomir.voice.stt.VoiceInputSink
 import com.zpi.slowomir.voice.stt.VoiceState
+import com.zpi.slowomir.voice.stt.TextMode
 import com.zpi.slowomir.voice.stt.VoiceStateMachine
 import com.zpi.slowomir.voice.stt.VoiceStateSource
 import kotlinx.coroutines.CoroutineScope
@@ -28,6 +29,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import com.zpi.slowomir.overlay.commands.textEdit.DictateCommand
+import com.zpi.slowomir.voice.dictation.FieldProfileHolder
+import com.zpi.slowomir.voice.dictation.PunctuationRestorer
+import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -42,6 +47,9 @@ class VoiceSessionManager @Inject constructor(
     private val selectionManager: SelectionManager,
     private val intentResolver: CommandIntentResolver,
     private val normalizer: PolishTextNormalizer,
+    private val dictateCommandFactory: DictateCommand.Factory,
+    private val punctuationRestorer: PunctuationRestorer,
+    private val fieldProfileHolder: FieldProfileHolder,
 ) : VoiceInputSink, VoiceStateSource {
 
     val selection: StateFlow<Selection?> = selectionManager.selection
@@ -91,8 +99,30 @@ class VoiceSessionManager @Inject constructor(
         if (oldState != newState) {
             Log.d(TAG, "State transition: $oldState + $input -> $newState")
             onStateChanged(newState)
+            updatePunctuationModel(oldState, newState)
         }
     }
+
+    /**
+     * Keeps the punctuation model in memory only while dictating: it is loaded when dictation starts
+     * and released when it ends (exit command, keyword spotting, service stopped).
+     */
+    private fun updatePunctuationModel(oldState: VoiceState, newState: VoiceState) {
+        val wasDictating = oldState.isTextSession()
+        val isDictating = newState.isTextSession()
+        when {
+            !wasDictating && isDictating -> scope.launch {
+                punctuationRestorer.initialize().onFailure {
+                    Log.w(TAG, "Punctuation model unavailable, dictation will be typed as recognized", it)
+                }
+            }
+
+            wasDictating && !isDictating -> punctuationRestorer.release()
+        }
+    }
+
+    private fun VoiceState.isTextSession() =
+        this is VoiceState.Dictating || this is VoiceState.Editing || this is VoiceState.TextProcessing
 
     /**
      * Handles a state transition.
@@ -107,6 +137,10 @@ class VoiceSessionManager @Inject constructor(
 
             is VoiceState.CommandExecuting -> {
                 dispatchCommand(newState.intent, newState.command)
+            }
+
+            is VoiceState.TextProcessing -> {
+                handleTextInput(newState.rawText, newState.mode)
             }
 
             else -> {}
@@ -165,6 +199,46 @@ class VoiceSessionManager @Inject constructor(
     }
 
     /**
+     * Handles speech inside a text input session. Only the commands that belong to the current [mode] are
+     * recognized: in dictation mode the rest is typed into the field, in edit mode anything else is rejected.
+     */
+    private fun handleTextInput(text: String, mode: TextMode) {
+        scope.launch {
+            val allowed = if (mode == TextMode.EDIT) EDIT_MODE_COMMANDS else DICTATION_MODE_COMMANDS
+
+            val spoken = intentParser.parse(text) ?: if (mode == TextMode.EDIT) resolveWithModel(text) else null
+            val intent = spoken?.takeIf { it.identifier in allowed }
+            when {
+                intent != null -> proceed(intent)
+
+                mode == TextMode.EDIT -> {
+                    mediator.handleEvent(OverlayEvent.InvalidCommand(text))
+                    inbox.send(InternalEvent.TextHandled)
+                }
+
+                else -> {
+                    dictate(text)
+                    inbox.send(InternalEvent.TextHandled)
+                }
+            }
+        }
+    }
+
+    /**
+     * Restores punctuation and casing in recognized speech and types it into the focused text field.
+     */
+    private suspend fun dictate(text: String) {
+        val profile = fieldProfileHolder.profile
+        Log.d(TAG, "[DICTATION] raw='$text' profile=$profile")
+        var restored = punctuationRestorer.restore(text, profile.punctuation)
+        Log.d(TAG, "[DICTATION] restored='$restored'")
+        if (profile.uppercaseAll) restored = restored.uppercase(POLISH)
+        val result = mediator.dispatch(dictateCommandFactory.create(restored))
+        Log.d(TAG, "Dictated '$text' -> '$restored': $result")
+        if (result !is CommandResult.Success) mediator.handleEvent(OverlayEvent.CommandRejected("Nie można wpisać tekstu"))
+    }
+
+    /**
      * Fallback for utterances the rule-based parser rejects: asks the intent model for the
      * command and its argument. Returns null when the model is unsure, unavailable, or did not
      * extract the argument that command needs.
@@ -210,10 +284,11 @@ class VoiceSessionManager @Inject constructor(
      */
     private fun dispatchCommand(intent: VoiceIntent, command: Command) {
         scope.launch {
-            mediator.handleEvent(OverlayEvent.CommandInterpreted(command))
+            val result = mediator.dispatch(command)
+            mediator.handleEvent(OverlayEvent.CommandExecuted(command, result))
             val returnToKws = intent.identifier == CommandIdentifier.OVERLAY_STOP
 
-            inbox.send(InternalEvent.CommandFinished(CommandResult.Success(), returnToKws = returnToKws))
+            inbox.send(InternalEvent.CommandFinished(result, returnToKws = returnToKws))
         }
     }
 
@@ -239,6 +314,27 @@ class VoiceSessionManager @Inject constructor(
 
     companion object {
         private const val TAG = "VoiceSessionManager"
+
+        private val POLISH = Locale.forLanguageTag("pl-PL")
+
+        private val DICTATION_MODE_COMMANDS = setOf(
+            CommandIdentifier.TEXT_EDIT,
+            CommandIdentifier.TEXT_CONFIRM,
+            CommandIdentifier.TEXT_CANCEL,
+            CommandIdentifier.OVERLAY_STOP,
+        )
+
+        private val EDIT_MODE_COMMANDS = setOf(
+            CommandIdentifier.TEXT_ENTER,
+            CommandIdentifier.TEXT_CURSOR_FORWARD,
+            CommandIdentifier.TEXT_CURSOR_BACKWARD,
+            CommandIdentifier.TEXT_CURSOR_NEXT_WORD,
+            CommandIdentifier.TEXT_CURSOR_PREVIOUS_WORD,
+            CommandIdentifier.TEXT_DELETE_CHARACTER,
+            CommandIdentifier.TEXT_DELETE_WORD,
+            CommandIdentifier.TEXT_CONFIRM,
+            CommandIdentifier.OVERLAY_STOP,
+        )
 
         private val SELECTABLE_INTENTS = setOf(
             CommandIdentifier.PHONE_CALL,

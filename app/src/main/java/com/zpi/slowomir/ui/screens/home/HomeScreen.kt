@@ -110,6 +110,7 @@ fun computeSlowomirState(
     }
 
     if (voiceState is VoiceState.IntentParsing ||
+        voiceState is VoiceState.TextProcessing ||
         voiceState is VoiceState.CommandExecuting ||
         overlayState is OverlayState.ProcessingCommand
     ) {
@@ -117,6 +118,8 @@ fun computeSlowomirState(
     }
 
     if (voiceState is VoiceState.Listening ||
+        voiceState is VoiceState.Dictating ||
+        voiceState is VoiceState.Editing ||
         overlayState is OverlayState.ListeningForCommand ||
         overlayState is OverlayState.ListeningToSpeech
     ) {

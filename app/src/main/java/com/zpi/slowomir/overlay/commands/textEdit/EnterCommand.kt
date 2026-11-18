@@ -9,7 +9,7 @@ import dagger.assisted.AssistedInject
 import javax.inject.Provider
 
 /**
- * A command that sends an Enter key event in text editing mode.
+ * A command that turns on dictation mode.
  *
  * @param textEditExecutorProvider A provider for the [TextEditExecutor].
  */

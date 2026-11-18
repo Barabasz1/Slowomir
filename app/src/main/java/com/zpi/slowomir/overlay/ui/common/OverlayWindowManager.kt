@@ -22,9 +22,23 @@ abstract class OverlayWindowManager(
     private var host: OverlayHost = hostProvider.host.value
     private var view: View? = null
     private var viewHost: OverlayHost? = null
+    private var layoutParams: WindowManager.LayoutParams? = null
     private var wanted = false
 
     val isShowing: Boolean get() = view != null
+
+    protected val attachedView: View? get() = view
+
+    protected fun updateLayout(change: WindowManager.LayoutParams.() -> Unit) {
+        val current = view ?: return
+        val params = layoutParams ?: return
+        params.change()
+        try {
+            viewHost?.windowManager?.updateViewLayout(current, params)
+        } catch (e: Exception) {
+            Log.w(tag, "updateViewLayout failed", e)
+        }
+    }
 
     protected abstract fun onCreateView(context: Context): View
 
@@ -82,7 +96,9 @@ abstract class OverlayWindowManager(
         val newView = onCreateView(target.context)
 
         return try {
-            target.windowManager.addView(newView, onCreateLayoutParams(target.windowType))
+            val params = onCreateLayoutParams(target.windowType)
+            target.windowManager.addView(newView, params)
+            layoutParams = params
             view = newView
             viewHost = target
             onViewAttached(newView)
@@ -105,6 +121,7 @@ abstract class OverlayWindowManager(
 
         view = null
         viewHost = null
+        layoutParams = null
         onViewDetached(old)
     }
 }
