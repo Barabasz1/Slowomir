@@ -9,10 +9,17 @@ import javax.inject.Singleton
 class MacroRepository @Inject constructor() {
 
     fun saveRecordedMacro(commandSequence: List<Command>) {
-
+        if(commandSequence.isEmpty()) return
     }
 
     fun getRecordedMacros(limit: Int = 10): List<Macro> {
-        return listOf()
+        return listOf(
+            Macro(
+                listOf(),
+                null
+            )
+        )
     }
+
+
 }

@@ -63,7 +63,9 @@ class GridView(
     private var parentCell: Int? = null
     private var divisions: List<Pair<Int, Int>> = emptyList()
 
-    fun update(selectedCell: Int?, parentCell: Int?, divisions: List<Pair<Int, Int>>) {
+    fun update(rowCount: Int, colCount: Int, selectedCell: Int?, parentCell: Int?, divisions: List<Pair<Int, Int>>) {
+        this.rows = rowCount
+        this.cols = colCount
         this.selectedCell = selectedCell
         this.parentCell = parentCell
         this.divisions = divisions
@@ -93,20 +95,23 @@ class GridView(
                 val x = col * cw
                 val y = row * ch
 
+                val isDivided = divisions.firstOrNull()?.first == cell
                 val isSelected = divisions.isEmpty() && cell == selectedCell
-                val paint = if (cell == parentCell || parentCell == null || isSelected) {
+                val paint = if (parentCell == null || isSelected) {
                     textPaint
                 } else {
                     dimPaint
                 }
 
-                drawLabel(canvas, cell.toString(), x, y, cw, ch, paint)
+                if (!isDivided) {
+                    drawLabel(canvas, cell.toString(), x, y, cw, ch, paint)
+                }
 
                 if (isSelected) {
                     drawCellHighlight(canvas, x, y, cw, ch)
                 }
 
-                if (divisions.firstOrNull()?.first == cell) {
+                if (isDivided) {
                     drawDivision(canvas, x, y, cw, ch, 0)
                 }
             }
@@ -140,17 +145,19 @@ class GridView(
                 val cx = x + col * sw
                 val cy = y + row * sh
 
+                val isSubDivided = next?.first == cell
                 val isSelected = isActiveLevel && cell == selectedCell
-                val paint =
-                    if (next == null || next.first == cell || isSelected) textPaint else dimPaint
+                val paint = if (next == null || isSelected) textPaint else dimPaint
 
-                drawLabel(canvas, cell.toString(), cx, cy, sw, sh, paint)
+                if (!isSubDivided) {
+                    drawLabel(canvas, cell.toString(), cx, cy, sw, sh, paint)
+                }
 
                 if (isSelected) {
                     drawCellHighlight(canvas, cx, cy, sw, sh)
                 }
 
-                if (next?.first == cell) {
+                if (isSubDivided) {
                     drawDivision(canvas, cx, cy, sw, sh, level + 1)
                 }
             }

@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -103,7 +104,7 @@ class DefaultCommandMediator @Inject constructor(
         }
     }
 
-    override suspend fun dispatch(command: Command): CommandResult {
+    override suspend fun dispatch(command: Command): CommandResult = withContext(Dispatchers.Main.immediate) {
         val context = mediatorState.value.overlayContext
 
         if (!command.canExecute(context)) {
@@ -111,7 +112,7 @@ class DefaultCommandMediator @Inject constructor(
                 "Command ${command::class.simpleName} cannot execute in current context"
             )
 
-            return invalidResult
+            return@withContext invalidResult
         }
 
         val result = try {
@@ -129,7 +130,7 @@ class DefaultCommandMediator @Inject constructor(
             CommandResult.Failure("Unhandled exception during execution of ${command::class.simpleName}:\n ${e.message}")
         }
 
-        return result
+        result
     }
 
     /**

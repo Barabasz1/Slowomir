@@ -160,20 +160,20 @@ class CommandIntentParserTest {
 
     @Test
     fun `should correctly recognize macro commands`() {
-        val resultMacro = parser.parse("Makro Poranek")
+        val resultMacro = parser.parse("Makro 1")
         assertNotNull(resultMacro)
         assertEquals(CommandIdentifier.MACRO_PLAY, resultMacro?.identifier)
-        assertEquals(CommandArgument.Text("poranek"), resultMacro?.argument)
+        assertEquals(CommandArgument.Number(1), resultMacro?.argument)
 
-        val resultUruchomMakro = parser.parse("Wykonaj makro Poranek")
+        val resultUruchomMakro = parser.parse("Wykonaj makro 1")
         assertNotNull(resultUruchomMakro)
         assertEquals(CommandIdentifier.MACRO_PLAY, resultUruchomMakro?.identifier)
-        assertEquals(CommandArgument.Text("poranek"), resultUruchomMakro?.argument)
+        assertEquals(CommandArgument.Number(1), resultUruchomMakro?.argument)
 
-        val resultOdtworzMakro = parser.parse("Odtwórz makro Praca")
+        val resultOdtworzMakro = parser.parse("Odtwórz makro 2")
         assertNotNull(resultOdtworzMakro)
         assertEquals(CommandIdentifier.MACRO_PLAY, resultOdtworzMakro?.identifier)
-        assertEquals(CommandArgument.Text("praca"), resultOdtworzMakro?.argument)
+        assertEquals(CommandArgument.Number(2), resultOdtworzMakro?.argument)
     }
 
     @Test

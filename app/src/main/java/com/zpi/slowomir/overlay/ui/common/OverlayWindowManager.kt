@@ -1,6 +1,7 @@
 package com.zpi.slowomir.overlay.ui.common
 
 import android.content.Context
+import android.os.Looper
 import android.provider.Settings
 import android.util.Log
 import android.view.View
@@ -10,6 +11,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 
 abstract class OverlayWindowManager(
     private val hostProvider: OverlayHostProvider
@@ -86,7 +88,21 @@ abstract class OverlayWindowManager(
         }
     }
 
+    private fun isMainThread(): Boolean {
+        val mainLooper = Looper.getMainLooper()
+        return mainLooper == null || Looper.myLooper() == mainLooper
+    }
+
     private fun attach(target: OverlayHost): Boolean {
+        // IDK
+        if (!isMainThread()) {
+            return runCatching {
+                runBlocking(Dispatchers.Main.immediate) {
+                    attach(target)
+                }
+            }.getOrDefault(false)
+        }
+
         if (!target.isAccessibility && !Settings.canDrawOverlays(target.context)) {
             Log.w(tag, "Overlay permission not granted")
             onAttachDenied(target)
@@ -111,6 +127,16 @@ abstract class OverlayWindowManager(
     }
 
     private fun detach() {
+        // IDK
+        if (!isMainThread()) {
+            runCatching {
+                runBlocking(Dispatchers.Main.immediate) {
+                    detach()
+                }
+            }
+            return
+        }
+
         val old = view ?: return
 
         try {
@@ -124,4 +150,5 @@ abstract class OverlayWindowManager(
         layoutParams = null
         onViewDetached(old)
     }
+
 }

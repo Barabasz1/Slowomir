@@ -43,8 +43,9 @@ class VoiceSessionManagerSelectionFlowTest {
     private val intentResolver = mock<CommandIntentResolver>()
     private val contactUtils = mock<ContactUtils>()
     private val applicationUtils = mock<com.zpi.slowomir.utils.ApplicationUtils>()
+    private val macroSupplier = mock<com.zpi.slowomir.overlay.macro.MacroSupplier>()
 
-    private val selectionManager = SelectionManager(mock<Context>(), contactUtils, applicationUtils, PolishTextNormalizer())
+    private val selectionManager = SelectionManager(mock<Context>(), contactUtils, applicationUtils, macroSupplier, PolishTextNormalizer())
 
     private val jan = listOf(
         ContactOption("Jan Kowalski (Komórka)", "+48111222333"),
