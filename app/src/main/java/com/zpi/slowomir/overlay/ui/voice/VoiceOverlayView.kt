@@ -52,7 +52,13 @@ import com.zpi.slowomir.ui.icons.speech_to_text
 import com.zpi.slowomir.voice.OverlayState
 import com.zpi.slowomir.voice.stt.TextMode
 import com.zpi.slowomir.voice.stt.VoiceState
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.buffer
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -94,6 +100,28 @@ internal fun OverlayState.toContent(): Content? = when (this) {
 
 private const val RESULT_VISIBLE_MS = 5_000L
 private const val SILENCE_TIMEOUT_MS = 8_000L
+private const val MIN_DISPLAY_MS = 1_000L
+
+internal fun <T> Flow<T>.withMinDisplayTime(
+    minMs: Long,
+    sameKind: (T, T) -> Boolean,
+): Flow<T> = flow {
+    var previous: T? = null
+    var hasPrevious = false
+    var shownAt = 0L
+    buffer(Channel.UNLIMITED).collect { next ->
+        if (hasPrevious && !sameKind(previous as T, next)) {
+            val remaining = minMs - (System.nanoTime() - shownAt) / 1_000_000
+            if (remaining > 0) delay(remaining)
+            shownAt = System.nanoTime()
+        } else if (!hasPrevious) {
+            shownAt = System.nanoTime()
+        }
+        previous = next
+        hasPrevious = true
+        emit(next)
+    }
+}
 
 @Composable
 fun VoiceOverlayView(mediator: CommandMediator, voiceState: StateFlow<VoiceState>) {
@@ -113,19 +141,25 @@ fun VoiceOverlayView(mediator: CommandMediator, voiceState: StateFlow<VoiceState
         }
     }
 
-    val current = chooseContent(session, overlayContent, sessionResult)
+    val target = chooseContent(session, overlayContent, sessionResult)
+    val targetState = rememberUpdatedState(target)
+    val current by remember {
+        snapshotFlow { targetState.value }
+            .withMinDisplayTime(MIN_DISPLAY_MS) { a, b -> a?.kind == b?.kind }
+    }.collectAsState(initial = null)
 
     var shown by remember { mutableStateOf<Content?>(null) }
     var visible by remember { mutableStateOf(false) }
 
     LaunchedEffect(current) {
-        if (current == null) {
+        val content = current
+        if (content == null) {
             visible = false
             return@LaunchedEffect
         }
-        shown = current
+        shown = content
         visible = true
-        when (current.kind) {
+        when (content.kind) {
             Kind.SUCCESS, Kind.ERROR -> {
                 delay(RESULT_VISIBLE_MS.milliseconds); visible = false
             }
