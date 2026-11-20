@@ -14,6 +14,8 @@ import com.zpi.slowomir.overlay.commands.media.VolumeDownCommand
 import com.zpi.slowomir.overlay.commands.media.VolumeUpCommand
 import com.zpi.slowomir.overlay.commands.navigation.*
 import com.zpi.slowomir.overlay.commands.phoneCalls.*
+import com.zpi.slowomir.overlay.commands.predictions.ConfirmCommand as PredictionConfirmCommand
+import com.zpi.slowomir.overlay.commands.predictions.DismissCommand as PredictionDismissCommand
 import com.zpi.slowomir.overlay.commands.textEdit.ConfirmCommand
 import com.zpi.slowomir.overlay.commands.textEdit.CursorBackwardCommand
 import com.zpi.slowomir.overlay.commands.textEdit.CursorForwardCommand
@@ -75,6 +77,8 @@ class CommandResolverTest {
     private val undivideCellCommandFactory = mock<UndivideCellCommand.Factory>()
     private val tapCellCommandFactory = mock<TapCellCommand.Factory>()
     private val longTapCellCommandFactory = mock<LongTapCellCommand.Factory>()
+    private val predictionConfirmCommandFactory = mock<PredictionConfirmCommand.Factory>()
+    private val predictionDismissCommandFactory = mock<PredictionDismissCommand.Factory>()
 
     private val resolver = CommandResolver(
         notificationsCommandFactory = notificationsCommandFactory,
@@ -119,6 +123,8 @@ class CommandResolverTest {
         undivideCellCommandFactory = undivideCellCommandFactory,
         tapCellCommandFactory = tapCellCommandFactory,
         longTapCellCommandFactory = longTapCellCommandFactory,
+        predictionConfirmCommandFactory = predictionConfirmCommandFactory,
+        predictionDismissCommandFactory = predictionDismissCommandFactory,
     )
 
     @Test
@@ -289,5 +295,29 @@ class CommandResolverTest {
 
         assertEquals(mockCommand, result)
         verify(gridResetCommandFactory).create()
+    }
+
+    @Test
+    fun `resolve PREDICTION_CONFIRM delegates to predictionConfirmCommandFactory`() {
+        val mockCommand = mock<PredictionConfirmCommand>()
+        whenever(predictionConfirmCommandFactory.create()).thenReturn(mockCommand)
+
+        val intent = VoiceIntent(identifier = CommandIdentifier.PREDICTION_CONFIRM, rawText = "tak")
+        val result = resolver.resolve(intent)
+
+        assertEquals(mockCommand, result)
+        verify(predictionConfirmCommandFactory).create()
+    }
+
+    @Test
+    fun `resolve PREDICTION_DISMISS delegates to predictionDismissCommandFactory`() {
+        val mockCommand = mock<PredictionDismissCommand>()
+        whenever(predictionDismissCommandFactory.create()).thenReturn(mockCommand)
+
+        val intent = VoiceIntent(identifier = CommandIdentifier.PREDICTION_DISMISS, rawText = "odrzuć propozycję")
+        val result = resolver.resolve(intent)
+
+        assertEquals(mockCommand, result)
+        verify(predictionDismissCommandFactory).create()
     }
 }

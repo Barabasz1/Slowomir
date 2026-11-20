@@ -8,6 +8,8 @@ import com.zpi.slowomir.overlay.commands.media.VolumeDownCommand
 import com.zpi.slowomir.overlay.commands.media.VolumeUpCommand
 import com.zpi.slowomir.overlay.commands.navigation.*
 import com.zpi.slowomir.overlay.commands.phoneCalls.*
+import com.zpi.slowomir.overlay.commands.predictions.ConfirmCommand as PredictionConfirmCommand
+import com.zpi.slowomir.overlay.commands.predictions.DismissCommand as PredictionDismissCommand
 import com.zpi.slowomir.overlay.commands.grid.*
 import com.zpi.slowomir.overlay.commands.textEdit.ConfirmCommand
 import com.zpi.slowomir.overlay.commands.textEdit.CursorBackwardCommand
@@ -67,6 +69,8 @@ class CommandResolver @Inject constructor(
     private val undivideCellCommandFactory: UndivideCellCommand.Factory,
     private val tapCellCommandFactory: TapCellCommand.Factory,
     private val longTapCellCommandFactory: LongTapCellCommand.Factory,
+    private val predictionConfirmCommandFactory: PredictionConfirmCommand.Factory,
+    private val predictionDismissCommandFactory: PredictionDismissCommand.Factory,
 ) {
 
     fun resolve(intent: VoiceIntent): Command = when (intent.identifier) {
@@ -136,6 +140,10 @@ class CommandResolver @Inject constructor(
         // Media
         CommandIdentifier.VOLUME_UP -> volumeUpCommandFactory.create()
         CommandIdentifier.VOLUME_DOWN -> volumeDownCommandFactory.create()
+
+        // Prediction
+        CommandIdentifier.PREDICTION_CONFIRM -> predictionConfirmCommandFactory.create()
+        CommandIdentifier.PREDICTION_DISMISS -> predictionDismissCommandFactory.create()
 
         else -> LogCommand(intent.identifier, intent.argument)
     }

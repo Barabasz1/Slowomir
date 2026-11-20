@@ -4,6 +4,8 @@ import android.util.Log
 import com.zpi.slowomir.overlay.log.db.ActionDao
 import com.zpi.slowomir.overlay.log.db.ActionDefEntity
 import com.zpi.slowomir.overlay.log.db.LoggedAction
+import com.zpi.slowomir.prediction.PredictionManager
+import javax.inject.Provider
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -20,6 +22,7 @@ import javax.inject.Singleton
 @Singleton
 class ActionRecorder @Inject constructor(
     private val actionDao: ActionDao,
+    private val predictionManagerProvider: Provider<PredictionManager>,
 ) {
     private val worker = Dispatchers.IO.limitedParallelism(1)
     private val scope = CoroutineScope(SupervisorJob() + worker)
@@ -39,6 +42,11 @@ class ActionRecorder @Inject constructor(
             try {
                 val stored = actionDao.logEvent(action.toEntity(), timestamp)
                 if (ActionLogConfig.logRowsToConsole) printRows(stored)
+                try {
+                    predictionManagerProvider.get().onActionRecorded(action, stored.def.actionHash, stored.def.idActionDef)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Prediction observation failed", e)
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

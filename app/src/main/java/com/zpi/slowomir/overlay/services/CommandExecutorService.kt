@@ -4,6 +4,7 @@ import android.accessibilityservice.AccessibilityService
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.view.accessibility.AccessibilityEvent
+import com.zpi.slowomir.overlay.commands.touch.TapCommand
 import com.zpi.slowomir.overlay.executors.GridExecutor
 import com.zpi.slowomir.overlay.executors.MacroExecutor
 import com.zpi.slowomir.overlay.executors.MediaExecutor
@@ -14,6 +15,7 @@ import com.zpi.slowomir.overlay.executors.TextEditExecutor
 import com.zpi.slowomir.overlay.ui.common.OverlayHostProvider
 import com.zpi.slowomir.overlay.executors.TouchExecutor
 import com.zpi.slowomir.overlay.ui.voice.VoiceOverlayManager
+import com.zpi.slowomir.prediction.PredictionManager
 import com.zpi.slowomir.voice.mediator.CommandMediator
 import com.zpi.slowomir.voice.VoiceSessionManager
 import dagger.hilt.android.AndroidEntryPoint
@@ -55,6 +57,12 @@ class CommandExecutorService : AccessibilityService() {
     @Inject
     lateinit var macroExecutor: MacroExecutor
 
+    @Inject
+    lateinit var predictionManager: PredictionManager
+
+    @Inject
+    lateinit var tapCommandFactory: TapCommand.Factory
+
     // Executors for different modules
     var touchExecutor: TouchExecutor? = null
         private set
@@ -90,14 +98,16 @@ class CommandExecutorService : AccessibilityService() {
         touchExecutor = touch
         mediaExecutor = MediaExecutor(this)
         navigationExecutor = NavigationExecutor(this, touch)
-        predictionExecutor = PredictionExecutor(this)
+        predictionExecutor = PredictionExecutor(this, predictionManager, tapCommandFactory, mediator)
         textEditExecutor = TextEditExecutor(this, touch)
         phoneCallExecutor = PhoneCallExecutor(this, touch)
 
         instance = this
     }
 
-    override fun onAccessibilityEvent(event: AccessibilityEvent?) {}
+    override fun onAccessibilityEvent(event: AccessibilityEvent?) {
+        predictionManager.onAccessibilityEvent(event)
+    }
 
     override fun onInterrupt() {}
 
