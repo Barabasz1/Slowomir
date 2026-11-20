@@ -40,8 +40,6 @@ import com.zpi.slowomir.ui.icons.speech_to_text
 import com.zpi.slowomir.voice.OverlayState
 import kotlinx.coroutines.flow.StateFlow
 
-private const val LISTENING_PLACEHOLDER = "Listening…"
-
 @Composable
 fun VoiceOverlayView(state: StateFlow<OverlayState>) {
     val current by state.collectAsState()
@@ -84,17 +82,6 @@ private fun OverlayCard(state: OverlayState) {
             }
         }
     }
-}
-
-private fun OverlayState.displayText(): String = when (this) {
-    is OverlayState.Idle, is OverlayState.ListeningForKeyword -> ""
-    is OverlayState.ListeningForCommand -> LISTENING_PLACEHOLDER
-    is OverlayState.ListeningToSpeech -> partialText.ifBlank { LISTENING_PLACEHOLDER }
-    is OverlayState.Dictating -> text
-    is OverlayState.Editing -> text
-    is OverlayState.ProcessingCommand -> text
-    is OverlayState.CommandExecuted -> resultName
-    is OverlayState.Error -> message
 }
 
 @Composable

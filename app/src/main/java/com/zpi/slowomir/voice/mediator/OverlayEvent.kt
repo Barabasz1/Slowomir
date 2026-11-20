@@ -2,6 +2,7 @@ package com.zpi.slowomir.voice.mediator
 
 import com.zpi.slowomir.overlay.commands.Command
 import com.zpi.slowomir.overlay.commands.CommandResult
+import com.zpi.slowomir.voice.OverlayError
 import com.zpi.slowomir.voice.VoiceIntent
 import com.zpi.slowomir.voice.stt.TextMode
 
@@ -18,5 +19,5 @@ sealed interface OverlayEvent {
     data class CommandExecuted(val command: Command, val result: CommandResult) : OverlayEvent
     data class InvalidCommand(val text: String) : OverlayEvent
     object AwaitingSelection : OverlayEvent
-    data class CommandRejected(val reason: String) : OverlayEvent
+    data class CommandRejected(val error: OverlayError) : OverlayEvent
 }

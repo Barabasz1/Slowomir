@@ -1,6 +1,7 @@
 package com.zpi.slowomir.voice.selection
 
 import com.zpi.slowomir.overlay.commands.CommandArgument
+import com.zpi.slowomir.overlay.commands.CommandIdentifier
 import com.zpi.slowomir.overlay.macro.MacroInfo
 import com.zpi.slowomir.utils.ApplicationUtils
 import com.zpi.slowomir.utils.ContactOption
@@ -65,7 +66,18 @@ sealed interface Selection {
 sealed interface SelectionResult {
     data class Resolved(val intent: VoiceIntent) : SelectionResult
     data object Pending : SelectionResult
-    data class Failed(val reason: String) : SelectionResult
+    data class Failed(val failure: SelectionFailure) : SelectionResult
+}
+
+/** Why [SelectionManager.begin] could not start or resolve a selection. */
+sealed interface SelectionFailure {
+    data class Unsupported(val identifier: CommandIdentifier) : SelectionFailure
+    data class ContactNotFound(val query: String) : SelectionFailure
+    data object ContactsPermissionDenied : SelectionFailure
+    data object NoContactGiven : SelectionFailure
+    data class ApplicationNotFound(val query: String) : SelectionFailure
+    data object NoApplicationGiven : SelectionFailure
+    data object NoMacros : SelectionFailure
 }
 
 /** Outcome of [SelectionManager.handleSpeech]. */

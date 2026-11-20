@@ -3,9 +3,9 @@ package com.zpi.slowomir.voice.mediator
 import android.util.Log
 import com.zpi.slowomir.overlay.OverlayContext
 import com.zpi.slowomir.overlay.commands.Command
-import com.zpi.slowomir.overlay.commands.CommandArgument
 import com.zpi.slowomir.overlay.commands.CommandResult
 import com.zpi.slowomir.overlay.log.ICommandLogger
+import com.zpi.slowomir.voice.OverlayError
 import com.zpi.slowomir.voice.OverlayState
 import com.zpi.slowomir.voice.OverlayState.*
 import com.zpi.slowomir.voice.VoiceIntent
@@ -68,11 +68,11 @@ class DefaultCommandMediator @Inject constructor(
             }
 
             is OverlayEvent.CommandExecuted -> {
-                formatCommandResult(event.command, event.result, mediatorState.value.intent)
+                commandOutcome(event.command, event.result, mediatorState.value.intent)
             }
 
             is OverlayEvent.InvalidCommand -> {
-                Error("Invalid command: ${event.text}")
+                Error(OverlayError.InvalidCommand(event.text))
             }
 
             is OverlayEvent.ProcessingCommand -> {
@@ -92,7 +92,7 @@ class DefaultCommandMediator @Inject constructor(
             }
 
             is OverlayEvent.CommandRejected -> {
-                Error(event.reason)
+                Error(event.error)
             }
         }
 
@@ -100,6 +100,15 @@ class DefaultCommandMediator @Inject constructor(
             _mediatorState.update {
                 it.copy(overlayState = state)
             }
+        }
+    }
+
+    private fun commandOutcome(command: Command, result: CommandResult, intent: VoiceIntent?): OverlayState {
+        val commandName = command::class.simpleName.orEmpty()
+        return when (result) {
+            is CommandResult.Success -> CommandExecuted(commandName, intent)
+            is CommandResult.Failure -> Error(OverlayError.CommandFailed(commandName, result.reason))
+            is CommandResult.InvalidContext -> Error(OverlayError.InvalidContext(result.reason))
         }
     }
 
@@ -136,37 +145,6 @@ class DefaultCommandMediator @Inject constructor(
         }
 
         result
-    }
-
-    /**
-     * Formats a [CommandResult] into an [OverlayState] for display.
-     *
-     * @param command The command that was executed.
-     * @param result The result of the command execution.
-     * @param intent The voice intent associated with the command.
-     * @return The formatted [OverlayState] for display.
-     */
-    fun formatCommandResult(
-        command: Command,
-        result: CommandResult,
-        intent: VoiceIntent?
-    ): OverlayState {
-        val intentDesc = intent?.let {
-            val argStr = when (val arg = it.argument) {
-                is CommandArgument.Number -> " [${arg.value}]"
-                is CommandArgument.TwoNumbers -> " [${arg.from} -> ${arg.to}]"
-                is CommandArgument.Text -> " ['${arg.value}']"
-                null -> ""
-            }
-            "${it.identifier}$argStr"
-        } ?: command::class.simpleName
-
-
-        return when (result) {
-            is CommandResult.Success -> CommandExecuted("$intentDesc via ${command::class.simpleName}")
-            is CommandResult.Failure -> Error("${command::class.simpleName} Failed: ${result.reason}")
-            is CommandResult.InvalidContext -> Error("Invalid Context: ${result.reason}")
-        }
     }
 
     companion object {

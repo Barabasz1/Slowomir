@@ -6,4 +6,18 @@
     <string name="contact_picker_listening">Słucham…</string>
     <string name="contact_picker_cancel">Anuluj</string>
     <string name="app_picker_title">Którą aplikację otworzyć?</string>
+
+    <string name="overlay_listening">Słucham…</string>
+    <string name="overlay_command_executed">%1$s przez %2$s</string>
+    <string name="overlay_error_invalid_command">Nieprawidłowa komenda: %1$s</string>
+    <string name="overlay_error_command_failed">%1$s nie powiodło się: %2$s</string>
+    <string name="overlay_error_invalid_context">Nieprawidłowy kontekst: %1$s</string>
+    <string name="overlay_error_text_insert">Nie można wpisać tekstu</string>
+    <string name="overlay_error_selection_unsupported">Wybór nie jest obsługiwany dla %1$s</string>
+    <string name="overlay_error_contact_not_found">Nie znaleziono kontaktu: %1$s</string>
+    <string name="overlay_error_contacts_permission_denied">Brak dostępu do kontaktów</string>
+    <string name="overlay_error_no_contact">Nie podano kontaktu.</string>
+    <string name="overlay_error_application_not_found">Nie znaleziono aplikacji: %1$s</string>
+    <string name="overlay_error_no_application">Nie podano aplikacji.</string>
+    <string name="overlay_error_no_macros">Brak dostępnych makr</string>
 </resources>

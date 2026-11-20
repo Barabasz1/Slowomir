@@ -199,7 +199,7 @@ class VoiceSessionManager @Inject constructor(
                         inbox.send(InternalEvent.IntentFailed(text))
                     }
                     is SelectionResult.Failed -> {
-                        mediator.handleEvent(OverlayEvent.CommandRejected(result.reason))
+                        mediator.handleEvent(OverlayEvent.CommandRejected(OverlayError.SelectionFailed(result.failure)))
                         inbox.send(InternalEvent.IntentFailed(text))
                     }
                 }
@@ -248,7 +248,7 @@ class VoiceSessionManager @Inject constructor(
         if (profile.uppercaseAll) restored = restored.uppercase(POLISH)
         val result = mediator.dispatch(dictateCommandFactory.create(restored))
         Log.d(TAG, "Dictated '$text' -> '$restored': $result")
-        if (result !is CommandResult.Success) mediator.handleEvent(OverlayEvent.CommandRejected("Nie można wpisać tekstu"))
+        if (result !is CommandResult.Success) mediator.handleEvent(OverlayEvent.CommandRejected(OverlayError.TextInsertFailed))
     }
 
     /**
