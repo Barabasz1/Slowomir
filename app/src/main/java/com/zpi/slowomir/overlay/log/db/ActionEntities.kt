@@ -33,6 +33,12 @@ data class ActionDefEntity(
 
     @ColumnInfo(name = "label_hash")
     val labelHash: String? = null,
+
+    @ColumnInfo(name = "command_type")
+    val commandType: String? = null,
+
+    @ColumnInfo(name = "command_args")
+    val commandArgs: String? = null,
 )
 
 @Entity(
