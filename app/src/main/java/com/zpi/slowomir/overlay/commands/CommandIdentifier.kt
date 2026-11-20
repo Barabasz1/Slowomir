@@ -10,6 +10,10 @@ enum class CommandIdentifier {
     GRID_SHOW,
     GRID_HIDE,
     GRID_TOGGLE,
+    GRID_ADD_COL,
+    GRID_ADD_ROW,
+    GRID_SUBTRACT_COL,
+    GRID_SUBTRACT_ROW,
     OVERLAY_STOP,
     OVERLAY_START,
     SWIPE_UP,
@@ -51,6 +55,8 @@ enum class CommandIdentifier {
     TEXT_DELETE_CHARACTER,
     TEXT_DELETE_WORD,
     TEXT_CONFIRM,
+    TEXT_CANCEL,
+    TEXT_EDIT,
     KEYBOARD_HIDE,
     KEYBOARD_SHOW,
     KEYBOARD_TOGGLE,
@@ -62,5 +68,8 @@ enum class CommandIdentifier {
     SMS_WRITE,
     MACRO_RECORD,
     MACRO_FINISH,
-    MACRO_PLAY
+    MACRO_PLAY,
+    MACRO_SHOW,
+    MACRO_HIDE,
+    MACRO_TOGGLE
 }

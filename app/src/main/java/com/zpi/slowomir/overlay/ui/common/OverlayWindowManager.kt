@@ -1,6 +1,7 @@
 package com.zpi.slowomir.overlay.ui.common
 
 import android.content.Context
+import android.os.Looper
 import android.provider.Settings
 import android.util.Log
 import android.view.View
@@ -10,6 +11,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 
 abstract class OverlayWindowManager(
     private val hostProvider: OverlayHostProvider
@@ -22,9 +24,23 @@ abstract class OverlayWindowManager(
     private var host: OverlayHost = hostProvider.host.value
     private var view: View? = null
     private var viewHost: OverlayHost? = null
+    private var layoutParams: WindowManager.LayoutParams? = null
     private var wanted = false
 
     val isShowing: Boolean get() = view != null
+
+    protected val attachedView: View? get() = view
+
+    protected fun updateLayout(change: WindowManager.LayoutParams.() -> Unit) {
+        val current = view ?: return
+        val params = layoutParams ?: return
+        params.change()
+        try {
+            viewHost?.windowManager?.updateViewLayout(current, params)
+        } catch (e: Exception) {
+            Log.w(tag, "updateViewLayout failed", e)
+        }
+    }
 
     protected abstract fun onCreateView(context: Context): View
 
@@ -72,7 +88,21 @@ abstract class OverlayWindowManager(
         }
     }
 
+    private fun isMainThread(): Boolean {
+        val mainLooper = Looper.getMainLooper()
+        return mainLooper == null || Looper.myLooper() == mainLooper
+    }
+
     private fun attach(target: OverlayHost): Boolean {
+        // IDK
+        if (!isMainThread()) {
+            return runCatching {
+                runBlocking(Dispatchers.Main.immediate) {
+                    attach(target)
+                }
+            }.getOrDefault(false)
+        }
+
         if (!target.isAccessibility && !Settings.canDrawOverlays(target.context)) {
             Log.w(tag, "Overlay permission not granted")
             onAttachDenied(target)
@@ -82,7 +112,9 @@ abstract class OverlayWindowManager(
         val newView = onCreateView(target.context)
 
         return try {
-            target.windowManager.addView(newView, onCreateLayoutParams(target.windowType))
+            val params = onCreateLayoutParams(target.windowType)
+            target.windowManager.addView(newView, params)
+            layoutParams = params
             view = newView
             viewHost = target
             onViewAttached(newView)
@@ -95,6 +127,16 @@ abstract class OverlayWindowManager(
     }
 
     private fun detach() {
+        // IDK
+        if (!isMainThread()) {
+            runCatching {
+                runBlocking(Dispatchers.Main.immediate) {
+                    detach()
+                }
+            }
+            return
+        }
+
         val old = view ?: return
 
         try {
@@ -105,6 +147,8 @@ abstract class OverlayWindowManager(
 
         view = null
         viewHost = null
+        layoutParams = null
         onViewDetached(old)
     }
+
 }

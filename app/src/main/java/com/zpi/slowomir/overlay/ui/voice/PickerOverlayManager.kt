@@ -12,10 +12,11 @@ import androidx.compose.ui.platform.ComposeView
 import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.lifecycle.setViewTreeViewModelStoreOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
-import com.zpi.slowomir.overlay.commands.CommandIdentifier
 import com.zpi.slowomir.overlay.ui.common.OverlayHostProvider
 import com.zpi.slowomir.overlay.ui.common.OverlayLifecycleOwner
 import com.zpi.slowomir.overlay.ui.common.OverlayWindowManager
+import com.zpi.slowomir.overlay.ui.macro.MacroEntry
+import com.zpi.slowomir.overlay.ui.macro.MacroView
 import com.zpi.slowomir.ui.theme.SłowomirTheme
 import com.zpi.slowomir.voice.VoiceSessionManager
 import com.zpi.slowomir.voice.selection.Selection
@@ -39,8 +40,7 @@ class PickerOverlayManager @Inject constructor(
     private var lifecycleOwner: OverlayLifecycleOwner? = null
 
     private data class PickerState(
-        val options: List<PickerOption> = emptyList(),
-        val action: CommandIdentifier? = null,
+        val selection: Selection? = null,
     )
 
     private val _pickerState = MutableStateFlow(PickerState())
@@ -52,26 +52,14 @@ class PickerOverlayManager @Inject constructor(
     }
 
     private fun onSelectionChanged(selection: Selection?) {
-        val options = when (selection) {
-            is Selection.Contact -> selection.options.map { PickerOption(it.name) }
-            is Selection.Application -> selection.options.map { PickerOption(it.name, it.icon) }
-            null -> emptyList()
-        }
-
-        if (selection == null || options.isEmpty()) {
-            hide()
-        } else {
-            showOptions(options, selection.pending.identifier)
-        }
-    }
-
-    private fun showOptions(options: List<PickerOption>, action: CommandIdentifier?) {
         hide()
-
-        _pickerState.value = PickerState(options = options, action = action)
-
-        if (!show()) {
-            voiceSessionManager.cancelSelection()
+        if (selection == null || selection.size == 0) {
+            _pickerState.value = PickerState(null)
+        } else {
+            _pickerState.value = PickerState(selection)
+            if (!show()) {
+                voiceSessionManager.cancelSelection()
+            }
         }
     }
 
@@ -90,24 +78,57 @@ class PickerOverlayManager @Inject constructor(
 
             setContent {
                 val state by _pickerState.collectAsState()
+                val selection = state.selection
                 SłowomirTheme {
-                    SelectionPickerView(
-                        options = state.options,
-                        action = state.action,
-                        onSelect = { index -> voiceSessionManager.selectOption(index) },
-                        onCancel = { voiceSessionManager.cancelSelection() },
-                    )
+                    when (selection) {
+                        is Selection.Macro -> {
+                            val entries = selection.options.map { MacroEntry(it) }
+                            MacroView(
+                                macroList = entries,
+                                onSelectMacro = { index -> voiceSessionManager.selectOption(index) },
+                                onClose = { voiceSessionManager.cancelSelection() },
+                            )
+                        }
+
+                        is Selection.Contact -> {
+                            val options = selection.options.map { PickerOption(it.name) }
+                            SelectionPickerView(
+                                options = options,
+                                action = selection.pending.identifier,
+                                onSelect = { index -> voiceSessionManager.selectOption(index) },
+                                onCancel = { voiceSessionManager.cancelSelection() },
+                            )
+                        }
+
+                        is Selection.Application -> {
+                            val options = selection.options.map { PickerOption(it.name, it.icon) }
+                            SelectionPickerView(
+                                options = options,
+                                action = selection.pending.identifier,
+                                onSelect = { index -> voiceSessionManager.selectOption(index) },
+                                onCancel = { voiceSessionManager.cancelSelection() },
+                            )
+                        }
+
+                        null -> Unit
+                    }
                 }
             }
         }
-
     }
 
     override fun onCreateLayoutParams(windowType: Int): WindowManager.LayoutParams {
+        val selection = _pickerState.value.selection
         val width = (Resources.getSystem().displayMetrics.widthPixels * WIDTH_FRACTION).toInt()
+        val height = if (selection is Selection.Macro) {
+            (Resources.getSystem().displayMetrics.heightPixels * MacroView.HEIGHT_FRACTION).toInt()
+        } else {
+            WindowManager.LayoutParams.WRAP_CONTENT
+        }
+
         return WindowManager.LayoutParams(
             width,
-            WindowManager.LayoutParams.WRAP_CONTENT,
+            height,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                     WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,

@@ -72,6 +72,9 @@ class VoiceRecognitionService : Service() {
     private fun VoiceState.engine() = when (this) {
         is VoiceState.KeywordSpotting -> Engine.KWS
         is VoiceState.Listening,
+        is VoiceState.Dictating,
+        is VoiceState.Editing,
+        is VoiceState.TextProcessing,
         is VoiceState.IntentParsing,
         is VoiceState.CommandExecuting -> Engine.STT
 

@@ -7,6 +7,9 @@ import android.graphics.Rect
 import android.util.Log
 import android.view.accessibility.AccessibilityNodeInfo
 import com.zpi.slowomir.utils.ScreenPoint
+import kotlin.math.hypot
+import kotlin.math.max
+import kotlin.math.min
 
 class TouchExecutor(
     private val service: AccessibilityService
@@ -135,7 +138,8 @@ class TouchExecutor(
         holdDuration: Long = HOLD_DURATION_MS
     ): Boolean {
         val height = service.resources.displayMetrics.heightPixels.toFloat()
-        val swipeDistance = if (distance != null && distance > 0f) distance else (height * SWIPE_RATIO)
+        val swipeDistance =
+            if (distance != null && distance > 0f) distance else (height * SWIPE_RATIO)
         val endY = (startY - swipeDistance).coerceAtLeast(0f)
         return performSwipeWithHold(startX, startY, startX, endY, moveDuration, holdDuration)
     }
@@ -157,7 +161,8 @@ class TouchExecutor(
         holdDuration: Long = HOLD_DURATION_MS
     ): Boolean {
         val height = service.resources.displayMetrics.heightPixels.toFloat()
-        val swipeDistance = if (distance != null && distance > 0f) distance else (height * SWIPE_RATIO)
+        val swipeDistance =
+            if (distance != null && distance > 0f) distance else (height * SWIPE_RATIO)
         val endY = (startY + swipeDistance).coerceAtMost(height)
         return performSwipeWithHold(startX, startY, startX, endY, moveDuration, holdDuration)
     }
@@ -179,7 +184,8 @@ class TouchExecutor(
         holdDuration: Long = HOLD_DURATION_MS
     ): Boolean {
         val width = service.resources.displayMetrics.widthPixels.toFloat()
-        val swipeDistance = if (distance != null && distance > 0f) distance else (width * SWIPE_RATIO)
+        val swipeDistance =
+            if (distance != null && distance > 0f) distance else (width * SWIPE_RATIO)
         val endX = (startX + swipeDistance).coerceAtMost(width)
         return performSwipeWithHold(startX, startY, endX, startY, moveDuration, holdDuration)
     }
@@ -201,7 +207,8 @@ class TouchExecutor(
         holdDuration: Long = HOLD_DURATION_MS
     ): Boolean {
         val width = service.resources.displayMetrics.widthPixels.toFloat()
-        val swipeDistance = if (distance != null && distance > 0f) distance else (width * SWIPE_RATIO)
+        val swipeDistance =
+            if (distance != null && distance > 0f) distance else (width * SWIPE_RATIO)
         val endX = (startX - swipeDistance).coerceAtLeast(0f)
         return performSwipeWithHold(startX, startY, endX, startY, moveDuration, holdDuration)
     }
@@ -458,5 +465,69 @@ class TouchExecutor(
             },
             null
         )
+    }
+
+
+    fun findNearestClickableNode(
+        root: AccessibilityNodeInfo?,
+        targetX: Int,
+        targetY: Int,
+        maxRadiusPx: Float
+    ): AccessibilityNodeInfo? {
+        if (root == null) return null
+
+
+        val searchArea = Rect(
+            (targetX - maxRadiusPx).toInt(),
+            (targetY - maxRadiusPx).toInt(),
+            (targetX + maxRadiusPx).toInt(),
+            (targetY + maxRadiusPx).toInt()
+        )
+
+        var bestNode: AccessibilityNodeInfo? = null
+        var minDistance = maxRadiusPx
+        val nodeBounds = Rect()
+
+        val stack = ArrayDeque<AccessibilityNodeInfo>()
+        stack.add(root)
+
+        while (stack.isNotEmpty()) {
+            val node = stack.removeLast()
+
+            if (!node.isVisibleToUser) continue
+
+            node.getBoundsInScreen(nodeBounds)
+
+            if (!Rect.intersects(searchArea, nodeBounds)) {
+                continue
+            }
+
+            val isClickable = node.isClickable ||
+                    node.actionList.contains(AccessibilityNodeInfo.AccessibilityAction.ACTION_CLICK)
+
+            if (isClickable && node.isEnabled) {
+                val distance = distanceToRect(targetX, targetY, nodeBounds)
+                if (distance <= minDistance) {
+                    minDistance = distance
+                    bestNode = node
+
+                    if (distance == 0f && node.childCount == 0) {
+                        return bestNode
+                    }
+                }
+            }
+
+            for (i in 0 until node.childCount) {
+                node.getChild(i)?.let { stack.add(it) }
+            }
+        }
+
+        return bestNode
+    }
+
+    private fun distanceToRect(px: Int, py: Int, rect: Rect): Float {
+        val clampedX = max(rect.left, min(px, rect.right))
+        val clampedY = max(rect.top, min(py, rect.bottom))
+        return hypot((px - clampedX).toFloat(), (py - clampedY).toFloat())
     }
 }

@@ -11,6 +11,8 @@ import com.zpi.slowomir.overlay.commands.phoneCalls.*
 import com.zpi.slowomir.overlay.commands.predictions.ConfirmCommand as PredictionConfirmCommand
 import com.zpi.slowomir.overlay.commands.predictions.DismissCommand as PredictionDismissCommand
 import com.zpi.slowomir.overlay.commands.grid.*
+import com.zpi.slowomir.overlay.commands.textEdit.CancelCommand
+import com.zpi.slowomir.overlay.commands.textEdit.EditCommand
 import com.zpi.slowomir.overlay.commands.textEdit.ConfirmCommand
 import com.zpi.slowomir.overlay.commands.textEdit.CursorBackwardCommand
 import com.zpi.slowomir.overlay.commands.textEdit.CursorForwardCommand
@@ -19,6 +21,13 @@ import com.zpi.slowomir.overlay.commands.textEdit.CursorWordPreviousCommand
 import com.zpi.slowomir.overlay.commands.textEdit.DeleteCharCommand
 import com.zpi.slowomir.overlay.commands.textEdit.DeleteWordCommand
 import com.zpi.slowomir.overlay.commands.textEdit.EnterCommand
+import com.zpi.slowomir.overlay.commands.macro.FinishMacroCommand
+import com.zpi.slowomir.overlay.commands.macro.HideMacroOverlayCommand
+import com.zpi.slowomir.overlay.commands.macro.PlayMacroCommand
+import com.zpi.slowomir.overlay.commands.macro.RecordMacroCommand
+import com.zpi.slowomir.overlay.commands.macro.ShowMacroOverlayCommand
+import com.zpi.slowomir.overlay.commands.macro.StopMacroCommand
+import com.zpi.slowomir.overlay.commands.macro.ToggleMacroOverlayCommand
 import com.zpi.slowomir.overlay.commands.textEdit.KeyboardHideCommand
 import com.zpi.slowomir.overlay.commands.textEdit.KeyboardShowCommand
 import com.zpi.slowomir.overlay.commands.textEdit.KeyboardToggleCommand
@@ -45,6 +54,8 @@ class CommandResolver @Inject constructor(
     private val textDeleteWordCommandFactory: DeleteWordCommand.Factory,
     private val textEnterCommandFactory: EnterCommand.Factory,
     private val textConfirmCommandFactory: ConfirmCommand.Factory,
+    private val textCancelCommandFactory: CancelCommand.Factory,
+    private val textEditCommandFactory: EditCommand.Factory,
     private val pickUpCommandFactory: PickUpCommand.Factory,
     private val declineCommandFactory: DeclineCommand.Factory,
     private val endCommandFactory: EndCommand.Factory,
@@ -61,17 +72,27 @@ class CommandResolver @Inject constructor(
     private val volumeDownCommandFactory: VolumeDownCommand.Factory,
     private val openAppCommandFactory: OpenAppCommand.Factory,
     private val gridEnableCommandFactory: GridEnableCommand.Factory,
-    private val disableGridCommandFactory: GridEnableCommand.Factory,
+    private val disableGridCommandFactory: GridDisableCommand.Factory,
     private val gridToggleCommandFactory: GridToggleCommand.Factory,
     private val gridResetCommandFactory: GridResetCommand.Factory,
+    private val addColumnGridCommandFactory: AddColumnGridCommand.Factory,
+    private val addRowGridCommandFactory: AddRowGridCommand.Factory,
+    private val subtractColumnGridCommandFactory: SubtractColumnGridCommand.Factory,
+    private val subtractRowGridCommandFactory: SubtractRowGridCommand.Factory,
     private val selectCellCommandFactory: SelectCellCommand.Factory,
     private val divideCellCommandFactory: DivideCellCommand.Factory,
     private val undivideCellCommandFactory: UndivideCellCommand.Factory,
     private val tapCellCommandFactory: TapCellCommand.Factory,
     private val longTapCellCommandFactory: LongTapCellCommand.Factory,
+    private val showMacroOverlayCommandFactory: ShowMacroOverlayCommand.Factory,
+    private val hideMacroOverlayCommandFactory: HideMacroOverlayCommand.Factory,
+    private val toggleMacroOverlayCommandFactory: ToggleMacroOverlayCommand.Factory,
+    private val playMacroCommandFactory: PlayMacroCommand.Factory,
+    private val recordMacroCommandFactory: RecordMacroCommand.Factory,
+    private val finishMacroCommandFactory: FinishMacroCommand.Factory,
     private val predictionConfirmCommandFactory: PredictionConfirmCommand.Factory,
     private val predictionDismissCommandFactory: PredictionDismissCommand.Factory,
-) {
+    ) {
 
     fun resolve(intent: VoiceIntent): Command = when (intent.identifier) {
         // Navigation
@@ -90,6 +111,11 @@ class CommandResolver @Inject constructor(
         CommandIdentifier.GRID_SHOW -> gridEnableCommandFactory.create()
         CommandIdentifier.GRID_HIDE -> disableGridCommandFactory.create()
         CommandIdentifier.GRID_RESET -> gridResetCommandFactory.create()
+        CommandIdentifier.GRID_ADD_COL ->  addColumnGridCommandFactory.create()
+        CommandIdentifier.GRID_ADD_ROW ->  addRowGridCommandFactory.create()
+        CommandIdentifier.GRID_SUBTRACT_COL ->  subtractColumnGridCommandFactory.create()
+        CommandIdentifier.GRID_SUBTRACT_ROW ->  subtractRowGridCommandFactory.create()
+
         CommandIdentifier.CELL_SELECT -> {
             val arg = intent.intArgument()
             if (arg != null)
@@ -98,7 +124,17 @@ class CommandResolver @Inject constructor(
                 voidCommand(intent)
         }
 
-        CommandIdentifier.CELL_DIVIDE -> divideCellCommandFactory.create()
+        CommandIdentifier.CELL_DIVIDE-> {
+            val arg = intent.intArgument()
+            val pow =
+                if(arg!=null && arg == 9)
+                    3
+                else
+                    2
+
+            divideCellCommandFactory.create(pow)
+        }
+
         CommandIdentifier.CELL_UNDIVIDE -> undivideCellCommandFactory.create()
         CommandIdentifier.CELL_PRESS -> tapCellCommandFactory.create()
         CommandIdentifier.CELL_LONG_PRESS -> longTapCellCommandFactory.create()
@@ -125,6 +161,8 @@ class CommandResolver @Inject constructor(
         CommandIdentifier.TEXT_DELETE_WORD -> textDeleteWordCommandFactory.create()
         CommandIdentifier.TEXT_ENTER -> textEnterCommandFactory.create()
         CommandIdentifier.TEXT_CONFIRM -> textConfirmCommandFactory.create()
+        CommandIdentifier.TEXT_CANCEL -> textCancelCommandFactory.create()
+        CommandIdentifier.TEXT_EDIT -> textEditCommandFactory.create()
 
         // Phone calls
         CommandIdentifier.PHONE_PICK_UP -> pickUpCommandFactory.create()
@@ -140,6 +178,21 @@ class CommandResolver @Inject constructor(
         // Media
         CommandIdentifier.VOLUME_UP -> volumeUpCommandFactory.create()
         CommandIdentifier.VOLUME_DOWN -> volumeDownCommandFactory.create()
+
+        // Macro
+
+        CommandIdentifier.MACRO_SHOW -> showMacroOverlayCommandFactory.create()
+        CommandIdentifier.MACRO_HIDE -> hideMacroOverlayCommandFactory.create()
+        CommandIdentifier.MACRO_TOGGLE -> toggleMacroOverlayCommandFactory.create()
+        CommandIdentifier.MACRO_PLAY -> {
+            val arg = intent.intArgument()
+            if (arg != null)
+                playMacroCommandFactory.create(arg - 1)
+            else
+                voidCommand(intent)
+        }
+        CommandIdentifier.MACRO_RECORD -> recordMacroCommandFactory.create()
+        CommandIdentifier.MACRO_FINISH -> finishMacroCommandFactory.create()
 
         // Prediction
         CommandIdentifier.PREDICTION_CONFIRM -> predictionConfirmCommandFactory.create()

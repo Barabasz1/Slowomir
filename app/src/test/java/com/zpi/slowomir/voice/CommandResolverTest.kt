@@ -2,18 +2,13 @@ package com.zpi.slowomir.voice
 
 import com.zpi.slowomir.overlay.commands.CommandArgument
 import com.zpi.slowomir.overlay.commands.CommandIdentifier
-import com.zpi.slowomir.overlay.commands.grid.DivideCellCommand
-import com.zpi.slowomir.overlay.commands.grid.GridEnableCommand
-import com.zpi.slowomir.overlay.commands.grid.GridResetCommand
-import com.zpi.slowomir.overlay.commands.grid.GridToggleCommand
-import com.zpi.slowomir.overlay.commands.grid.LongTapCellCommand
-import com.zpi.slowomir.overlay.commands.grid.SelectCellCommand
-import com.zpi.slowomir.overlay.commands.grid.TapCellCommand
-import com.zpi.slowomir.overlay.commands.grid.UndivideCellCommand
+import com.zpi.slowomir.overlay.commands.grid.*
+import com.zpi.slowomir.overlay.commands.macro.*
 import com.zpi.slowomir.overlay.commands.media.VolumeDownCommand
 import com.zpi.slowomir.overlay.commands.media.VolumeUpCommand
 import com.zpi.slowomir.overlay.commands.navigation.*
 import com.zpi.slowomir.overlay.commands.phoneCalls.*
+import com.zpi.slowomir.overlay.commands.textEdit.CancelCommand
 import com.zpi.slowomir.overlay.commands.predictions.ConfirmCommand as PredictionConfirmCommand
 import com.zpi.slowomir.overlay.commands.predictions.DismissCommand as PredictionDismissCommand
 import com.zpi.slowomir.overlay.commands.textEdit.ConfirmCommand
@@ -53,6 +48,8 @@ class CommandResolverTest {
     private val textDeleteWordCommandFactory = mock<DeleteWordCommand.Factory>()
     private val textEnterCommandFactory = mock<EnterCommand.Factory>()
     private val textConfirmCommandFactory = mock<ConfirmCommand.Factory>()
+    private val textCancelCommandFactory = mock<CancelCommand.Factory>()
+    private val textEditCommandFactory = mock<com.zpi.slowomir.overlay.commands.textEdit.EditCommand.Factory>()
     private val pickUpCommandFactory = mock<PickUpCommand.Factory>()
     private val declineCommandFactory = mock<DeclineCommand.Factory>()
     private val endCommandFactory = mock<EndCommand.Factory>()
@@ -69,14 +66,24 @@ class CommandResolverTest {
     private val volumeDownCommandFactory = mock<VolumeDownCommand.Factory>()
     private val openAppCommandFactory = mock<OpenAppCommand.Factory>()
     private val gridEnableCommandFactory = mock<GridEnableCommand.Factory>()
-    private val disableGridCommandFactory = mock<GridEnableCommand.Factory>()
+    private val disableGridCommandFactory = mock<GridDisableCommand.Factory>()
     private val gridToggleCommandFactory = mock<GridToggleCommand.Factory>()
     private val gridResetCommandFactory = mock<GridResetCommand.Factory>()
+    private val addColumnGridCommandFactory = mock<AddColumnGridCommand.Factory>()
+    private val addRowGridCommandFactory = mock<AddRowGridCommand.Factory>()
+    private val subtractColumnGridCommand = mock<SubtractColumnGridCommand.Factory>()
+    private val subtractRowGridCommand = mock<SubtractRowGridCommand.Factory>()
     private val selectCellCommandFactory = mock<SelectCellCommand.Factory>()
     private val divideCellCommandFactory = mock<DivideCellCommand.Factory>()
     private val undivideCellCommandFactory = mock<UndivideCellCommand.Factory>()
     private val tapCellCommandFactory = mock<TapCellCommand.Factory>()
     private val longTapCellCommandFactory = mock<LongTapCellCommand.Factory>()
+    private val showMacroOverlayCommandFactory = mock<ShowMacroOverlayCommand.Factory>()
+    private val hideMacroOverlayCommandFactory = mock<HideMacroOverlayCommand.Factory>()
+    private val toggleMacroOverlayCommandFactory = mock<ToggleMacroOverlayCommand.Factory>()
+    private val playMacroCommandFactory = mock<PlayMacroCommand.Factory>()
+    private val recordMacroCommandFactory = mock<RecordMacroCommand.Factory>()
+    private val finishMacroCommandFactory = mock<FinishMacroCommand.Factory>()
     private val predictionConfirmCommandFactory = mock<PredictionConfirmCommand.Factory>()
     private val predictionDismissCommandFactory = mock<PredictionDismissCommand.Factory>()
 
@@ -99,6 +106,8 @@ class CommandResolverTest {
         textDeleteWordCommandFactory = textDeleteWordCommandFactory,
         textEnterCommandFactory = textEnterCommandFactory,
         textConfirmCommandFactory = textConfirmCommandFactory,
+        textCancelCommandFactory = textCancelCommandFactory,
+        textEditCommandFactory = textEditCommandFactory,
         pickUpCommandFactory = pickUpCommandFactory,
         declineCommandFactory = declineCommandFactory,
         endCommandFactory = endCommandFactory,
@@ -123,6 +132,16 @@ class CommandResolverTest {
         undivideCellCommandFactory = undivideCellCommandFactory,
         tapCellCommandFactory = tapCellCommandFactory,
         longTapCellCommandFactory = longTapCellCommandFactory,
+        showMacroOverlayCommandFactory = showMacroOverlayCommandFactory,
+        hideMacroOverlayCommandFactory = hideMacroOverlayCommandFactory,
+        toggleMacroOverlayCommandFactory = toggleMacroOverlayCommandFactory,
+        playMacroCommandFactory = playMacroCommandFactory,
+        recordMacroCommandFactory = recordMacroCommandFactory,
+        finishMacroCommandFactory = finishMacroCommandFactory,
+        addColumnGridCommandFactory = addColumnGridCommandFactory,
+        addRowGridCommandFactory = addRowGridCommandFactory,
+        subtractColumnGridCommandFactory = subtractColumnGridCommand,
+        subtractRowGridCommandFactory = subtractRowGridCommand,
         predictionConfirmCommandFactory = predictionConfirmCommandFactory,
         predictionDismissCommandFactory = predictionDismissCommandFactory,
     )

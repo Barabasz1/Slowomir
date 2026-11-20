@@ -6,4 +6,18 @@
     <string name="contact_picker_listening">Listening…</string>
     <string name="contact_picker_cancel">Cancel</string>
     <string name="app_picker_title">Which app would you like to open?</string>
+
+    <string name="overlay_listening">Listening…</string>
+    <string name="overlay_command_executed">%1$s via %2$s</string>
+    <string name="overlay_error_invalid_command">Invalid command: %1$s</string>
+    <string name="overlay_error_command_failed">%1$s Failed: %2$s</string>
+    <string name="overlay_error_invalid_context">Invalid Context: %1$s</string>
+    <string name="overlay_error_text_insert">Could not type the text</string>
+    <string name="overlay_error_selection_unsupported">Selection is not supported for %1$s</string>
+    <string name="overlay_error_contact_not_found">Could not find a contact: %1$s</string>
+    <string name="overlay_error_contacts_permission_denied">No access to reading contacts</string>
+    <string name="overlay_error_no_contact">No contact was given.</string>
+    <string name="overlay_error_application_not_found">Could not find application: %1$s</string>
+    <string name="overlay_error_no_application">No application was given.</string>
+    <string name="overlay_error_no_macros">No macros available</string>
 </resources>

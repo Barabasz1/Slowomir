@@ -295,7 +295,7 @@ class KeywordSpotterManager @Inject constructor(
 
         const val INFER_EVERY_CHUNKS = 2
         const val SMOOTH = 2
-        const val THRESHOLD = 0.8f
+        const val THRESHOLD = 0.7f
         const val COOLDOWN_CHUNKS = 12
         const val MIN_RMS = 150.0
     }

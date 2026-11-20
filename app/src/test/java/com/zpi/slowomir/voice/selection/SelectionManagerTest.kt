@@ -24,7 +24,8 @@ class SelectionManagerTest {
     private val context = mock<Context>()
     private val contactUtils = mock<ContactUtils>()
     private val applicationUtils = mock<com.zpi.slowomir.utils.ApplicationUtils>()
-    private val manager = SelectionManager(context, contactUtils, applicationUtils, PolishTextNormalizer())
+    private val macroSupplier = mock<com.zpi.slowomir.overlay.macro.MacroSupplier>()
+    private val manager = SelectionManager(context, contactUtils, applicationUtils, macroSupplier, PolishTextNormalizer())
 
     private val options = listOf(
         ContactOption("Kasia Dom", "111222333"),
@@ -70,15 +71,15 @@ class SelectionManagerTest {
         whenever(contactUtils.lookup(any(), eq(""))).thenReturn(ContactLookupResult.EmptyQuery)
 
         assertEquals(
-            SelectionResult.Failed("Could not find a contact: Janek"),
+            SelectionResult.Failed(SelectionFailure.ContactNotFound("Janek")),
             manager.begin(intent(CommandIdentifier.PHONE_CALL, "Janek")),
         )
         assertEquals(
-            SelectionResult.Failed("No access to reading contacts"),
+            SelectionResult.Failed(SelectionFailure.ContactsPermissionDenied),
             manager.begin(intent(CommandIdentifier.PHONE_CALL, "Tata")),
         )
         assertEquals(
-            SelectionResult.Failed("No contact was given."),
+            SelectionResult.Failed(SelectionFailure.NoContactGiven),
             manager.begin(intent(CommandIdentifier.PHONE_CALL, null)),
         )
         assertFalse(manager.isActive)

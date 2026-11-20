@@ -334,7 +334,6 @@ class TextEditVerificationTest {
     fun `all editing operations send expected text and cursor in action arguments`() {
         withWorkingBundles {
             applyActionArguments()
-            val inserted = "Test input."
             val cases = listOf(
                 executor::cursorForward to com.zpi.slowomir.utils.EditorState("Ala ma", 2, 2),
                 executor::cursorBackward to com.zpi.slowomir.utils.EditorState("Ala ma", 0, 0),
@@ -342,7 +341,6 @@ class TextEditVerificationTest {
                 executor::cursorWordPrevious to com.zpi.slowomir.utils.EditorState("Ala ma", 0, 0),
                 executor::deleteChar to com.zpi.slowomir.utils.EditorState("la ma", 0, 0),
                 executor::deleteWord to com.zpi.slowomir.utils.EditorState(" ma", 0, 0),
-                executor::confirm to com.zpi.slowomir.utils.EditorState("A" + inserted + "la ma", 1 + inserted.length, 1 + inserted.length),
             )
             for ((operation, expected) in cases) {
                 text = "Ala ma"

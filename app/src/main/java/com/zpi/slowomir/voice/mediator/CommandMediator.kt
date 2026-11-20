@@ -4,7 +4,6 @@ import com.zpi.slowomir.overlay.OverlayContext
 import com.zpi.slowomir.overlay.commands.Command
 import com.zpi.slowomir.overlay.commands.CommandResult
 import com.zpi.slowomir.voice.OverlayState
-import com.zpi.slowomir.voice.OverlayEvent
 import com.zpi.slowomir.voice.VoiceIntent
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.flow.StateFlow

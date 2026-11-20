@@ -4,6 +4,7 @@ import android.content.Context
 import com.zpi.slowomir.overlay.commands.Command
 import com.zpi.slowomir.overlay.commands.CommandArgument
 import com.zpi.slowomir.overlay.commands.CommandIdentifier
+import com.zpi.slowomir.overlay.commands.CommandResult
 import com.zpi.slowomir.overlay.commands.phoneCalls.CallCommand
 import com.zpi.slowomir.overlay.commands.phoneCalls.WriteSMSCommand
 import com.zpi.slowomir.utils.ContactLookupResult
@@ -11,6 +12,7 @@ import com.zpi.slowomir.utils.ContactOption
 import com.zpi.slowomir.utils.ContactUtils
 import com.zpi.slowomir.voice.intent.CommandIntentParser
 import com.zpi.slowomir.voice.intent.CommandIntentResolver
+import com.zpi.slowomir.voice.dictation.FieldProfileHolder
 import com.zpi.slowomir.voice.mediator.CommandMediator
 import com.zpi.slowomir.voice.mediator.MediatorState
 import com.zpi.slowomir.voice.selection.SelectionManager
@@ -41,8 +43,9 @@ class VoiceSessionManagerSelectionFlowTest {
     private val intentResolver = mock<CommandIntentResolver>()
     private val contactUtils = mock<ContactUtils>()
     private val applicationUtils = mock<com.zpi.slowomir.utils.ApplicationUtils>()
+    private val macroSupplier = mock<com.zpi.slowomir.overlay.macro.MacroSupplier>()
 
-    private val selectionManager = SelectionManager(mock<Context>(), contactUtils, applicationUtils, PolishTextNormalizer())
+    private val selectionManager = SelectionManager(mock<Context>(), contactUtils, applicationUtils, macroSupplier, PolishTextNormalizer())
 
     private val jan = listOf(
         ContactOption("Jan Kowalski (Komórka)", "+48111222333"),
@@ -54,9 +57,10 @@ class VoiceSessionManagerSelectionFlowTest {
     @Before
     fun setUp() {
         whenever(mediator.mediatorState).thenReturn(MutableStateFlow(MediatorState()))
+        runBlocking { whenever(mediator.dispatch(any())).thenReturn(CommandResult.Success()) }
         whenever(contactUtils.lookup(any(), eq("Jan"))).thenReturn(ContactLookupResult.Ambiguous(jan))
 
-        sessionManager = VoiceSessionManager(mediator, intentParser, commandResolver, selectionManager, intentResolver, PolishTextNormalizer())
+        sessionManager = VoiceSessionManager(mediator, intentParser, commandResolver, selectionManager, intentResolver, PolishTextNormalizer(), mock(), mock(), FieldProfileHolder())
         sessionManager.accept(VoiceInput.ServiceStarted)
         sessionManager.accept(VoiceInput.KeywordDetected)
         eventually("session is listening") { sessionManager.state.value is VoiceState.Listening }
@@ -185,9 +189,7 @@ class VoiceSessionManagerSelectionFlowTest {
 
     private fun verifyExecuted(command: Command) {
         runBlocking {
-            verify(mediator, timeout(2000)).handleEvent(argThat {
-                this is OverlayEvent.CommandInterpreted && this.command === command
-            })
+            verify(mediator, timeout(2000)).dispatch(argThat { this === command })
         }
     }
 

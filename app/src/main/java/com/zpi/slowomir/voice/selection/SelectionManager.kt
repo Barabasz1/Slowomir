@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import com.zpi.slowomir.overlay.commands.CommandArgument
 import com.zpi.slowomir.overlay.commands.CommandIdentifier
+import com.zpi.slowomir.overlay.macro.MacroSupplier
 import com.zpi.slowomir.utils.ApplicationUtils
 import com.zpi.slowomir.utils.ApplicationUtils.ApplicationLookupResult
 import com.zpi.slowomir.utils.ContactLookupResult
@@ -34,6 +35,7 @@ class SelectionManager @Inject constructor(
     @ApplicationContext private val appContext: Context,
     private val contactUtils: ContactUtils,
     private val applicationUtils: ApplicationUtils,
+    private val macroSupplier: MacroSupplier,
     private val normalizer: PolishTextNormalizer,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -55,10 +57,11 @@ class SelectionManager @Inject constructor(
         CommandIdentifier.PHONE_CALL,
         CommandIdentifier.SMS_WRITE -> beginContact(intent)
         CommandIdentifier.NAVIGATE_APP_OPEN -> beginApplication(intent)
+        CommandIdentifier.MACRO_SHOW -> beginMacro()
 
         else -> {
             Log.w(TAG, "No selection defined for ${intent.identifier}")
-            SelectionResult.Failed("Selection is not supported for ${intent.identifier}")
+            SelectionResult.Failed(SelectionFailure.Unsupported(intent.identifier))
         }
     }
 
@@ -148,9 +151,9 @@ class SelectionManager @Inject constructor(
                 SelectionResult.Pending
             }
 
-            ContactLookupResult.NotFound -> SelectionResult.Failed("Could not find a contact: $query")
-            ContactLookupResult.PermissionDenied -> SelectionResult.Failed("No access to reading contacts")
-            ContactLookupResult.EmptyQuery -> SelectionResult.Failed("No contact was given.")
+            ContactLookupResult.NotFound -> SelectionResult.Failed(SelectionFailure.ContactNotFound(query))
+            ContactLookupResult.PermissionDenied -> SelectionResult.Failed(SelectionFailure.ContactsPermissionDenied)
+            ContactLookupResult.EmptyQuery -> SelectionResult.Failed(SelectionFailure.NoContactGiven)
         }
     }
 
@@ -167,18 +170,26 @@ class SelectionManager @Inject constructor(
                 SelectionResult.Pending
             }
 
-            ApplicationLookupResult.NotFound -> SelectionResult.Failed("Could not find application: $query")
-            ApplicationLookupResult.EmptyQuery -> SelectionResult.Failed("No application was given.")
+            ApplicationLookupResult.NotFound -> SelectionResult.Failed(SelectionFailure.ApplicationNotFound(query))
+            ApplicationLookupResult.EmptyQuery -> SelectionResult.Failed(SelectionFailure.NoApplicationGiven)
         }
     }
 
+    private fun beginMacro(): SelectionResult {
+        val macros = macroSupplier.getMacroList()
+        if (macros.isEmpty()) {
+            return SelectionResult.Failed(SelectionFailure.NoMacros)
+        }
+        publish(Selection.Macro(pending = VoiceIntent(CommandIdentifier.MACRO_PLAY, null), options = macros))
+        return SelectionResult.Pending
+    }
 
     companion object {
         private const val TAG = "SelectionManager"
         private const val DEFAULT_TIMEOUT_MS = 15_000L
 
         private val selectionRegex =
-            Regex("""^(?:(?:numer|opcja|opcję|pozycja|pozycję|kontakt|wybierz|wybieram)\s+)*(\d+)$""")
+            Regex("""^(?:(?:numer|opcja|opcję|pozycja|pozycję|kontakt|makro|makra|wybierz|wybieram)\s+)*(\d+)$""", RegexOption.IGNORE_CASE)
 
         private val cancelPhrases = setOf(
             "anuluj",

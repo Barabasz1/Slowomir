@@ -97,15 +97,6 @@ class CommandIntentParser @Inject constructor(
             }
         }
 
-        divideNumberRegex.find(text)?.let { match ->
-            match.groupValues[1].toIntOrNull()?.let { num ->
-                return VoiceIntent(
-                    identifier = CommandIdentifier.CELL_DIVIDE,
-                    argument = CommandArgument.Number(num),
-                    rawText = rawInput
-                )
-            }
-        }
 
         selectNumberRegex.find(text)?.let { match ->
             match.groupValues[1].toIntOrNull()?.let { num ->
@@ -121,8 +112,13 @@ class CommandIntentParser @Inject constructor(
         val noArgIdentifier = when (text) {
             "pokaż siatkę", "wyświetl siatkę", "włącz siatkę", "pokaż podział ekranu", "wyświetl pola" -> CommandIdentifier.GRID_SHOW
             "ukryj siatkę", "schowaj siatkę", "wyłącz siatkę", "usuń siatkę z ekranu", "nie pokazuj siatki" -> CommandIdentifier.GRID_HIDE
-            "siatka" -> CommandIdentifier.GRID_TOGGLE
+            "siatka", "siatkę" -> CommandIdentifier.GRID_TOGGLE
             "reset siatki", "zresetuj siatkę", "wyczyść podziały siatki", "przywróć siatkę", "zacznij siatkę od nowa", "resetuj siatkę" -> CommandIdentifier.GRID_RESET
+            "podziel", "rozdziel" -> CommandIdentifier.CELL_DIVIDE
+            "dodaj kolumnę" -> CommandIdentifier.GRID_ADD_COL
+            "dodaj wiersz" -> CommandIdentifier.GRID_ADD_ROW
+            "usuń kolumnę" -> CommandIdentifier.GRID_SUBTRACT_COL
+            "usuń wiersz" -> CommandIdentifier.GRID_SUBTRACT_ROW
             "wyłącz", "wyłącz sterowanie", "uśpij nakładkę", "zatrzymaj sterowanie głosowe", "przejdź w stan uśpienia", "uśpij" -> CommandIdentifier.OVERLAY_STOP
             "słowomirek powstań", "słowomirek obudź się", "słowomirek wstań", "słowomirek aktywuj się", "włącz sterowanie słowomirek", "powstań" -> CommandIdentifier.OVERLAY_START
             "przewiń w górę", "przesuń w górę", "przewijaj w górę", "w górę", "przesuń ekran do góry", "do góry", "przesuń góra", "góra" -> CommandIdentifier.SWIPE_UP
@@ -158,7 +154,9 @@ class CommandIntentParser @Inject constructor(
             "poprzednie słowo", "przejdź do poprzedniego słowa", "kursor o słowo w lewo", "przesuń kursor do wcześniejszego słowa", "o słowo do tyłu", "poprzedni wyraz" -> CommandIdentifier.TEXT_CURSOR_PREVIOUS_WORD
             "usuń", "usuń znak", "skasuj znak", "wykasuj literę", "usuń poprzedni znak" -> CommandIdentifier.TEXT_DELETE_CHARACTER
             "usuń słowo", "skasuj słowo", "usuń poprzednie słowo", "wykasuj słowo", "usuń wyraz" -> CommandIdentifier.TEXT_DELETE_WORD
-            "zatwierdź", "zatwierdź tekst", "potwierdź wpisany tekst", "zakończ wpisywanie", "zaakceptuj tekst" -> CommandIdentifier.TEXT_CONFIRM
+            "zatwierdź", "zatwierdź tekst", "potwierdź wpisany tekst", "zakończ wpisywanie", "zaakceptuj tekst", "wyślij", "zatwierdź i wyślij", "zakończ i wyślij" -> CommandIdentifier.TEXT_CONFIRM
+            "anuluj", "anuluj pisanie", "anuluj dyktowanie", "przerwij dyktowanie" -> CommandIdentifier.TEXT_CANCEL
+            "edytuj", "edytuj tekst", "tryb edycji", "przejdź do edycji", "włącz edycję" -> CommandIdentifier.TEXT_EDIT
             "schowaj klawiaturę", "ukryj klawiaturę", "zamknij klawiaturę", "wyłącz klawiaturę ekranową", "schowaj klawiaturę ekranową" -> CommandIdentifier.KEYBOARD_HIDE
             "pokaż klawiaturę", "wyświetl klawiaturę", "otwórz klawiaturę", "włącz klawiaturę ekranową", "pokaż klawiaturę ekranową" -> CommandIdentifier.KEYBOARD_SHOW
             "klawiatura", "przełącz klawiaturę" -> CommandIdentifier.KEYBOARD_TOGGLE
@@ -169,7 +167,9 @@ class CommandIntentParser @Inject constructor(
             "sms" -> CommandIdentifier.SMS_WRITE
             "nagraj makro", "rozpocznij nagrywanie makra", "zacznij nagrywać makro", "utwórz nowe makro", "zapisuj czynności jako makro" -> CommandIdentifier.MACRO_RECORD
             "zakończ makro", "zakończ nagrywanie makra", "zatrzymaj nagrywanie makra", "zapisz makro", "skończ nagrywać makro" -> CommandIdentifier.MACRO_FINISH
-            "makro", "pokaż makra", "otwórz listę makr", "wyświetl zapisane makra", "lista makr" -> CommandIdentifier.MACRO_PLAY
+            "makro", "makra",  "lista makr", "lista makro", "lista makra" , "pokaż makra", "pokaż makro","otwórz listę makr", "wyświetl makra","wyświetl makro"  -> CommandIdentifier.MACRO_SHOW
+            "schowaj makra", "schowaj makro", "schowaj listę", "zamknij listę", "zamknij makra" -> CommandIdentifier.MACRO_HIDE
+
             else -> null
         }
 
@@ -179,6 +179,16 @@ class CommandIntentParser @Inject constructor(
                 argument = null,
                 rawText = rawInput
             )
+        }
+
+        divideNumberRegex.find(text)?.let { match ->
+            match.groupValues[1].toIntOrNull()?.let { num ->
+                return VoiceIntent(
+                    identifier = CommandIdentifier.CELL_DIVIDE,
+                    argument = CommandArgument.Number(num),
+                    rawText = rawInput
+                )
+            }
         }
 
         // 4. Text argument patterns
@@ -216,11 +226,10 @@ class CommandIntentParser @Inject constructor(
         }
 
         macroPlayRegex.find(text)?.let { match ->
-            val macroName = match.groupValues[1].trim()
-            if (macroName.isNotEmpty()) {
+            match.groupValues[1].toIntOrNull()?.let { num ->
                 return VoiceIntent(
                     identifier = CommandIdentifier.MACRO_PLAY,
-                    argument = CommandArgument.Text(macroName),
+                    argument = CommandArgument.Number(num),
                     rawText = rawInput
                 )
             }
