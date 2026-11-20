@@ -8,8 +8,8 @@ import com.zpi.slowomir.overlay.commands.CommandResult
 import com.zpi.slowomir.overlay.log.ICommandLogger
 import com.zpi.slowomir.voice.OverlayState
 import com.zpi.slowomir.voice.OverlayState.*
-import com.zpi.slowomir.voice.OverlayEvent
 import com.zpi.slowomir.voice.VoiceIntent
+import com.zpi.slowomir.voice.stt.TextMode
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
@@ -21,7 +21,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -60,12 +59,12 @@ class DefaultCommandMediator @Inject constructor(
                 ListeningForCommand
             }
 
-            is OverlayEvent.SpeechPartial -> {
-                ListeningToSpeech(event.text)
-            }
+            is OverlayEvent.SpeechPartial -> speechState(event.text, event.mode)
 
-            is OverlayEvent.SpeechRecognized -> {
-                ListeningToSpeech(event.text)
+            is OverlayEvent.SpeechRecognized -> speechState(event.text, event.mode)
+
+            is OverlayEvent.SessionIdle -> {
+                if (mediatorState.value.overlayState.isResult) null else ListeningForKeyword
             }
 
             is OverlayEvent.CommandExecuted -> {
@@ -102,6 +101,12 @@ class DefaultCommandMediator @Inject constructor(
                 it.copy(overlayState = state)
             }
         }
+    }
+
+    private fun speechState(text: String, mode: TextMode?): OverlayState = when (mode) {
+        TextMode.DICTATE -> Dictating(text)
+        TextMode.EDIT -> Editing(text)
+        null -> ListeningToSpeech(text)
     }
 
     override suspend fun dispatch(command: Command): CommandResult = withContext(Dispatchers.Main.immediate) {
