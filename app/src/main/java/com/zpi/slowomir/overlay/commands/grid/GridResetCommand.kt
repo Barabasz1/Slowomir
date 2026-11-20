@@ -9,7 +9,6 @@ import dagger.assisted.AssistedInject
 import javax.inject.Provider
 
 
-
 class GridResetCommand @AssistedInject constructor(
     private val gridExecutorProvider: Provider<GridExecutor?>
 ) : Command {
@@ -18,7 +17,9 @@ class GridResetCommand @AssistedInject constructor(
         val gridExecutor = gridExecutorProvider.get()
             ?: return CommandResult.Failure("Grid executor is null")
 
-        gridExecutor.reset()
+        gridExecutor.resetDimensions()
+        gridExecutor.resetSelection()
+        gridExecutor.redraw()
         return CommandResult.Success()
     }
 

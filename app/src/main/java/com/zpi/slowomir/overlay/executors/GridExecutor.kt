@@ -1,8 +1,8 @@
 package com.zpi.slowomir.overlay.executors
 
-import com.zpi.slowomir.overlay.ui.grid.GridView
 import android.content.Context
 import android.graphics.PixelFormat
+import android.graphics.RectF
 import android.view.Gravity
 import android.view.View
 import android.view.WindowManager
@@ -19,8 +19,10 @@ import com.zpi.slowomir.overlay.commands.touch.TapCommand
 import com.zpi.slowomir.overlay.executors.TouchExecutor.Companion.DEFAULT_HOLD_DURATION
 import com.zpi.slowomir.overlay.executors.TouchExecutor.Companion.DEFAULT_PINCH_POWER
 import com.zpi.slowomir.overlay.executors.TouchExecutor.Companion.DEFAULT_SWIPE_DISTANCE
+import com.zpi.slowomir.overlay.services.CommandExecutorService
 import com.zpi.slowomir.overlay.ui.common.OverlayHostProvider
 import com.zpi.slowomir.overlay.ui.common.OverlayWindowManager
+import com.zpi.slowomir.overlay.ui.grid.GridView
 import com.zpi.slowomir.utils.ScreenPoint
 import com.zpi.slowomir.voice.mediator.CommandMediator
 import javax.inject.Inject
@@ -124,33 +126,70 @@ class GridExecutor @Inject constructor(
         resetSelection()
     }
 
-    fun resetDimensions(){
+    fun resetDimensions() {
         rowsCount = DEFAULT_ROWS
         colsCount = DEFAULT_COLS
     }
+
     fun resetSelection() {
         parentCell = null
         selectedCell = null
         divisions.clear()
     }
 
-    fun reset() {
-        resetDimensions()
-        resetSelection()
-        redraw()
-    }
-
-    private fun redraw() {
+    fun redraw() {
         gridView?.update(rowsCount, colsCount, selectedCell, parentCell, divisions.toList())
     }
 
-    fun addRow(toAdd: Int){
-        rowsCount = max(1,rowsCount + toAdd)
+    fun addRow(toAdd: Int) {
+        val oldRows = rowsCount
+        val oldCols = colsCount
+        val newRows = max(1, rowsCount + toAdd)
+        if (newRows != oldRows) {
+            rowsCount = newRows
+            updateSelectionForNewDimensions(oldRows, oldCols, newRows, oldCols)
+        }
         redraw()
     }
-    fun addCols(toAdd: Int){
-        colsCount = max(1,colsCount + toAdd)
+
+    fun addCols(toAdd: Int) {
+        val oldRows = rowsCount
+        val oldCols = colsCount
+        val newCols = max(1, colsCount + toAdd)
+        if (newCols != oldCols) {
+            colsCount = newCols
+            updateSelectionForNewDimensions(oldRows, oldCols, oldRows, newCols)
+        }
         redraw()
+    }
+
+    private fun updateSelectionForNewDimensions(
+        oldRows: Int,
+        oldCols: Int,
+        newRows: Int,
+        newCols: Int
+    ) {
+        if (divisions.isEmpty()) {
+            selectedCell?.let { cell ->
+                val oldRow = (cell - 1) / oldCols
+                val oldCol = (cell - 1) % oldCols
+                val newRow = oldRow.coerceIn(0, newRows - 1)
+                val newCol = oldCol.coerceIn(0, newCols - 1)
+                selectedCell = newRow * newCols + newCol + 1
+            }
+        } else {
+            parentCell?.let { cell ->
+                val oldRow = (cell - 1) / oldCols
+                val oldCol = (cell - 1) % oldCols
+                val newRow = oldRow.coerceIn(0, newRows - 1)
+                val newCol = oldCol.coerceIn(0, newCols - 1)
+                val newParent = newRow * newCols + newCol + 1
+                parentCell = newParent
+                if (divisions.isNotEmpty()) {
+                    divisions[0] = newParent to divisions[0].second
+                }
+            }
+        }
     }
 
     fun selectCell(cell: Int) {
@@ -190,43 +229,67 @@ class GridExecutor @Inject constructor(
     }
 
     fun undivide(): Boolean {
-        resetSelection()
+        divisions.removeLastOrNull()
+        selectedCell = null
+        redraw()
         return true
     }
 
-    fun getTouchCoords(cell: Int): ScreenPoint {
-        val view = gridView ?: return ScreenPoint(0f, 0f)
-        val cols = view.cols
-        val rows = view.rows
+    fun getCellBounds(cell: Int): RectF {
+        val displayMetrics = runCatching {
+            CommandExecutorService.instance?.resources?.displayMetrics
+                ?: android.content.res.Resources.getSystem()?.displayMetrics
+        }.getOrNull()
+
+        val defaultW = displayMetrics?.widthPixels?.toFloat()?.takeIf { it > 0f } ?: 1080f
+        val defaultH = displayMetrics?.heightPixels?.toFloat()?.takeIf { it > 0f } ?: 2400f
+
+        val view = gridView
+        var gridLeft = 0f
+        var gridTop = 0f
+        var width = defaultW
+        var height = defaultH
+
+        if (view != null && view.isAttachedToWindow && view.width > 0 && view.height > 0) {
+            val location = IntArray(2)
+            view.getLocationOnScreen(location)
+            gridLeft = location[0].toFloat()
+            gridTop = location[1].toFloat()
+            width = view.width.toFloat()
+            height = view.height.toFloat()
+        }
+
+        val cols = view?.cols ?: colsCount
+        val rows = view?.rows ?: rowsCount
 
         val maxCell = if (divisions.isEmpty()) {
             cols * rows
         } else {
             divisions.last().second * divisions.last().second
         }
-        if (cell !in 1..maxCell) return ScreenPoint(0f, 0f)
+        if (cell !in 1..maxCell) return RectF(0f, 0f, 0f, 0f)
 
         if (divisions.isEmpty()) {
             val cellIndex = cell - 1
             val row = cellIndex / cols
             val col = cellIndex % cols
 
-            val cw = view.width.toFloat() / cols
-            val ch = view.height.toFloat() / rows
+            val cw = width / cols
+            val ch = height / rows
 
-            val x = (col + 0.5f) * cw
-            val y = (row + 0.5f) * ch
-            return ScreenPoint(x, y)
+            val left = gridLeft + col * cw
+            val top = gridTop + row * ch
+            return RectF(left, top, left + cw, top + ch)
         }
 
         val rootCell = divisions.first().first - 1
         val rootRow = rootCell / cols
         val rootCol = rootCell % cols
 
-        var cellX = rootCol * (view.width.toFloat() / cols)
-        var cellY = rootRow * (view.height.toFloat() / rows)
-        var cellW = view.width.toFloat() / cols
-        var cellH = view.height.toFloat() / rows
+        var cellX = gridLeft + rootCol * (width / cols)
+        var cellY = gridTop + rootRow * (height / rows)
+        var cellW = width / cols
+        var cellH = height / rows
 
         for (i in 0 until divisions.size - 1) {
             val subCell = divisions[i + 1].first - 1
@@ -247,10 +310,20 @@ class GridExecutor @Inject constructor(
 
         val subW = cellW / lastN
         val subH = cellH / lastN
-        val finalX = cellX + (targetCol + 0.5f) * subW
-        val finalY = cellY + (targetRow + 0.5f) * subH
+        val left = cellX + targetCol * subW
+        val top = cellY + targetRow * subH
 
-        return ScreenPoint(finalX, finalY)
+        return RectF(left, top, left + subW, top + subH)
+    }
+
+    fun getCellCenter(cell: Int): ScreenPoint {
+        val bounds = getCellBounds(cell)
+        if (bounds.isEmpty) return ScreenPoint(0f, 0f)
+        return ScreenPoint(bounds.centerX(), bounds.centerY())
+    }
+
+    fun getTouchCoords(cell: Int): ScreenPoint {
+        return getCellCenter(cell)
     }
 
     private inline fun dispatchCellCommand(
@@ -260,7 +333,8 @@ class GridExecutor @Inject constructor(
         if (gridView == null) return false
         val (x, y) = getTouchCoords(cell)
         mediator.dispatchScoped(commandFactory(x, y))
-        reset()
+        resetSelection()
+        redraw()
         return true
     }
 
@@ -326,11 +400,11 @@ class GridExecutor @Inject constructor(
 
     //TODO
     fun swipe(cell0: Int, cell1: Int): Boolean {
-        val (x0,y0) = getTouchCoords(cell0)
-        val (x1,y1) = getTouchCoords(cell1)
+        val (x0, y0) = getTouchCoords(cell0)
+        val (x1, y1) = getTouchCoords(cell1)
         swipeCommandFactory.create(
-            x0,y0,
-            x1,y1
+            x0, y0,
+            x1, y1
         )
         return true
     }
