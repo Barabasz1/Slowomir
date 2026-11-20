@@ -24,14 +24,34 @@ object ActionHasher {
     const val NULL_MARKER = "\u0000"
 
     fun hash(action: ActionDescriptor): String {
-        val isClick = action.type == ActionType.UI_CLICK
-        val parts = listOf(
-            action.type.name,
-            (if (isClick) action.packageName else null) ?: NULL_MARKER,
-            (if (isClick) action.resourceId else null) ?: NULL_MARKER,
-            (if (isClick) action.hierarchyPath else null) ?: NULL_MARKER,
-            (if (isClick) action.labelHash else null) ?: NULL_MARKER,
-        )
+        val parts = if (action.type == ActionType.UI_CLICK) {
+            val hasNodeMetadata = action.resourceId != null ||
+                    action.hierarchyPath != null ||
+                    action.labelHash != null
+            if (hasNodeMetadata) {
+                listOf(
+                    action.type.name,
+                    action.packageName ?: NULL_MARKER,
+                    action.resourceId ?: NULL_MARKER,
+                    action.hierarchyPath ?: NULL_MARKER,
+                    action.labelHash ?: NULL_MARKER,
+                )
+            } else {
+                listOf(
+                    action.type.name,
+                    action.packageName ?: NULL_MARKER,
+                    action.commandType ?: NULL_MARKER,
+                    action.commandArgs ?: NULL_MARKER,
+                )
+            }
+        } else {
+            listOf(
+                action.type.name,
+                action.packageName ?: NULL_MARKER,
+                action.commandType ?: NULL_MARKER,
+                action.commandArgs ?: NULL_MARKER,
+            )
+        }
         return sha256Hex(parts.joinToString(SEPARATOR))
     }
 

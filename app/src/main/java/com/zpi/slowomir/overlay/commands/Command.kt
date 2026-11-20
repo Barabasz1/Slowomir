@@ -1,7 +1,7 @@
 package com.zpi.slowomir.overlay.commands
 
 import com.zpi.slowomir.overlay.OverlayContext
-
+import java.util.Locale
 /**
  * Represents an executable action designed to be run within the context of the [com.zpi.slowomir.overlay.services.CommandExecutorService].
  */
@@ -12,6 +12,27 @@ interface Command {
     val requiresBackgroundExecution: Boolean
         get() = false
 
+    val commandType: String
+        get() = this::class.java.name
+
+    val arguments: Map<String, Any?>
+        get() = emptyMap()
+
+    fun formatDisplay(): String {
+        val baseName = this::class.java.simpleName
+            .removeSuffix("Command")
+            .replace(Regex("(?<=[a-z])(?=[A-Z])"), " ")
+        val filtered = arguments.filterValues { it != null }
+        if (filtered.isEmpty()) return baseName
+        val argsText = filtered.entries.joinToString(", ") { (k, v) ->
+            val formattedVal = when (v) {
+                is Float -> if (v % 1f == 0f) v.toInt().toString() else "%.1f".format(Locale.US, v)
+                else -> v.toString()
+            }
+            "$k=$formattedVal"
+        }
+        return "$baseName($argsText)"
+    }
     /**
      * Executes the encapsulated logic and returns the outcome.
      *

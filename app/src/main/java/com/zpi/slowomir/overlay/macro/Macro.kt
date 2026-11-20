@@ -1,12 +1,12 @@
 package com.zpi.slowomir.overlay.macro
 
 import com.zpi.slowomir.overlay.commands.Command
+import com.zpi.slowomir.overlay.commands.SerializedCommand
 
-// Experimental macro class structure, feel free to change everything
 data class Macro(
     val commands: List<Command> = emptyList(),
-    val startingPoint: MacroStartingPoint? = null
+    val startingPoint: MacroStartingPoint? = null,
+    val isGenerated: Boolean = false,
+    val delaysMs: List<Long> = emptyList(),
+    val serializedCommands: List<SerializedCommand> = emptyList(),
 )
-
-
-
