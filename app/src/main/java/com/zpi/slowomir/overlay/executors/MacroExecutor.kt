@@ -4,7 +4,6 @@ import com.zpi.slowomir.overlay.macro.MacroOverlay
 import com.zpi.slowomir.overlay.macro.MacroPlayer
 import com.zpi.slowomir.overlay.macro.MacroRecorder
 import com.zpi.slowomir.overlay.macro.MacroSupplier
-import com.zpi.slowomir.overlay.macro.toMacro
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -32,7 +31,7 @@ class MacroExecutor @Inject constructor(
     }
 
     fun playFromList(index: Int): Boolean {
-        return macroPlayer.play(macroSupplier.getMacroFromList(index).toMacro())
+        return macroPlayer.play(macroSupplier.getMacroFromList(index))
     }
 
     fun stopMacro(): Boolean {

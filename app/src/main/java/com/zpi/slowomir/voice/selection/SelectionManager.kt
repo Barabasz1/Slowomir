@@ -180,7 +180,7 @@ class SelectionManager @Inject constructor(
         if (macros.isEmpty()) {
             return SelectionResult.Failed(SelectionFailure.NoMacros)
         }
-        publish(Selection.Macro(pending = VoiceIntent(CommandIdentifier.MACRO_PLAY, null), options = macros))
+        publish(Selection.MacroSelection(pending = VoiceIntent(CommandIdentifier.MACRO_PLAY, null), options = macros))
         return SelectionResult.Pending
     }
 

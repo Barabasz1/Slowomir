@@ -1,9 +1,9 @@
 package com.zpi.slowomir.overlay.log
 
 import android.util.Log
-import com.zpi.slowomir.db.ActionDao
-import com.zpi.slowomir.db.ActionDefEntity
-import com.zpi.slowomir.db.LoggedAction
+import com.zpi.slowomir.overlay.log.db.ActionDao
+import com.zpi.slowomir.overlay.log.db.ActionDefEntity
+import com.zpi.slowomir.overlay.log.db.LoggedAction
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

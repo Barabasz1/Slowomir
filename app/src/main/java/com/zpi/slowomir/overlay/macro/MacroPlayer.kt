@@ -8,7 +8,6 @@ import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
 import javax.inject.Singleton
 
-// Experimental macro class structure, feel free to change everything
 @Singleton
 class MacroPlayer @Inject constructor(
     private val mediator: CommandMediator,
@@ -35,7 +34,7 @@ class MacroPlayer @Inject constructor(
             }
         }
 
-        for (command in macro.commands) {
+        for ((index, command) in macro.commands.withIndex()) {
 
             if (stopMacro) {
                 onMacroBreak(macro)
@@ -46,7 +45,8 @@ class MacroPlayer @Inject constructor(
                 mediator.dispatch(command)
             }
 
-            if (!wait(command)) {
+            val overrideDelay = macro.delaysMs.getOrNull(index)?.takeIf { it > 0L }
+            if (!wait(command, overrideDelay)) {
                 onMacroBreak(macro)
                 return false
             }
@@ -72,25 +72,23 @@ class MacroPlayer @Inject constructor(
     private fun onMacroBreak(macro: Macro) {
     }
 
-    private fun calculateSleepTime(previousCommand: Command) : Long{
-        return when(previousCommand) {
-            // temporary fix: apps open more than DEFAULT_COMMAND_INTERVAL
-            // check if app opened already
+    private fun calculateSleepTime(previousCommand: Command): Long {
+        return when (previousCommand) {
             is OpenAppCommand -> OPEN_APP_DELAY
             else -> DEFAULT_COMMAND_INTERVAL
         }
     }
-    private fun calculateSleepTime(startingPoint: MacroStartingPoint?) : Long{
-        return when(startingPoint) {
-            // temporary fix: apps open more than DEFAULT_COMMAND_INTERVAL
-            // check if app opened already
+
+    private fun calculateSleepTime(startingPoint: MacroStartingPoint?): Long {
+        return when (startingPoint) {
             is MacroStartingPoint.App -> OPEN_APP_DELAY
             else -> DEFAULT_COMMAND_INTERVAL
         }
     }
-    private fun wait(previousCommand: Command): Boolean {
+
+    private fun wait(previousCommand: Command, overrideDelay: Long? = null): Boolean {
         var elapsed = 0L
-        val sleepTime: Long = calculateSleepTime(previousCommand)
+        val sleepTime: Long = overrideDelay ?: calculateSleepTime(previousCommand)
         while (elapsed < sleepTime) {
             if (stopMacro) return false
             val step = minOf(WAIT_STEP, sleepTime - elapsed)

@@ -4,8 +4,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
-import com.zpi.slowomir.db.ActionDao
-import com.zpi.slowomir.db.LoggedActionEvent
+import com.zpi.slowomir.overlay.log.db.ActionDao
+import com.zpi.slowomir.overlay.log.db.LoggedActionEvent
 import com.zpi.slowomir.overlay.commands.Command
 import com.zpi.slowomir.overlay.commands.CommandFactory
 import com.zpi.slowomir.overlay.commands.navigation.NavigateHomeCommand

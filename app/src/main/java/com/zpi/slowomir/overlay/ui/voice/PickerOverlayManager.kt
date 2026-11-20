@@ -81,7 +81,7 @@ class PickerOverlayManager @Inject constructor(
                 val selection = state.selection
                 SłowomirTheme {
                     when (selection) {
-                        is Selection.Macro -> {
+                        is Selection.MacroSelection -> {
                             val entries = selection.options.map { MacroEntry(it) }
                             MacroView(
                                 macroList = entries,
@@ -120,7 +120,7 @@ class PickerOverlayManager @Inject constructor(
     override fun onCreateLayoutParams(windowType: Int): WindowManager.LayoutParams {
         val selection = _pickerState.value.selection
         val width = (Resources.getSystem().displayMetrics.widthPixels * WIDTH_FRACTION).toInt()
-        val height = if (selection is Selection.Macro) {
+        val height = if (selection is Selection.MacroSelection) {
             (Resources.getSystem().displayMetrics.heightPixels * MacroView.HEIGHT_FRACTION).toInt()
         } else {
             WindowManager.LayoutParams.WRAP_CONTENT

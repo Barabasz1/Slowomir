@@ -23,11 +23,14 @@ class MacroRecorder @Inject constructor(
 ) : CommandLogger.ICommandLoggerListener {
 
     private val list: MutableList<Command> = mutableListOf()
+    private val delays: MutableList<Long> = mutableListOf()
     private var recordedStartingPoint: MacroStartingPoint? = null
+    private var lastCommandTimestamp: Long = 0L
 
     fun startRecording(): Boolean {
         reset()
         recordedStartingPoint = detectCurrentStartingPoint()
+        lastCommandTimestamp = System.currentTimeMillis()
         commandLogger.attachListener(this)
         return true
     }
@@ -52,7 +55,11 @@ class MacroRecorder @Inject constructor(
     }
 
     override fun update(command: Command) {
+        val now = System.currentTimeMillis()
+        val delay = if (lastCommandTimestamp != 0L) now - lastCommandTimestamp else 0L
+        lastCommandTimestamp = now
         list.add(command)
+        delays.add(delay)
     }
 
     fun isRecordingEmpty(): Boolean {
@@ -60,12 +67,18 @@ class MacroRecorder @Inject constructor(
     }
 
     private fun save() {
-        macroRepository.saveRecordedMacro(list.toList(), recordedStartingPoint)
+        macroRepository.saveRecordedMacro(
+            commandSequence = list.toList(),
+            startingPoint = recordedStartingPoint,
+            delaysMs = delays.toList(),
+        )
     }
 
     private fun reset() {
         list.clear()
+        delays.clear()
         recordedStartingPoint = null
+        lastCommandTimestamp = 0L
     }
 
     private fun detectCurrentStartingPoint(): MacroStartingPoint? {

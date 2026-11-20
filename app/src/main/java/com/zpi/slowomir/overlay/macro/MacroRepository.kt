@@ -16,6 +16,7 @@ import javax.inject.Singleton
 data class SerializedMacro(
     val startingPoint: MacroStartingPoint?,
     val commands: List<SerializedCommand>,
+    val delaysMs: List<Long> = emptyList(),
 )
 
 @Singleton
@@ -30,6 +31,7 @@ class MacroRepository @Inject constructor(
     fun saveRecordedMacro(
         commandSequence: List<Command>,
         startingPoint: MacroStartingPoint? = null,
+        delaysMs: List<Long> = emptyList(),
     ) {
         if (commandSequence.isEmpty()) return
 
@@ -37,13 +39,16 @@ class MacroRepository @Inject constructor(
         val macroObj = JSONObject().apply {
             put(KEY_STARTING_POINT, encodeStartingPoint(startingPoint))
             val commandsArray = JSONArray()
-            for (command in commandSequence) {
+            for (i in commandSequence.indices) {
+                val command = commandSequence[i]
+                val delay = delaysMs.getOrNull(i) ?: 0L
                 val serialized = commandFactory.serialize(command)
                 val cmdObj = JSONObject().apply {
                     put(KEY_CMD_TYPE, serialized.type)
                     put(KEY_CMD_NAME, serialized.name)
                     put(KEY_CMD_ARGS, serialized.argumentsJson)
                     put(KEY_CMD_DISPLAY, serialized.displayText)
+                    if (delay > 0) put(KEY_CMD_DELAY, delay)
                 }
                 commandsArray.put(cmdObj)
             }
@@ -66,6 +71,8 @@ class MacroRepository @Inject constructor(
             Macro(
                 commands = commands,
                 startingPoint = stored.startingPoint,
+                isGenerated = false,
+                delaysMs = stored.delaysMs,
                 serializedCommands = stored.commands,
             )
         }
@@ -82,6 +89,7 @@ class MacroRepository @Inject constructor(
             val startingPoint = decodeStartingPoint(macroObj.optJSONObject(KEY_STARTING_POINT))
             val commandsArray = macroObj.optJSONArray(KEY_COMMANDS) ?: continue
             val commands = ArrayList<SerializedCommand>(commandsArray.length())
+            val delays = ArrayList<Long>(commandsArray.length())
 
             for (j in 0 until commandsArray.length()) {
                 val cmdObj = commandsArray.optJSONObject(j) ?: continue
@@ -90,6 +98,7 @@ class MacroRepository @Inject constructor(
                 val argsJson = cmdObj.optString(KEY_CMD_ARGS)
                 val args = CommandArgumentCodec.decode(argsJson)
                 val display = cmdObj.optString(KEY_CMD_DISPLAY).ifBlank { name }
+                val delayMs = cmdObj.optLong(KEY_CMD_DELAY, 0L)
                 commands.add(
                     SerializedCommand(
                         type = type,
@@ -98,6 +107,7 @@ class MacroRepository @Inject constructor(
                         displayText = display,
                     )
                 )
+                delays.add(delayMs)
             }
 
             if (commands.isNotEmpty()) {
@@ -105,6 +115,7 @@ class MacroRepository @Inject constructor(
                     SerializedMacro(
                         startingPoint = startingPoint,
                         commands = commands,
+                        delaysMs = delays,
                     )
                 )
             }
@@ -152,8 +163,61 @@ class MacroRepository @Inject constructor(
     }
 
     private fun readStoredArray(): JSONArray {
-        val raw = prefs.getString(KEY_RECORDED_MACROS, null) ?: return JSONArray()
+        val raw = prefs.getString(KEY_RECORDED_MACROS, null)
+        if (raw == null) {
+            val seeded = seedSampleMacros()
+            prefs.edit().putString(KEY_RECORDED_MACROS, seeded.toString()).apply()
+            return seeded
+        }
         return runCatching { JSONArray(raw) }.getOrElse { JSONArray() }
+    }
+
+    private fun seedSampleMacros(): JSONArray {
+        val array = JSONArray()
+
+        val macro1 = JSONObject().apply {
+            put(KEY_STARTING_POINT, encodeStartingPoint(MacroStartingPoint.Home))
+            val cmds = JSONArray()
+            cmds.put(JSONObject().apply {
+                put(KEY_CMD_TYPE, "com.zpi.slowomir.overlay.commands.navigation.OpenAppCommand")
+                put(KEY_CMD_NAME, "Open App")
+                put(KEY_CMD_ARGS, "{\"packageName\":\"com.android.settings\"}")
+                put(KEY_CMD_DISPLAY, "Open App (com.android.settings)")
+                put(KEY_CMD_DELAY, 1000L)
+            })
+            cmds.put(JSONObject().apply {
+                put(KEY_CMD_TYPE, "com.zpi.slowomir.overlay.commands.navigation.NavigateHomeCommand")
+                put(KEY_CMD_NAME, "Navigate Home")
+                put(KEY_CMD_ARGS, "{}")
+                put(KEY_CMD_DISPLAY, "Navigate Home")
+                put(KEY_CMD_DELAY, 1500L)
+            })
+            put(KEY_COMMANDS, cmds)
+        }
+
+        val macro2 = JSONObject().apply {
+            put(KEY_STARTING_POINT, encodeStartingPoint(MacroStartingPoint.Home))
+            val cmds = JSONArray()
+            cmds.put(JSONObject().apply {
+                put(KEY_CMD_TYPE, "com.zpi.slowomir.overlay.commands.navigation.NavigateRecentCommand")
+                put(KEY_CMD_NAME, "Navigate Recent")
+                put(KEY_CMD_ARGS, "{}")
+                put(KEY_CMD_DISPLAY, "Navigate Recent")
+                put(KEY_CMD_DELAY, 800L)
+            })
+            cmds.put(JSONObject().apply {
+                put(KEY_CMD_TYPE, "com.zpi.slowomir.overlay.commands.navigation.NavigateHomeCommand")
+                put(KEY_CMD_NAME, "Navigate Home")
+                put(KEY_CMD_ARGS, "{}")
+                put(KEY_CMD_DISPLAY, "Navigate Home")
+                put(KEY_CMD_DELAY, 1200L)
+            })
+            put(KEY_COMMANDS, cmds)
+        }
+
+        array.put(macro1)
+        array.put(macro2)
+        return array
     }
 
     private fun encodeStartingPoint(startingPoint: MacroStartingPoint?): Any {
@@ -189,6 +253,7 @@ class MacroRepository @Inject constructor(
         private const val KEY_CMD_NAME = "name"
         private const val KEY_CMD_ARGS = "arguments"
         private const val KEY_CMD_DISPLAY = "displayText"
+        private const val KEY_CMD_DELAY = "delayMs"
         private const val KEY_SP_TYPE = "type"
         private const val KEY_SP_APP_NAME = "appName"
         private const val SP_TYPE_HOME = "home"

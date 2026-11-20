@@ -7,14 +7,14 @@ import javax.inject.Singleton
 class MacroSupplier @Inject constructor(
     private val macroRepository: MacroRepository,
 ) {
-    private val macroList: MutableList<MacroInfo> = mutableListOf()
+    private val macroList: MutableList<Macro> = mutableListOf()
 
     init {
         refresh()
     }
 
     @Synchronized
-    fun getMacroFromList(index: Int): MacroInfo {
+    fun getMacroFromList(index: Int): Macro {
         if (macroList.isEmpty()) {
             refresh()
         }
@@ -22,7 +22,7 @@ class MacroSupplier @Inject constructor(
     }
 
     @Synchronized
-    fun getMacroList(): List<MacroInfo> {
+    fun getMacroList(): List<Macro> {
         refresh()
         return macroList.toList()
     }
@@ -37,26 +37,14 @@ class MacroSupplier @Inject constructor(
     private fun loadGeneratedMacros(currentPackageName: String?) {
         macroList.addAll(
             macroRepository.getGeneratedMacros(currentPackageName = currentPackageName)
-                .map {
-                    MacroInfo(
-                        commands = it.commands,
-                        startingPoint = it.startingPoint,
-                        isGenerated = true,
-                    )
-                }
+                .map { it.copy(isGenerated = true) }
         )
     }
 
     private fun loadRecordedMacros() {
         macroList.addAll(
             macroRepository.getRecordedMacros()
-                .map {
-                    MacroInfo(
-                        commands = it.commands,
-                        startingPoint = it.startingPoint,
-                        isGenerated = false,
-                    )
-                }
+                .map { it.copy(isGenerated = false) }
         )
     }
 }

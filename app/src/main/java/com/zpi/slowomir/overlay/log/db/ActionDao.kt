@@ -1,4 +1,4 @@
-package com.zpi.slowomir.db
+package com.zpi.slowomir.overlay.log.db
 
 import androidx.room.Dao
 import androidx.room.Insert
@@ -46,6 +46,19 @@ abstract class ActionDao {
                 "ORDER BY e.timestamp ASC, e.id_action_event ASC"
     )
     abstract suspend fun getAllLoggedEvents(): List<LoggedActionEvent>
+
+    @Query(
+        "SELECT e.id_action_event AS idActionEvent, e.timestamp AS timestamp, " +
+                "d.id_action_def AS idActionDef, d.action_hash AS actionHash, " +
+                "d.action_type AS actionType, d.package_name AS packageName, " +
+                "d.resource_id AS resourceId, d.hierarchy_path AS hierarchyPath, " +
+                "d.label_hash AS labelHash, d.command_type AS commandType, " +
+                "d.command_args AS commandArgs " +
+                "FROM action_event e INNER JOIN action_def d ON e.id_action_def = d.id_action_def " +
+                "WHERE d.action_type != 'COMMAND' " +
+                "ORDER BY e.timestamp ASC, e.id_action_event ASC"
+    )
+    abstract suspend fun getLoggedUiEvents(): List<LoggedActionEvent>
 
     @Query("DELETE FROM action_event WHERE timestamp < :cutoff")
     abstract suspend fun deleteEventsOlderThan(cutoff: Long): Int

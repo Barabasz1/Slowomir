@@ -2,7 +2,7 @@ package com.zpi.slowomir.voice.selection
 
 import com.zpi.slowomir.overlay.commands.CommandArgument
 import com.zpi.slowomir.overlay.commands.CommandIdentifier
-import com.zpi.slowomir.overlay.macro.MacroInfo
+import com.zpi.slowomir.overlay.macro.Macro
 import com.zpi.slowomir.utils.ApplicationUtils
 import com.zpi.slowomir.utils.ContactOption
 import com.zpi.slowomir.voice.VoiceIntent
@@ -49,9 +49,9 @@ sealed interface Selection {
             }
     }
 
-    data class Macro(
+    data class MacroSelection(
         override val pending: VoiceIntent,
-        val options: List<MacroInfo>,
+        val options: List<com.zpi.slowomir.overlay.macro.Macro>,
     ) : Selection {
         override val size: Int get() = options.size
 
