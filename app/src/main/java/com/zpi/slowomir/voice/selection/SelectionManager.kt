@@ -61,7 +61,7 @@ class SelectionManager @Inject constructor(
 
         else -> {
             Log.w(TAG, "No selection defined for ${intent.identifier}")
-            SelectionResult.Failed("Selection is not supported for ${intent.identifier}")
+            SelectionResult.Failed(SelectionFailure.Unsupported(intent.identifier))
         }
     }
 
@@ -151,9 +151,9 @@ class SelectionManager @Inject constructor(
                 SelectionResult.Pending
             }
 
-            ContactLookupResult.NotFound -> SelectionResult.Failed("Could not find a contact: $query")
-            ContactLookupResult.PermissionDenied -> SelectionResult.Failed("No access to reading contacts")
-            ContactLookupResult.EmptyQuery -> SelectionResult.Failed("No contact was given.")
+            ContactLookupResult.NotFound -> SelectionResult.Failed(SelectionFailure.ContactNotFound(query))
+            ContactLookupResult.PermissionDenied -> SelectionResult.Failed(SelectionFailure.ContactsPermissionDenied)
+            ContactLookupResult.EmptyQuery -> SelectionResult.Failed(SelectionFailure.NoContactGiven)
         }
     }
 
@@ -170,15 +170,15 @@ class SelectionManager @Inject constructor(
                 SelectionResult.Pending
             }
 
-            ApplicationLookupResult.NotFound -> SelectionResult.Failed("Could not find application: $query")
-            ApplicationLookupResult.EmptyQuery -> SelectionResult.Failed("No application was given.")
+            ApplicationLookupResult.NotFound -> SelectionResult.Failed(SelectionFailure.ApplicationNotFound(query))
+            ApplicationLookupResult.EmptyQuery -> SelectionResult.Failed(SelectionFailure.NoApplicationGiven)
         }
     }
 
     private fun beginMacro(): SelectionResult {
         val macros = macroSupplier.getMacroList()
         if (macros.isEmpty()) {
-            return SelectionResult.Failed("No macros available")
+            return SelectionResult.Failed(SelectionFailure.NoMacros)
         }
         publish(Selection.Macro(pending = VoiceIntent(CommandIdentifier.MACRO_PLAY, null), options = macros))
         return SelectionResult.Pending

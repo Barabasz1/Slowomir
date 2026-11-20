@@ -32,6 +32,7 @@ import kotlinx.coroutines.launch
 import com.zpi.slowomir.overlay.commands.textEdit.DictateCommand
 import com.zpi.slowomir.voice.dictation.FieldProfileHolder
 import com.zpi.slowomir.voice.dictation.PunctuationRestorer
+import com.zpi.slowomir.voice.mediator.OverlayEvent
 import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -74,7 +75,7 @@ class VoiceSessionManager @Inject constructor(
     private suspend fun handle(input: SessionEvent) {
         when (input) {
             is VoiceInput.SpeechPartial -> {
-                mediator.handleEvent(OverlayEvent.SpeechPartial(input.text))
+                mediator.handleEvent(OverlayEvent.SpeechPartial(input.text, _state.value.textMode()))
             }
 
             is VoiceInput.KeywordDetected -> {
@@ -100,7 +101,18 @@ class VoiceSessionManager @Inject constructor(
             Log.d(TAG, "State transition: $oldState + $input -> $newState")
             onStateChanged(newState)
             updatePunctuationModel(oldState, newState)
+            if (newState.isIdle()) mediator.handleEvent(OverlayEvent.SessionIdle)
         }
+    }
+
+    private fun VoiceState.isIdle() =
+        this is VoiceState.Stopped || this is VoiceState.Failed || this is VoiceState.KeywordSpotting
+
+    private fun VoiceState.textMode(): TextMode? = when (this) {
+        is VoiceState.Dictating -> TextMode.DICTATE
+        is VoiceState.Editing -> TextMode.EDIT
+        is VoiceState.TextProcessing -> mode
+        else -> null
     }
 
     /**
@@ -187,7 +199,7 @@ class VoiceSessionManager @Inject constructor(
                         inbox.send(InternalEvent.IntentFailed(text))
                     }
                     is SelectionResult.Failed -> {
-                        mediator.handleEvent(OverlayEvent.CommandRejected(result.reason))
+                        mediator.handleEvent(OverlayEvent.CommandRejected(OverlayError.SelectionFailed(result.failure)))
                         inbox.send(InternalEvent.IntentFailed(text))
                     }
                 }
@@ -204,6 +216,7 @@ class VoiceSessionManager @Inject constructor(
      */
     private fun handleTextInput(text: String, mode: TextMode) {
         scope.launch {
+            mediator.handleEvent(OverlayEvent.SpeechRecognized(text, mode))
             val allowed = if (mode == TextMode.EDIT) EDIT_MODE_COMMANDS else DICTATION_MODE_COMMANDS
 
             val spoken = intentParser.parse(text) ?: if (mode == TextMode.EDIT) resolveWithModel(text) else null
@@ -235,7 +248,7 @@ class VoiceSessionManager @Inject constructor(
         if (profile.uppercaseAll) restored = restored.uppercase(POLISH)
         val result = mediator.dispatch(dictateCommandFactory.create(restored))
         Log.d(TAG, "Dictated '$text' -> '$restored': $result")
-        if (result !is CommandResult.Success) mediator.handleEvent(OverlayEvent.CommandRejected("Nie można wpisać tekstu"))
+        if (result !is CommandResult.Success) mediator.handleEvent(OverlayEvent.CommandRejected(OverlayError.TextInsertFailed))
     }
 
     /**

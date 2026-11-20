@@ -23,6 +23,7 @@ import com.zpi.slowomir.overlay.ui.common.OverlayPlacementPolicy
 import com.zpi.slowomir.overlay.ui.common.OverlaySide
 import com.zpi.slowomir.overlay.ui.common.OverlayWindowManager
 import com.zpi.slowomir.ui.theme.SłowomirTheme
+import com.zpi.slowomir.voice.OverlayState
 import com.zpi.slowomir.voice.mediator.CommandMediator
 import com.zpi.slowomir.voice.stt.VoiceState
 import com.zpi.slowomir.voice.stt.VoiceStateSource
@@ -30,12 +31,26 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.TimeSource
+
 
 /**
  * UI Window Manager that renders the floating [VoiceOverlayView] on top of system interfaces.
@@ -43,7 +58,7 @@ import javax.inject.Singleton
  */
 @Singleton
 class VoiceOverlayManager @Inject constructor(
-    private val commandMediator: CommandMediator,
+    private val mediator: CommandMediator,
     private val voiceStateSource: VoiceStateSource,
     private val focusLayoutSource: FocusLayoutSource,
     hostProvider: OverlayHostProvider
@@ -52,7 +67,7 @@ class VoiceOverlayManager @Inject constructor(
     override val tag = "VoiceOverlayManager"
     private var lifecycleOwner: OverlayLifecycleOwner? = null
 
-    private val trackingScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var trackingJob: Job? = null
 
     private var lastLoggedLayout: FocusLayout? = null
@@ -61,6 +76,14 @@ class VoiceOverlayManager @Inject constructor(
     private var edgeOffset = 0
 
     private var topInset = 0
+
+    val state: StateFlow<OverlayState> = mediator.mediatorState
+        .map { it.overlayState }
+        .distinctUntilChanged()
+        .withMinDisplayTime(MIN_DISPLAY.milliseconds)
+        .hideResultsAfter(RESULT_VISIBLE.milliseconds)
+        .stateIn(scope, SharingStarted.Eagerly, OverlayState.Idle)
+
 
     override fun onCreateView(context: Context): View {
         val lifecycle = OverlayLifecycleOwner().apply {
@@ -76,7 +99,7 @@ class VoiceOverlayManager @Inject constructor(
 
             setContent {
                 SłowomirTheme {
-                    VoiceOverlayView(mediator = commandMediator, voiceState = voiceStateSource.state)
+                    VoiceOverlayView(state = state)
                 }
             }
         }
@@ -109,7 +132,7 @@ class VoiceOverlayManager @Inject constructor(
 
         private fun trackFocusedField() {
         trackingJob?.cancel()
-        trackingJob = trackingScope.launch {
+        trackingJob = scope.launch {
             voiceStateSource.state.collectLatest { state ->
                 if (!state.isVoiceActive()) {
                     withContext(Dispatchers.Main.immediate) { reposition(FocusLayout()) }
@@ -181,8 +204,34 @@ class VoiceOverlayManager @Inject constructor(
         const val TRACKING_INTERVAL_MS = 500L
         const val CARD_HEIGHT_DP = 72
         const val GAP_DP = 8
+        const val RESULT_VISIBLE = 5_000
+        const val MIN_DISPLAY = 1_000
     }
 
     suspend fun showOverlay(): Boolean = withContext(Dispatchers.Main.immediate) { show() }
     suspend fun hideOverlay() = withContext(Dispatchers.Main.immediate) { hide() }
+}
+
+internal fun Flow<OverlayState>.withMinDisplayTime(minDisplay: Duration): Flow<OverlayState> = flow {
+    var previous: OverlayState = OverlayState.Idle
+    var shownAt = TimeSource.Monotonic.markNow()
+    buffer(Channel.UNLIMITED).collect { next ->
+        if (next::class != previous::class) {
+            if (!previous.isHidden && next !is OverlayState.ProcessingCommand) {
+                val remaining = minDisplay - shownAt.elapsedNow()
+                if (remaining.isPositive()) delay(remaining)
+            }
+            shownAt = TimeSource.Monotonic.markNow()
+        }
+        previous = next
+        emit(next)
+    }
+}
+
+internal fun Flow<OverlayState>.hideResultsAfter(after: Duration): Flow<OverlayState> = transformLatest { state ->
+    emit(state)
+    if (state.isResult) {
+        delay(after)
+        emit(OverlayState.Idle)
+    }
 }
