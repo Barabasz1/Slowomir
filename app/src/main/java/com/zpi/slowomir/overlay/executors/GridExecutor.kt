@@ -23,8 +23,13 @@ import com.zpi.slowomir.overlay.services.CommandExecutorService
 import com.zpi.slowomir.overlay.ui.common.OverlayHostProvider
 import com.zpi.slowomir.overlay.ui.common.OverlayWindowManager
 import com.zpi.slowomir.overlay.ui.grid.GridView
+import com.zpi.slowomir.utils.PreferencesManager
 import com.zpi.slowomir.utils.ScreenPoint
 import com.zpi.slowomir.voice.mediator.CommandMediator
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.max
@@ -42,21 +47,48 @@ class GridExecutor @Inject constructor(
     private val pinchInCommandFactory: PinchInCommand.Factory,
     private val pinchOutCommandFactory: PinchOutCommand.Factory,
     private val swipeCommandFactory: SwipeCommand.Factory,
+    private val preferencesManager: PreferencesManager,
 ) : OverlayWindowManager(hostProvider) {
 
     override val tag = "GridManager"
 
-    companion object {
-        const val DEFAULT_ROWS = 8
-        const val DEFAULT_COLS = 4
-    }
 
     private var gridView: GridView? = null
     private var parentCell: Int? = null
     private val divisions = mutableListOf<Pair<Int, Int>>()
     private var selectedCell: Int? = null
-    private var rowsCount: Int = DEFAULT_ROWS
-    private var colsCount: Int = DEFAULT_COLS
+    private var rowsCount: Int = preferencesManager.gridRows.value
+    private var colsCount: Int = preferencesManager.gridCols.value
+
+    private val coroutineScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+
+    init {
+        coroutineScope.launch {
+            preferencesManager.gridType.collect { _ ->
+                if (isEnabled()) {
+                    redraw()
+                }
+            }
+        }
+        coroutineScope.launch {
+            preferencesManager.gridRows.collect { rows ->
+                rowsCount = rows
+                if (isEnabled()) {
+                    resetSelection()
+                    redraw()
+                }
+            }
+        }
+        coroutineScope.launch {
+            preferencesManager.gridCols.collect { cols ->
+                colsCount = cols
+                if (isEnabled()) {
+                    resetSelection()
+                    redraw()
+                }
+            }
+        }
+    }
 
     override fun onCreateView(context: Context): View {
         return GridView(
@@ -67,7 +99,8 @@ class GridExecutor @Inject constructor(
             labelOpacity = 220,
             overlayOpacity = 0,
             lineWidthPx = 2f,
-            labelTextSizePx = 32f
+            labelTextSizePx = 32f,
+            gridType = preferencesManager.gridType.value
         )
     }
 
@@ -127,8 +160,8 @@ class GridExecutor @Inject constructor(
     }
 
     fun resetDimensions() {
-        rowsCount = DEFAULT_ROWS
-        colsCount = DEFAULT_COLS
+        rowsCount = preferencesManager.gridRows.value
+        colsCount = preferencesManager.gridCols.value
     }
 
     fun resetSelection() {
@@ -138,58 +171,26 @@ class GridExecutor @Inject constructor(
     }
 
     fun redraw() {
-        gridView?.update(rowsCount, colsCount, selectedCell, parentCell, divisions.toList())
+        gridView?.update(
+            rowsCount,
+            colsCount,
+            selectedCell,
+            parentCell,
+            divisions.toList(),
+            preferencesManager.gridType.value
+        )
     }
 
-    fun addRow(toAdd: Int) {
-        val oldRows = rowsCount
-        val oldCols = colsCount
-        val newRows = max(1, rowsCount + toAdd)
-        if (newRows != oldRows) {
-            rowsCount = newRows
-            updateSelectionForNewDimensions(oldRows, oldCols, newRows, oldCols)
-        }
+    fun addRows(toAdd: Int) {
+        rowsCount = max(1, rowsCount + toAdd)
+        resetSelection()
         redraw()
     }
 
     fun addCols(toAdd: Int) {
-        val oldRows = rowsCount
-        val oldCols = colsCount
-        val newCols = max(1, colsCount + toAdd)
-        if (newCols != oldCols) {
-            colsCount = newCols
-            updateSelectionForNewDimensions(oldRows, oldCols, oldRows, newCols)
-        }
+        colsCount = max(1, colsCount + toAdd)
+        resetSelection()
         redraw()
-    }
-
-    private fun updateSelectionForNewDimensions(
-        oldRows: Int,
-        oldCols: Int,
-        newRows: Int,
-        newCols: Int
-    ) {
-        if (divisions.isEmpty()) {
-            selectedCell?.let { cell ->
-                val oldRow = (cell - 1) / oldCols
-                val oldCol = (cell - 1) % oldCols
-                val newRow = oldRow.coerceIn(0, newRows - 1)
-                val newCol = oldCol.coerceIn(0, newCols - 1)
-                selectedCell = newRow * newCols + newCol + 1
-            }
-        } else {
-            parentCell?.let { cell ->
-                val oldRow = (cell - 1) / oldCols
-                val oldCol = (cell - 1) % oldCols
-                val newRow = oldRow.coerceIn(0, newRows - 1)
-                val newCol = oldCol.coerceIn(0, newCols - 1)
-                val newParent = newRow * newCols + newCol + 1
-                parentCell = newParent
-                if (divisions.isNotEmpty()) {
-                    divisions[0] = newParent to divisions[0].second
-                }
-            }
-        }
     }
 
     fun selectCell(cell: Int) {

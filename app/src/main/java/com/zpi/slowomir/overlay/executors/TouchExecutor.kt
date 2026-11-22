@@ -6,13 +6,15 @@ import android.graphics.Path
 import android.graphics.Rect
 import android.util.Log
 import android.view.accessibility.AccessibilityNodeInfo
+import com.zpi.slowomir.utils.PreferencesManager
 import com.zpi.slowomir.utils.ScreenPoint
 import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.math.min
 
 class TouchExecutor(
-    private val service: AccessibilityService
+    private val service: AccessibilityService,
+    private val preferencesManager: PreferencesManager? = null
 ) {
     companion object {
         private const val TAG = "TouchExecutor"
@@ -20,15 +22,18 @@ class TouchExecutor(
         const val DEFAULT_HOLD_DURATION: Long = 1000L
         const val DEFAULT_SWIPE_HOLD_DURATION: Long = 200L
         const val DEFAULT_PINCH_HOLD_DURATION: Long = 200L
-        const val DEFAULT_SWIPE_DISTANCE: Float = 0f
+        const val DEFAULT_SWIPE_DISTANCE: Float = 300f
         const val DEFAULT_PINCH_POWER: Float = 10f
         const val SWIPE_RATIO: Float = 0.7f
         const val PINCH_MIN_GAP_RATIO: Float = 0.05f
         const val PINCH_MAX_GAP_RATIO: Float = 0.25f
-        const val MOVE_DURATION_MS: Long = 350L
+        const val MOVE_DURATION_MS: Long = 150L
         const val HOLD_DURATION_MS: Long = 150L
         private const val SHORT_TAP_DURATION: Long = 20L
     }
+
+    private val isInverted: Boolean
+        get() = preferencesManager?.invertedControls?.value == true
 
     fun doGesture(gesture: GestureDescription): Boolean {
         val currentService = service
@@ -121,9 +126,16 @@ class TouchExecutor(
         duration: Long = DEFAULT_SWIPE_HOLD_DURATION,
         startTime: Long = DEFAULT_START_TIME
     ): Boolean {
+        val (actualDestX, actualDestY) = if (isInverted) {
+            val dx = destX - startX
+            val dy = destY - startY
+            Pair(startX - dx, startY - dy)
+        } else {
+            Pair(destX, destY)
+        }
         val path = Path().apply {
             moveTo(startX, startY)
-            lineTo(destX, destY)
+            lineTo(actualDestX, actualDestY)
         }
         val stroke = getStroke(path, duration, startTime)
         val gesture = GestureDescription.Builder().addStroke(stroke).build()
@@ -140,7 +152,8 @@ class TouchExecutor(
         val height = service.resources.displayMetrics.heightPixels.toFloat()
         val swipeDistance =
             if (distance != null && distance > 0f) distance else (height * SWIPE_RATIO)
-        val endY = (startY - swipeDistance).coerceAtLeast(0f)
+        val deltaY = if (isInverted) swipeDistance else -swipeDistance
+        val endY = (startY + deltaY).coerceIn(0f, height)
         return performSwipeWithHold(startX, startY, startX, endY, moveDuration, holdDuration)
     }
 
@@ -163,7 +176,8 @@ class TouchExecutor(
         val height = service.resources.displayMetrics.heightPixels.toFloat()
         val swipeDistance =
             if (distance != null && distance > 0f) distance else (height * SWIPE_RATIO)
-        val endY = (startY + swipeDistance).coerceAtMost(height)
+        val deltaY = if (isInverted) -swipeDistance else swipeDistance
+        val endY = (startY + deltaY).coerceIn(0f, height)
         return performSwipeWithHold(startX, startY, startX, endY, moveDuration, holdDuration)
     }
 
@@ -186,7 +200,8 @@ class TouchExecutor(
         val width = service.resources.displayMetrics.widthPixels.toFloat()
         val swipeDistance =
             if (distance != null && distance > 0f) distance else (width * SWIPE_RATIO)
-        val endX = (startX + swipeDistance).coerceAtMost(width)
+        val deltaX = if (isInverted) -swipeDistance else swipeDistance
+        val endX = (startX + deltaX).coerceIn(0f, width)
         return performSwipeWithHold(startX, startY, endX, startY, moveDuration, holdDuration)
     }
 
@@ -209,7 +224,8 @@ class TouchExecutor(
         val width = service.resources.displayMetrics.widthPixels.toFloat()
         val swipeDistance =
             if (distance != null && distance > 0f) distance else (width * SWIPE_RATIO)
-        val endX = (startX - swipeDistance).coerceAtLeast(0f)
+        val deltaX = if (isInverted) swipeDistance else -swipeDistance
+        val endX = (startX + deltaX).coerceIn(0f, width)
         return performSwipeWithHold(startX, startY, endX, startY, moveDuration, holdDuration)
     }
 

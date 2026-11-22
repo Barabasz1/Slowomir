@@ -45,6 +45,10 @@ fun MainScreen(
     val mediatorState by mainViewModel.overlayState.collectAsState()
     val resultState by mainViewModel.uiState.collectAsState()
     val isOverlayEnabled by mainViewModel.isOverlayEnabled.collectAsState()
+    val gridRows by mainViewModel.gridRows.collectAsState()
+    val gridCols by mainViewModel.gridCols.collectAsState()
+    val gridType by mainViewModel.gridType.collectAsState()
+    val invertedControls by mainViewModel.invertedControls.collectAsState()
 
     if (!isOnboardingCompleted) {
         OnboardingFlow(
@@ -57,7 +61,7 @@ fun MainScreen(
     BackHandler(enabled = selectedTab == AppTab.HOME && homeDestination != null) {
         homeDestination = null
     }
-    
+
     // Obliczamy widoczne zakładki, by użyć ich w obu miejscach i zapobiec nawigacji
     val visibleTabs = AppTab.entries.filter { tab ->
         tab != AppTab.DEV || BuildConfig.DEBUG
@@ -116,10 +120,18 @@ fun MainScreen(
             AppTab.SETTINGS -> SettingsScreen(
                 isOverlayEnabled = isOverlayEnabled,
                 onOverlayEnabledChange = { mainViewModel.setOverlayEnabled(it) },
+                gridRows = gridRows,
+                onGridRowsChange = { mainViewModel.setGridRows(it) },
+                gridCols = gridCols,
+                onGridColsChange = { mainViewModel.setGridCols(it) },
+                gridType = gridType,
+                onGridTypeChange = { mainViewModel.setGridType(it) },
+                invertedControls = invertedControls,
+                onInvertedControlsChange = { mainViewModel.setInvertedControls(it) },
                 modifier = contentModifier
             )
 
-            AppTab.DEV -> if (BuildConfig.DEBUG) { 
+            AppTab.DEV -> if (BuildConfig.DEBUG) {
                 DevScreen(
                     onSpeechInput = { mainViewModel.simulateSpeechInput(it) },
                     onSpeechCompleted = { mainViewModel.simulateSpeechCompletion(it) },

@@ -16,6 +16,7 @@ import com.zpi.slowomir.overlay.executors.PredictionExecutor
 import com.zpi.slowomir.overlay.executors.TextEditExecutor
 import com.zpi.slowomir.overlay.ui.common.OverlayHostProvider
 import com.zpi.slowomir.overlay.executors.TouchExecutor
+import com.zpi.slowomir.utils.PreferencesManager
 import com.zpi.slowomir.overlay.ui.voice.VoiceOverlayManager
 import com.zpi.slowomir.voice.dictation.FieldProfileHolder
 import com.zpi.slowomir.voice.mediator.CommandMediator
@@ -65,6 +66,9 @@ class CommandExecutorService : AccessibilityService() {
     @Inject
     lateinit var macroExecutor: MacroExecutor
 
+    @Inject
+    lateinit var preferencesManager: PreferencesManager
+
     // Executors for different modules
     var touchExecutor: TouchExecutor? = null
         private set
@@ -96,7 +100,7 @@ class CommandExecutorService : AccessibilityService() {
 
         // Ensure soft keyboard mode is restored to AUTO so system input is not globally suppressed
         softKeyboardController.setShowMode(SHOW_MODE_AUTO)
-        val touch = TouchExecutor(this)
+        val touch = TouchExecutor(this, preferencesManager)
         touchExecutor = touch
         mediaExecutor = MediaExecutor(this)
         navigationExecutor = NavigationExecutor(this, touch)
