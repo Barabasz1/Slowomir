@@ -19,6 +19,7 @@ import com.zpi.slowomir.overlay.commands.textEdit.CursorWordPreviousCommand
 import com.zpi.slowomir.overlay.commands.textEdit.DeleteCharCommand
 import com.zpi.slowomir.overlay.commands.textEdit.DeleteWordCommand
 import com.zpi.slowomir.overlay.commands.textEdit.EnterCommand
+import com.zpi.slowomir.overlay.commands.textEdit.PunctuationCommand
 import com.zpi.slowomir.overlay.commands.macro.FinishMacroCommand
 import com.zpi.slowomir.overlay.commands.macro.HideMacroOverlayCommand
 import com.zpi.slowomir.overlay.commands.macro.PlayMacroCommand
@@ -54,6 +55,7 @@ class CommandResolver @Inject constructor(
     private val textConfirmCommandFactory: ConfirmCommand.Factory,
     private val textCancelCommandFactory: CancelCommand.Factory,
     private val textEditCommandFactory: EditCommand.Factory,
+    private val textPunctuationCommandFactory: PunctuationCommand.Factory,
     private val pickUpCommandFactory: PickUpCommand.Factory,
     private val declineCommandFactory: DeclineCommand.Factory,
     private val endCommandFactory: EndCommand.Factory,
@@ -159,6 +161,10 @@ class CommandResolver @Inject constructor(
         CommandIdentifier.TEXT_CONFIRM -> textConfirmCommandFactory.create()
         CommandIdentifier.TEXT_CANCEL -> textCancelCommandFactory.create()
         CommandIdentifier.TEXT_EDIT -> textEditCommandFactory.create()
+        CommandIdentifier.TEXT_PUNCTUATION_PERIOD -> textPunctuationCommandFactory.create(".")
+        CommandIdentifier.TEXT_PUNCTUATION_COMMA -> textPunctuationCommandFactory.create(",")
+        CommandIdentifier.TEXT_PUNCTUATION_QUESTION -> textPunctuationCommandFactory.create("?")
+        CommandIdentifier.TEXT_PUNCTUATION_EXCLAMATION -> textPunctuationCommandFactory.create("!")
 
         // Phone calls
         CommandIdentifier.PHONE_PICK_UP -> pickUpCommandFactory.create()

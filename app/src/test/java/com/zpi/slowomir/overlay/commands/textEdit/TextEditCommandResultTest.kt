@@ -28,6 +28,7 @@ class TextEditCommandResultTest {
         Case(ConfirmCommand(provider), TextEditExecutor::confirm),
         Case(CancelCommand(provider), TextEditExecutor::cancel),
         Case(EditCommand(provider), TextEditExecutor::edit),
+        Case(PunctuationCommand(provider, ","), { it.insertPunctuation(",") }),
     )
 
     @Test
