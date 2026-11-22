@@ -88,6 +88,7 @@ class CommandResolver @Inject constructor(
     private val playMacroCommandFactory: PlayMacroCommand.Factory,
     private val recordMacroCommandFactory: RecordMacroCommand.Factory,
     private val finishMacroCommandFactory: FinishMacroCommand.Factory,
+    private val stopMacroCommandFactory: StopMacroCommand.Factory,
     ) {
 
     fun resolve(intent: VoiceIntent): Command = when (intent.identifier) {
@@ -189,6 +190,7 @@ class CommandResolver @Inject constructor(
         }
         CommandIdentifier.MACRO_RECORD -> recordMacroCommandFactory.create()
         CommandIdentifier.MACRO_FINISH -> finishMacroCommandFactory.create()
+        CommandIdentifier.MACRO_STOP -> stopMacroCommandFactory.create()
 
 
         else -> LogCommand(intent.identifier, intent.argument)

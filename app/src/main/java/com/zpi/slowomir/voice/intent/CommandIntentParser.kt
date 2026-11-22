@@ -169,6 +169,7 @@ class CommandIntentParser @Inject constructor(
             "zakończ makro", "zakończ nagrywanie makra", "zatrzymaj nagrywanie makra", "zapisz makro", "skończ nagrywać makro" -> CommandIdentifier.MACRO_FINISH
             "makro", "makra",  "lista makr", "lista makro", "lista makra" , "pokaż makra", "pokaż makro","otwórz listę makr", "wyświetl makra","wyświetl makro"  -> CommandIdentifier.MACRO_SHOW
             "schowaj makra", "schowaj makro", "schowaj listę", "zamknij listę", "zamknij makra" -> CommandIdentifier.MACRO_HIDE
+            "zatrzymaj makro", "zatrzymaj odtwarzanie makra", "przerwij odtwarzanie makra", "przerwij makro", "stop makro", "anuluj makro", "stop" -> CommandIdentifier.MACRO_STOP
 
             else -> null
         }

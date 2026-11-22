@@ -159,7 +159,25 @@ class CommandExecutorService : AccessibilityService() {
         return FocusLayout(field, keyboardTop)
     }
 
-    override fun onAccessibilityEvent(event: AccessibilityEvent?) {}
+    @Volatile
+    var lastUiEventTimestamp: Long = System.currentTimeMillis()
+        private set
+
+    override fun onAccessibilityEvent(event: AccessibilityEvent?) {
+        if (event != null) {
+            when (event.eventType) {
+                AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED,
+                AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED,
+                AccessibilityEvent.TYPE_WINDOWS_CHANGED,
+                AccessibilityEvent.TYPE_VIEW_SCROLLED,
+                AccessibilityEvent.TYPE_VIEW_FOCUSED,
+                AccessibilityEvent.TYPE_VIEW_SELECTED,
+                AccessibilityEvent.TYPE_VIEW_CLICKED -> {
+                    lastUiEventTimestamp = System.currentTimeMillis()
+                }
+            }
+        }
+    }
 
     override fun onInterrupt() {}
 

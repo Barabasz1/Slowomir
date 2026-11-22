@@ -1,6 +1,7 @@
 package com.zpi.slowomir.overlay.macro
 
 import android.content.Context
+import android.util.Log.i
 import com.zpi.slowomir.overlay.commands.Command
 import com.zpi.slowomir.overlay.commands.CommandArgumentCodec
 import com.zpi.slowomir.overlay.commands.CommandFactory
@@ -16,7 +17,6 @@ import javax.inject.Singleton
 data class SerializedMacro(
     val startingPoint: MacroStartingPoint?,
     val commands: List<SerializedCommand>,
-    val delaysMs: List<Long> = emptyList(),
 )
 
 @Singleton
@@ -31,7 +31,6 @@ class MacroRepository @Inject constructor(
     fun saveRecordedMacro(
         commandSequence: List<Command>,
         startingPoint: MacroStartingPoint? = null,
-        delaysMs: List<Long> = emptyList(),
     ) {
         if (commandSequence.isEmpty()) return
 
@@ -39,16 +38,13 @@ class MacroRepository @Inject constructor(
         val macroObj = JSONObject().apply {
             put(KEY_STARTING_POINT, encodeStartingPoint(startingPoint))
             val commandsArray = JSONArray()
-            for (i in commandSequence.indices) {
-                val command = commandSequence[i]
-                val delay = delaysMs.getOrNull(i) ?: 0L
+            for (command in commandSequence) {
                 val serialized = commandFactory.serialize(command)
                 val cmdObj = JSONObject().apply {
                     put(KEY_CMD_TYPE, serialized.type)
                     put(KEY_CMD_NAME, serialized.name)
                     put(KEY_CMD_ARGS, serialized.argumentsJson)
                     put(KEY_CMD_DISPLAY, serialized.displayText)
-                    if (delay > 0) put(KEY_CMD_DELAY, delay)
                 }
                 commandsArray.put(cmdObj)
             }
@@ -72,7 +68,6 @@ class MacroRepository @Inject constructor(
                 commands = commands,
                 startingPoint = stored.startingPoint,
                 isGenerated = false,
-                delaysMs = stored.delaysMs,
                 serializedCommands = stored.commands,
             )
         }
@@ -89,7 +84,6 @@ class MacroRepository @Inject constructor(
             val startingPoint = decodeStartingPoint(macroObj.optJSONObject(KEY_STARTING_POINT))
             val commandsArray = macroObj.optJSONArray(KEY_COMMANDS) ?: continue
             val commands = ArrayList<SerializedCommand>(commandsArray.length())
-            val delays = ArrayList<Long>(commandsArray.length())
 
             for (j in 0 until commandsArray.length()) {
                 val cmdObj = commandsArray.optJSONObject(j) ?: continue
@@ -98,7 +92,6 @@ class MacroRepository @Inject constructor(
                 val argsJson = cmdObj.optString(KEY_CMD_ARGS)
                 val args = CommandArgumentCodec.decode(argsJson)
                 val display = cmdObj.optString(KEY_CMD_DISPLAY).ifBlank { name }
-                val delayMs = cmdObj.optLong(KEY_CMD_DELAY, 0L)
                 commands.add(
                     SerializedCommand(
                         type = type,
@@ -107,7 +100,6 @@ class MacroRepository @Inject constructor(
                         displayText = display,
                     )
                 )
-                delays.add(delayMs)
             }
 
             if (commands.isNotEmpty()) {
@@ -115,7 +107,6 @@ class MacroRepository @Inject constructor(
                     SerializedMacro(
                         startingPoint = startingPoint,
                         commands = commands,
-                        delaysMs = delays,
                     )
                 )
             }
@@ -183,14 +174,12 @@ class MacroRepository @Inject constructor(
                 put(KEY_CMD_NAME, "Open App")
                 put(KEY_CMD_ARGS, "{\"packageName\":\"com.android.settings\"}")
                 put(KEY_CMD_DISPLAY, "Open App (com.android.settings)")
-                put(KEY_CMD_DELAY, 1000L)
             })
             cmds.put(JSONObject().apply {
                 put(KEY_CMD_TYPE, "com.zpi.slowomir.overlay.commands.navigation.NavigateHomeCommand")
                 put(KEY_CMD_NAME, "Navigate Home")
                 put(KEY_CMD_ARGS, "{}")
                 put(KEY_CMD_DISPLAY, "Navigate Home")
-                put(KEY_CMD_DELAY, 1500L)
             })
             put(KEY_COMMANDS, cmds)
         }
@@ -199,20 +188,42 @@ class MacroRepository @Inject constructor(
             put(KEY_STARTING_POINT, encodeStartingPoint(MacroStartingPoint.Home))
             val cmds = JSONArray()
             cmds.put(JSONObject().apply {
-                put(KEY_CMD_TYPE, "com.zpi.slowomir.overlay.commands.navigation.NavigateRecentCommand")
-                put(KEY_CMD_NAME, "Navigate Recent")
+                put(KEY_CMD_TYPE, "com.zpi.slowomir.overlay.commands.grid.GridEnableCommand")
+                put(KEY_CMD_NAME, "Enable Grid")
                 put(KEY_CMD_ARGS, "{}")
-                put(KEY_CMD_DISPLAY, "Navigate Recent")
-                put(KEY_CMD_DELAY, 800L)
+                put(KEY_CMD_DISPLAY, "Grid Enable")
             })
+
+            for(i in 1..26){
+                cmds.put(JSONObject().apply {
+                    put(KEY_CMD_TYPE, "com.zpi.slowomir.overlay.commands.grid.SelectCellCommand")
+                    put(KEY_CMD_NAME, "Select cell")
+                    put(KEY_CMD_ARGS, "{$i}")
+                    put(KEY_CMD_DISPLAY, "Select cell $i")
+                })
+            }
+
             cmds.put(JSONObject().apply {
-                put(KEY_CMD_TYPE, "com.zpi.slowomir.overlay.commands.navigation.NavigateHomeCommand")
-                put(KEY_CMD_NAME, "Navigate Home")
+                put(KEY_CMD_TYPE, "com.zpi.slowomir.overlay.commands.grid.GridDisableCommand")
+                put(KEY_CMD_NAME, "Disable Grid")
                 put(KEY_CMD_ARGS, "{}")
-                put(KEY_CMD_DISPLAY, "Navigate Home")
-                put(KEY_CMD_DELAY, 1200L)
+                put(KEY_CMD_DISPLAY, "Grid disable")
             })
-            put(KEY_COMMANDS, cmds)
+
+            cmds.put(JSONObject().apply {
+                put(KEY_CMD_TYPE, "com.zpi.slowomir.overlay.commands.navigation.OpenAppCommand")
+                put(KEY_CMD_NAME, "Open app")
+                put(KEY_CMD_ARGS, "{youtube}")
+                put(KEY_CMD_DISPLAY, "Open app")
+            })
+
+            cmds.put(JSONObject().apply {
+                put(KEY_CMD_TYPE, "com.zpi.slowomir.overlay.commands.grid.GridEnableCommand")
+                put(KEY_CMD_NAME, "Enable Grid")
+                put(KEY_CMD_ARGS, "{}")
+                put(KEY_CMD_DISPLAY, "Grid Enable")
+            })
+
         }
 
         array.put(macro1)
@@ -253,7 +264,6 @@ class MacroRepository @Inject constructor(
         private const val KEY_CMD_NAME = "name"
         private const val KEY_CMD_ARGS = "arguments"
         private const val KEY_CMD_DISPLAY = "displayText"
-        private const val KEY_CMD_DELAY = "delayMs"
         private const val KEY_SP_TYPE = "type"
         private const val KEY_SP_APP_NAME = "appName"
         private const val SP_TYPE_HOME = "home"

@@ -1,8 +1,9 @@
 package com.zpi.slowomir.overlay.macro
 
-import com.zpi.slowomir.overlay.commands.Command
+import android.view.accessibility.AccessibilityNodeInfo
 import com.zpi.slowomir.overlay.commands.navigation.NavigateHomeCommand
 import com.zpi.slowomir.overlay.commands.navigation.OpenAppCommand
+import com.zpi.slowomir.overlay.services.CommandExecutorService
 import com.zpi.slowomir.voice.mediator.CommandMediator
 import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
@@ -15,27 +16,30 @@ class MacroPlayer @Inject constructor(
     private val openAppCommandFactory: OpenAppCommand.Factory
 ) {
     companion object {
-        private const val DEFAULT_COMMAND_INTERVAL: Long = 500L
-        private const val OPEN_APP_DELAY: Long = 2000L
-        private const val WAIT_STEP: Long = 50L
+        private const val MIN_WAIT_DEFAULT_MS: Long = 200L
+        private const val MIN_WAIT_APP_MS: Long = 400L
+        private const val QUIET_PERIOD_DEFAULT_MS: Long = 250L
+        private const val QUIET_PERIOD_APP_MS: Long = 350L
+        private const val MAX_TIMEOUT_DEFAULT_MS: Long = 3000L
+        private const val MAX_TIMEOUT_APP_MS: Long = 5000L
+        private const val CHECK_STEP_MS: Long = 50L
     }
 
     @Volatile
     private var stopMacro: Boolean = false
 
     fun play(macro: Macro): Boolean {
-
         onMacroStart(macro)
 
         if (macro.startingPoint != null) {
-            if (!wait(macro.startingPoint)) {
+            navigateToMacroStart(macro.startingPoint)
+            if (!waitForScreenStability(macro.startingPoint is MacroStartingPoint.App)) {
                 onMacroBreak(macro)
                 return false
             }
         }
 
-        for ((index, command) in macro.commands.withIndex()) {
-
+        for (command in macro.commands) {
             if (stopMacro) {
                 onMacroBreak(macro)
                 return false
@@ -45,8 +49,7 @@ class MacroPlayer @Inject constructor(
                 mediator.dispatch(command)
             }
 
-            val overrideDelay = macro.delaysMs.getOrNull(index)?.takeIf { it > 0L }
-            if (!wait(command, overrideDelay)) {
+            if (!waitForScreenStability(command is OpenAppCommand)) {
                 onMacroBreak(macro)
                 return false
             }
@@ -62,7 +65,6 @@ class MacroPlayer @Inject constructor(
 
     private fun onMacroStart(macro: Macro) {
         stopMacro = false
-        navigateToMacroStart(macro.startingPoint)
     }
 
     private fun onMacroFinish(macro: Macro) {
@@ -70,54 +72,83 @@ class MacroPlayer @Inject constructor(
     }
 
     private fun onMacroBreak(macro: Macro) {
+        stopMacro = false
     }
 
-    private fun calculateSleepTime(previousCommand: Command): Long {
-        return when (previousCommand) {
-            is OpenAppCommand -> OPEN_APP_DELAY
-            else -> DEFAULT_COMMAND_INTERVAL
-        }
-    }
+    fun waitForScreenStability(isAppLaunchOrStart: Boolean = false): Boolean {
+        val minWaitMs = if (isAppLaunchOrStart) MIN_WAIT_APP_MS else MIN_WAIT_DEFAULT_MS
+        val quietPeriodMs = if (isAppLaunchOrStart) QUIET_PERIOD_APP_MS else QUIET_PERIOD_DEFAULT_MS
+        val maxTimeoutMs = if (isAppLaunchOrStart) MAX_TIMEOUT_APP_MS else MAX_TIMEOUT_DEFAULT_MS
 
-    private fun calculateSleepTime(startingPoint: MacroStartingPoint?): Long {
-        return when (startingPoint) {
-            is MacroStartingPoint.App -> OPEN_APP_DELAY
-            else -> DEFAULT_COMMAND_INTERVAL
-        }
-    }
+        val startTime = System.currentTimeMillis()
+        var lastTreeSignature: Int? = null
+        var stableTreeCount = 0
 
-    private fun wait(previousCommand: Command, overrideDelay: Long? = null): Boolean {
-        var elapsed = 0L
-        val sleepTime: Long = overrideDelay ?: calculateSleepTime(previousCommand)
-        while (elapsed < sleepTime) {
+        while (true) {
             if (stopMacro) return false
-            val step = minOf(WAIT_STEP, sleepTime - elapsed)
+
+            val now = System.currentTimeMillis()
+            val elapsed = now - startTime
+
+            if (elapsed >= maxTimeoutMs) {
+                return true
+            }
+
+            if (elapsed >= minWaitMs) {
+                val service = CommandExecutorService.instance
+                val lastEventTime = service?.lastUiEventTimestamp ?: 0L
+                val quietTime = if (lastEventTime > 0L) now - lastEventTime else elapsed
+
+                val currentTreeSignature = getUiTreeSignature()
+
+                if (quietTime >= quietPeriodMs) {
+                    if (currentTreeSignature != null && currentTreeSignature == lastTreeSignature) {
+                        stableTreeCount++
+                        if (stableTreeCount >= 2) {
+                            return true
+                        }
+                    } else {
+                        stableTreeCount = 1
+                        lastTreeSignature = currentTreeSignature
+                        if (service == null || lastEventTime == 0L) {
+                            if (quietTime >= quietPeriodMs) return true
+                        }
+                    }
+                } else {
+                    stableTreeCount = 0
+                    lastTreeSignature = currentTreeSignature
+                }
+            }
+
             try {
-                Thread.sleep(step)
+                Thread.sleep(CHECK_STEP_MS)
             } catch (_: InterruptedException) {
                 Thread.currentThread().interrupt()
                 return false
             }
-            elapsed += step
         }
-        return true
     }
 
-    private fun wait(startingPoint: MacroStartingPoint): Boolean {
-        var elapsed = 0L
-        val sleepTime: Long = calculateSleepTime(startingPoint)
-        while (elapsed < sleepTime) {
-            if (stopMacro) return false
-            val step = minOf(WAIT_STEP, sleepTime - elapsed)
-            try {
-                Thread.sleep(step)
-            } catch (_: InterruptedException) {
-                Thread.currentThread().interrupt()
-                return false
+    private fun getUiTreeSignature(): Int? {
+        val root = CommandExecutorService.instance?.rootInActiveWindow ?: return null
+        var hash = 17
+        var nodeCount = 0
+
+        fun traverse(node: AccessibilityNodeInfo?) {
+            if (node == null || nodeCount > 100) return
+            nodeCount++
+            hash = 31 * hash + (node.className?.hashCode() ?: 0)
+            hash = 31 * hash + (node.packageName?.hashCode() ?: 0)
+            hash = 31 * hash + node.childCount
+            val count = node.childCount
+            for (i in 0 until count) {
+                val child = node.getChild(i) ?: continue
+                traverse(child)
             }
-            elapsed += step
         }
-        return true
+
+        traverse(root)
+        return 31 * hash + nodeCount
     }
 
     private fun navigateToMacroStart(macroStartingPoint: MacroStartingPoint?) {
