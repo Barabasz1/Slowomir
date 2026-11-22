@@ -157,6 +157,10 @@ class CommandIntentParser @Inject constructor(
             "zatwierdź", "zatwierdź tekst", "potwierdź wpisany tekst", "zakończ wpisywanie", "zaakceptuj tekst", "wyślij", "zatwierdź i wyślij", "zakończ i wyślij" -> CommandIdentifier.TEXT_CONFIRM
             "anuluj", "anuluj pisanie", "anuluj dyktowanie", "przerwij dyktowanie" -> CommandIdentifier.TEXT_CANCEL
             "edytuj", "edytuj tekst", "tryb edycji", "przejdź do edycji", "włącz edycję" -> CommandIdentifier.TEXT_EDIT
+            "kropka", "wstaw kropkę", "dodaj kropkę", "postaw kropkę" -> CommandIdentifier.TEXT_PUNCTUATION_PERIOD
+            "przecinek", "wstaw przecinek", "dodaj przecinek", "postaw przecinek" -> CommandIdentifier.TEXT_PUNCTUATION_COMMA
+            "znak zapytania", "pytajnik", "wstaw znak zapytania", "dodaj znak zapytania", "wstaw pytajnik", "dodaj pytajnik" -> CommandIdentifier.TEXT_PUNCTUATION_QUESTION
+            "wykrzyknik", "znak wykrzyknika", "wstaw wykrzyknik", "dodaj wykrzyknik", "wstaw znak wykrzyknika" -> CommandIdentifier.TEXT_PUNCTUATION_EXCLAMATION
             "schowaj klawiaturę", "ukryj klawiaturę", "zamknij klawiaturę", "wyłącz klawiaturę ekranową", "schowaj klawiaturę ekranową" -> CommandIdentifier.KEYBOARD_HIDE
             "pokaż klawiaturę", "wyświetl klawiaturę", "otwórz klawiaturę", "włącz klawiaturę ekranową", "pokaż klawiaturę ekranową" -> CommandIdentifier.KEYBOARD_SHOW
             "klawiatura", "przełącz klawiaturę" -> CommandIdentifier.KEYBOARD_TOGGLE

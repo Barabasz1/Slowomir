@@ -345,6 +345,10 @@ class VoiceSessionManager @Inject constructor(
             CommandIdentifier.TEXT_CURSOR_PREVIOUS_WORD,
             CommandIdentifier.TEXT_DELETE_CHARACTER,
             CommandIdentifier.TEXT_DELETE_WORD,
+            CommandIdentifier.TEXT_PUNCTUATION_PERIOD,
+            CommandIdentifier.TEXT_PUNCTUATION_COMMA,
+            CommandIdentifier.TEXT_PUNCTUATION_QUESTION,
+            CommandIdentifier.TEXT_PUNCTUATION_EXCLAMATION,
             CommandIdentifier.TEXT_CONFIRM,
             CommandIdentifier.OVERLAY_STOP,
         )
