@@ -4,11 +4,8 @@ import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.InputMethod
 import android.annotation.SuppressLint
 import android.content.Intent
-import android.graphics.Rect
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
-import android.view.accessibility.AccessibilityNodeInfo
-import android.view.accessibility.AccessibilityWindowInfo
 import android.view.inputmethod.EditorInfo
 import com.zpi.slowomir.overlay.executors.GridExecutor
 import com.zpi.slowomir.overlay.executors.MacroExecutor
@@ -17,8 +14,6 @@ import com.zpi.slowomir.overlay.executors.NavigationExecutor
 import com.zpi.slowomir.overlay.executors.PhoneCallExecutor
 import com.zpi.slowomir.overlay.executors.PredictionExecutor
 import com.zpi.slowomir.overlay.executors.TextEditExecutor
-import com.zpi.slowomir.overlay.ui.common.FieldPosition
-import com.zpi.slowomir.overlay.ui.common.FocusLayout
 import com.zpi.slowomir.overlay.ui.common.OverlayHostProvider
 import com.zpi.slowomir.overlay.executors.TouchExecutor
 import com.zpi.slowomir.overlay.ui.voice.VoiceOverlayManager
@@ -60,6 +55,9 @@ class CommandExecutorService : AccessibilityService() {
 
     @Inject
     lateinit var voiceOverlayManager: VoiceOverlayManager
+
+    @Inject
+    lateinit var screenEventsBus: ScreenEventsBus
 
     @Inject
     lateinit var gridExecutor: GridExecutor
@@ -139,27 +137,9 @@ class CommandExecutorService : AccessibilityService() {
         }.also { textInputMethod = it }
     }
 
-    fun focusLayout(): FocusLayout {
-        val field = runCatching {
-            findFocus(AccessibilityNodeInfo.FOCUS_INPUT)?.let { node ->
-                val bounds = Rect()
-                node.getBoundsInScreen(bounds)
-                FieldPosition(bounds.top, bounds.bottom).takeIf { !bounds.isEmpty }
-            }
-        }.getOrNull()
-
-        val keyboardTop = runCatching {
-            windows.firstOrNull { it.type == AccessibilityWindowInfo.TYPE_INPUT_METHOD }?.let { window ->
-                val bounds = Rect()
-                window.getBoundsInScreen(bounds)
-                bounds.top.takeIf { !bounds.isEmpty }
-            }
-        }.getOrNull()
-
-        return FocusLayout(field, keyboardTop)
+    override fun onAccessibilityEvent(event: AccessibilityEvent?) {
+        event?.let { screenEventsBus.publish(it.eventType) }
     }
-
-    override fun onAccessibilityEvent(event: AccessibilityEvent?) {}
 
     override fun onInterrupt() {}
 
