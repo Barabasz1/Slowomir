@@ -7,6 +7,7 @@ import com.zpi.slowomir.overlay.commands.CommandResult
 import com.zpi.slowomir.overlay.commands.touch.TapCommand
 import com.zpi.slowomir.overlay.commands.grid.GridToggleCommand
 import com.zpi.slowomir.overlay.services.VoiceRecognitionService
+import com.zpi.slowomir.overlay.ui.grid.GridType
 import com.zpi.slowomir.overlay.ui.voice.PickerOverlayManager
 import com.zpi.slowomir.overlay.ui.voice.VoiceOverlayManager
 import com.zpi.slowomir.voice.VoiceSessionManager
@@ -51,6 +52,17 @@ class MainViewModel @Inject constructor(
     val isOverlayEnabled: StateFlow<Boolean> = preferencesManager.isOverlayEnabled
     val isOnboardingCompleted: StateFlow<Boolean> = preferencesManager.isOnboardingCompleted
     val showIntroHighlight: StateFlow<Boolean> = preferencesManager.showIntroHighlight
+
+    val gridRows: StateFlow<Int> = preferencesManager.gridRows
+    val gridCols: StateFlow<Int> = preferencesManager.gridCols
+    val gridType: StateFlow<GridType> = preferencesManager.gridType
+    val invertedControls: StateFlow<Boolean> = preferencesManager.invertedControls
+
+    fun setGridRows(rows: Int) = preferencesManager.setGridRows(rows)
+    fun setGridCols(cols: Int) = preferencesManager.setGridCols(cols)
+    fun setGridType(type: GridType) = preferencesManager.setGridType(type)
+
+    fun setInvertedControls(inverted: Boolean) = preferencesManager.setInvertedControls(inverted)
 
     init {
         viewModelScope.launch {

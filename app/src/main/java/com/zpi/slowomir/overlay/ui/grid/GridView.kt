@@ -3,6 +3,7 @@ package com.zpi.slowomir.overlay.ui.grid
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.DashPathEffect
 import android.graphics.Paint
 import android.view.View
 
@@ -14,7 +15,8 @@ class GridView(
     var labelOpacity: Int = DEFAULT_LABEL_OPACITY,
     var overlayOpacity: Int = DEFAULT_OVERLAY_OPACITY,
     var lineWidthPx: Float = DEFAULT_LINE_WIDTH_PX,
-    var labelTextSizePx: Float = DEFAULT_LABEL_TEXT_SIZE_PX
+    var labelTextSizePx: Float = DEFAULT_LABEL_TEXT_SIZE_PX,
+    var gridType: GridType = GridType.DEFAULT
 ) : View(context) {
 
     companion object {
@@ -30,6 +32,38 @@ class GridView(
         style = Paint.Style.STROKE
         color = Color.argb(lineOpacity, 255, 255, 0)
         strokeWidth = lineWidthPx
+    }
+
+    private val dashedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        color = Color.argb(lineOpacity, 255, 255, 0)
+        strokeWidth = lineWidthPx
+        pathEffect = DashPathEffect(floatArrayOf(lineWidthPx * 6f, lineWidthPx * 4f), 0f)
+    }
+
+    private val contrastOuterPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        color = Color.argb(lineOpacity, 0, 0, 0)
+        strokeWidth = lineWidthPx * 3f
+    }
+
+    private val contrastInnerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        color = Color.argb(lineOpacity, 255, 255, 255)
+        strokeWidth = lineWidthPx
+    }
+
+    private val labelOutlinePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        textAlign = Paint.Align.CENTER
+        textSize = labelTextSizePx
+        strokeWidth = lineWidthPx * 3f
+        strokeJoin = Paint.Join.ROUND
+    }
+
+    private val labelFillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        textAlign = Paint.Align.CENTER
+        textSize = labelTextSizePx
     }
 
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -63,7 +97,15 @@ class GridView(
     private var parentCell: Int? = null
     private var divisions: List<Pair<Int, Int>> = emptyList()
 
-    fun update(rowCount: Int, colCount: Int, selectedCell: Int?, parentCell: Int?, divisions: List<Pair<Int, Int>>) {
+    fun update(
+        rowCount: Int,
+        colCount: Int,
+        selectedCell: Int?,
+        parentCell: Int?,
+        divisions: List<Pair<Int, Int>>,
+        gridType: GridType = this.gridType
+    ) {
+        this.gridType = gridType
         this.rows = rowCount
         this.cols = colCount
         this.selectedCell = selectedCell
@@ -82,11 +124,11 @@ class GridView(
         val ch = height.toFloat() / rows
 
         for (i in 0..cols) {
-            canvas.drawLine(i * cw, 0f, i * cw, height.toFloat(), linePaint)
+            drawGridLine(canvas, i * cw, 0f, i * cw, height.toFloat())
         }
 
         for (i in 0..rows) {
-            canvas.drawLine(0f, i * ch, width.toFloat(), i * ch, linePaint)
+            drawGridLine(canvas, 0f, i * ch, width.toFloat(), i * ch)
         }
 
         for (row in 0 until rows) {
@@ -133,8 +175,8 @@ class GridView(
         val next = divisions.getOrNull(level + 1)
 
         for (i in 0..n) {
-            canvas.drawLine(x, y + i * sh, x + w, y + i * sh, linePaint)
-            canvas.drawLine(x + i * sw, y, x + i * sw, y + h, linePaint)
+            drawGridLine(canvas, x, y + i * sh, x + w, y + i * sh)
+            drawGridLine(canvas, x + i * sw, y, x + i * sw, y + h)
         }
 
         val isActiveLevel = level == divisions.size - 1
@@ -164,6 +206,17 @@ class GridView(
         }
     }
 
+    private fun drawGridLine(canvas: Canvas, x1: Float, y1: Float, x2: Float, y2: Float) {
+        when (gridType) {
+            GridType.SINGLE -> canvas.drawLine(x1, y1, x2, y2, linePaint)
+            GridType.DASHED -> canvas.drawLine(x1, y1, x2, y2, dashedPaint)
+            GridType.CONTRAST -> {
+                canvas.drawLine(x1, y1, x2, y2, contrastOuterPaint)
+                canvas.drawLine(x1, y1, x2, y2, contrastInnerPaint)
+            }
+        }
+    }
+
     private fun drawLabel(
         canvas: Canvas,
         label: String,
@@ -174,7 +227,15 @@ class GridView(
         paint: Paint
     ) {
         val baseline = y + h / 2f - (paint.ascent() + paint.descent()) / 2f
-        canvas.drawText(label, x + w / 2f, baseline, paint)
+        if (gridType == GridType.CONTRAST) {
+            val alpha = paint.alpha
+            labelOutlinePaint.color = Color.argb(alpha, 0, 0, 0)
+            labelFillPaint.color = Color.argb(alpha, 255, 255, 255)
+            canvas.drawText(label, x + w / 2f, baseline, labelOutlinePaint)
+            canvas.drawText(label, x + w / 2f, baseline, labelFillPaint)
+        } else {
+            canvas.drawText(label, x + w / 2f, baseline, paint)
+        }
     }
 
     private fun drawCellHighlight(

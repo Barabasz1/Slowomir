@@ -23,6 +23,7 @@ import com.zpi.slowomir.overlay.services.CommandExecutorService
 import com.zpi.slowomir.overlay.ui.common.OverlayHostProvider
 import com.zpi.slowomir.overlay.ui.common.OverlayWindowManager
 import com.zpi.slowomir.overlay.ui.grid.GridView
+import com.zpi.slowomir.utils.PreferencesManager
 import com.zpi.slowomir.utils.ScreenPoint
 import com.zpi.slowomir.voice.mediator.CommandMediator
 import javax.inject.Inject
@@ -42,21 +43,18 @@ class GridExecutor @Inject constructor(
     private val pinchInCommandFactory: PinchInCommand.Factory,
     private val pinchOutCommandFactory: PinchOutCommand.Factory,
     private val swipeCommandFactory: SwipeCommand.Factory,
+    private val preferencesManager: PreferencesManager,
 ) : OverlayWindowManager(hostProvider) {
 
     override val tag = "GridManager"
 
-    companion object {
-        const val DEFAULT_ROWS = 8
-        const val DEFAULT_COLS = 4
-    }
 
     private var gridView: GridView? = null
     private var parentCell: Int? = null
     private val divisions = mutableListOf<Pair<Int, Int>>()
     private var selectedCell: Int? = null
-    private var rowsCount: Int = DEFAULT_ROWS
-    private var colsCount: Int = DEFAULT_COLS
+    private var rowsCount: Int = preferencesManager.gridRows.value
+    private var colsCount: Int = preferencesManager.gridCols.value
 
     override fun onCreateView(context: Context): View {
         return GridView(
@@ -67,7 +65,8 @@ class GridExecutor @Inject constructor(
             labelOpacity = 220,
             overlayOpacity = 0,
             lineWidthPx = 2f,
-            labelTextSizePx = 32f
+            labelTextSizePx = 32f,
+            gridType = preferencesManager.gridType.value
         )
     }
 
@@ -127,8 +126,8 @@ class GridExecutor @Inject constructor(
     }
 
     fun resetDimensions() {
-        rowsCount = DEFAULT_ROWS
-        colsCount = DEFAULT_COLS
+        rowsCount = preferencesManager.gridRows.value
+        colsCount = preferencesManager.gridCols.value
     }
 
     fun resetSelection() {
@@ -138,7 +137,14 @@ class GridExecutor @Inject constructor(
     }
 
     fun redraw() {
-        gridView?.update(rowsCount, colsCount, selectedCell, parentCell, divisions.toList())
+        gridView?.update(
+            rowsCount,
+            colsCount,
+            selectedCell,
+            parentCell,
+            divisions.toList(),
+            preferencesManager.gridType.value
+        )
     }
 
     fun addRow(toAdd: Int) {
