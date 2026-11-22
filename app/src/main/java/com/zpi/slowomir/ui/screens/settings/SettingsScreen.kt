@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -27,7 +26,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Build
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -63,6 +61,7 @@ import androidx.compose.ui.unit.dp
 import com.zpi.slowomir.overlay.ui.grid.GridType
 import com.zpi.slowomir.ui.screens.permissions.ManagePermissionsScreen
 import com.zpi.slowomir.utils.PreferencesManager
+import com.zpi.slowomir.utils.Minus
 
 private object Idx {
     const val PERMISSIONS = 1
@@ -107,8 +106,8 @@ fun SettingsScreen(
         modifier = modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+            .padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Text(
             text = "Ustawienia",
@@ -133,7 +132,7 @@ fun SettingsScreen(
                         role = Role.Button
                         onClick(label = null) { showPermissionsScreen = true; true }
                     }
-                    .padding(18.dp),
+                    .padding(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IndexBadge(Idx.PERMISSIONS)
@@ -169,7 +168,7 @@ fun SettingsScreen(
                         role = Role.Switch
                         onClick(label = null) { onOverlayEnabledChange(!isOverlayEnabled); true }
                     }
-                    .padding(18.dp),
+                    .padding(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IndexBadge(Idx.OVERLAY)
@@ -205,7 +204,7 @@ fun SettingsScreen(
                         role = Role.Switch
                         onClick(label = null) { onOverlayEnabledChange(!isOverlayEnabled); true }
                     }
-                    .padding(18.dp),
+                    .padding(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IndexBadge(Idx.INVERTED_CONTROLS)
@@ -228,8 +227,8 @@ fun SettingsScreen(
 
         SettingsCard {
             Column(
-                modifier = Modifier.padding(18.dp),
-                verticalArrangement = Arrangement.spacedBy(20.dp)
+                modifier = Modifier.padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Stepper(
                     title = "Liczba wierszy",
@@ -251,7 +250,7 @@ fun SettingsScreen(
         SettingsCard {
             Column(
                 modifier = Modifier
-                    .padding(vertical = 10.dp)
+                    .padding(vertical = 6.dp)
                     .selectableGroup()
             ) {
                 Text(
@@ -259,7 +258,7 @@ fun SettingsScreen(
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier
-                        .padding(horizontal = 18.dp, vertical = 8.dp)
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
                         .semantics { heading() }
                 )
                 GridType.entries.forEachIndexed { i, type ->
@@ -277,7 +276,7 @@ fun SettingsScreen(
 }
 
 private fun GridType.label(): String = when (this) {
-    GridType.SINGLE -> "Jednokolorowa"
+    GridType.SINGLE -> "Jednolita"
     GridType.DASHED -> "Przerywana"
     GridType.CONTRAST -> "Kontrastowa"
 }
@@ -329,14 +328,14 @@ private fun IconTile(icon: ImageVector) {
 private fun IndexBadge(index: Int) {
     Box(
         modifier = Modifier
-            .size(28.dp)
+            .size(24.dp)
             .clip(CircleShape)
             .background(MaterialTheme.colorScheme.secondaryContainer),
         contentAlignment = Alignment.Center
     ) {
         Text(
             text = index.toString(),
-            style = MaterialTheme.typography.labelLarge,
+            style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSecondaryContainer
         )
@@ -354,7 +353,7 @@ private fun ChoiceRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .defaultMinSize(minHeight = 56.dp)
+            .defaultMinSize(minHeight = 44.dp)
             .selectable(selected = selected, role = Role.RadioButton, onClick = onSelect)
             .clearAndSetSemantics {
                 contentDescription = "Opcja $index: $label"
@@ -362,7 +361,7 @@ private fun ChoiceRow(
                 role = Role.RadioButton
                 onClick(label = null) { onSelect(); true }
             }
-            .padding(horizontal = 18.dp, vertical = 4.dp),
+            .padding(horizontal = 12.dp, vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         IndexBadge(index)
@@ -406,31 +405,41 @@ private fun Stepper(
             )
         }
 
-        StepperButton(
-            index = minusIndex,
-            icon = Icons.Filled.Delete,
-            description = "Opcja $minusIndex: zmniejsz – $title, obecnie $value",
-            enabled = value > min,
-            onClick = { onValueChange(value - 1) }
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            StepperButton(
+                index = minusIndex,
+                icon = Icons.Filled.Minus,
+                description = "Opcja $minusIndex: zmniejsz – $title, obecnie $value",
+                enabled = value > min,
+                onClick = { onValueChange(value - 1) }
+            )
 
-        Text(
-            text = value.toString(),
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier
-                .width(44.dp)
-                .semantics { contentDescription = "$title: $value" },
-            textAlign = TextAlign.Center
-        )
+            Box(
+                modifier = Modifier
+                    .defaultMinSize(minWidth = 32.dp)
+                    .padding(horizontal = 2.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = value.toString(),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.semantics { contentDescription = "$title: $value" }
+                )
+            }
 
-        StepperButton(
-            index = plusIndex,
-            icon = Icons.Filled.Add,
-            description = "Opcja $plusIndex: zwiększ – $title, obecnie $value",
-            enabled = value < max,
-            onClick = { onValueChange(value + 1) }
-        )
+            StepperButtonReverse(
+                index = plusIndex,
+                icon = Icons.Filled.Add,
+                description = "Opcja $plusIndex: zwiększ – $title, obecnie $value",
+                enabled = value < max,
+                onClick = { onValueChange(value + 1) }
+            )
+        }
     }
 }
 
@@ -442,18 +451,44 @@ private fun StepperButton(
     enabled: Boolean,
     onClick: () -> Unit
 ) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(2.dp)
+    ) {
         IndexBadge(index)
-        Spacer(modifier = Modifier.height(4.dp))
         FilledTonalIconButton(
             onClick = onClick,
             enabled = enabled,
             modifier = Modifier
-                .size(56.dp)
+                .size(36.dp)
                 .semantics { contentDescription = description }
         ) {
-            Icon(imageVector = icon, contentDescription = null)
+            Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(16.dp))
         }
+    }
+}
+@Composable
+private fun StepperButtonReverse(
+    index: Int,
+    icon: ImageVector,
+    description: String,
+    enabled: Boolean,
+    onClick: () -> Unit
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(2.dp)
+    ) {
+        FilledTonalIconButton(
+            onClick = onClick,
+            enabled = enabled,
+            modifier = Modifier
+                .size(36.dp)
+                .semantics { contentDescription = description }
+        ) {
+            Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(16.dp))
+        }
+        IndexBadge(index)
     }
 }
 
@@ -475,7 +510,7 @@ private fun GridTypePreview(type: GridType) {
             when (type) {
                 GridType.SINGLE -> drawLine(Color.Yellow, from, to, strokePx)
                 GridType.DASHED -> drawLine(
-                    Color.Yellow, from, to, strokePx,
+                    Color.White, from, to, strokePx,
                     pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 7f))
                 )
 

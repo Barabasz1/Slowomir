@@ -5,6 +5,7 @@ import com.zpi.slowomir.overlay.commands.Command
 import com.zpi.slowomir.overlay.commands.CommandResult
 import com.zpi.slowomir.overlay.executors.GridExecutor
 import com.zpi.slowomir.overlay.executors.TouchExecutor.Companion.DEFAULT_SWIPE_DISTANCE
+import com.zpi.slowomir.overlay.services.CommandExecutorService
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -23,7 +24,7 @@ class SwipeLeftCellCommand @AssistedInject constructor(
     }
 
     override fun canExecute(context: OverlayContext): Boolean {
-        return gridExecutorProvider.get()?.canExecuteActionOnCell() ?: false
+        return CommandExecutorService.instance != null && (gridExecutorProvider.get()?.canExecuteActionOnCell() ?: false)
     }
 
     @AssistedFactory

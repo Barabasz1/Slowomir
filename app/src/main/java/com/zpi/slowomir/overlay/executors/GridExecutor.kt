@@ -26,6 +26,10 @@ import com.zpi.slowomir.overlay.ui.grid.GridView
 import com.zpi.slowomir.utils.PreferencesManager
 import com.zpi.slowomir.utils.ScreenPoint
 import com.zpi.slowomir.voice.mediator.CommandMediator
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.max
@@ -55,6 +59,34 @@ class GridExecutor @Inject constructor(
     private var selectedCell: Int? = null
     private var rowsCount: Int = preferencesManager.gridRows.value
     private var colsCount: Int = preferencesManager.gridCols.value
+
+    private val coroutineScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+
+    init {
+        coroutineScope.launch {
+            preferencesManager.gridType.collect { _ ->
+                if (isEnabled()) {
+                    redraw()
+                }
+            }
+        }
+        coroutineScope.launch {
+            preferencesManager.gridRows.collect { rows ->
+                rowsCount = rows
+                if (isEnabled()) {
+                    redraw()
+                }
+            }
+        }
+        coroutineScope.launch {
+            preferencesManager.gridCols.collect { cols ->
+                colsCount = cols
+                if (isEnabled()) {
+                    redraw()
+                }
+            }
+        }
+    }
 
     override fun onCreateView(context: Context): View {
         return GridView(
@@ -110,7 +142,7 @@ class GridExecutor @Inject constructor(
     }
 
     fun canExecuteActionOnCell(): Boolean {
-        return isCellSelected() && isEnabled()
+        return isCellSelected() && isEnabled() && CommandExecutorService.instance != null
     }
 
     fun enable() {

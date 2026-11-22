@@ -36,7 +36,7 @@ class GridView(
 
     private val dashedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
-        color = Color.argb(lineOpacity, 255, 255, 0)
+        color = Color.argb(lineOpacity, 255, 255, 255)
         strokeWidth = lineWidthPx
         pathEffect = DashPathEffect(floatArrayOf(lineWidthPx * 6f, lineWidthPx * 4f), 0f)
     }
@@ -51,19 +51,6 @@ class GridView(
         style = Paint.Style.STROKE
         color = Color.argb(lineOpacity, 255, 255, 255)
         strokeWidth = lineWidthPx
-    }
-
-    private val labelOutlinePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.STROKE
-        textAlign = Paint.Align.CENTER
-        textSize = labelTextSizePx
-        strokeWidth = lineWidthPx * 3f
-        strokeJoin = Paint.Join.ROUND
-    }
-
-    private val labelFillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        textAlign = Paint.Align.CENTER
-        textSize = labelTextSizePx
     }
 
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -117,6 +104,19 @@ class GridView(
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         if (width <= 0 || height <= 0) return
+
+        val lineColor = when (gridType) {
+            GridType.SINGLE -> Color.argb(labelOpacity, 255, 255, 0)
+            GridType.DASHED -> Color.argb(labelOpacity, 255, 255, 255)
+            GridType.CONTRAST -> Color.argb(labelOpacity, 255, 255, 255)
+        }
+        textPaint.color = lineColor
+        dimPaint.color = Color.argb(
+            (Color.alpha(lineColor) * DIM_ALPHA_FACTOR).toInt(),
+            Color.red(lineColor),
+            Color.green(lineColor),
+            Color.blue(lineColor)
+        )
 
         canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), backgroundPaint)
 
@@ -217,6 +217,16 @@ class GridView(
         }
     }
 
+    private val circlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+    }
+
+    private val whiteTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        textAlign = Paint.Align.CENTER
+        textSize = labelTextSizePx
+        color = Color.WHITE
+    }
+
     private fun drawLabel(
         canvas: Canvas,
         label: String,
@@ -226,16 +236,25 @@ class GridView(
         h: Float,
         paint: Paint
     ) {
-        val baseline = y + h / 2f - (paint.ascent() + paint.descent()) / 2f
-        if (gridType == GridType.CONTRAST) {
-            val alpha = paint.alpha
-            labelOutlinePaint.color = Color.argb(alpha, 0, 0, 0)
-            labelFillPaint.color = Color.argb(alpha, 255, 255, 255)
-            canvas.drawText(label, x + w / 2f, baseline, labelOutlinePaint)
-            canvas.drawText(label, x + w / 2f, baseline, labelFillPaint)
-        } else {
-            canvas.drawText(label, x + w / 2f, baseline, paint)
+        val centerX = x + w / 2f
+        val centerY = y + h / 2f
+        val alpha = paint.alpha
+
+        whiteTextPaint.textSize = paint.textSize
+        val textWidth = whiteTextPaint.measureText(label)
+        val fontMetrics = whiteTextPaint.fontMetrics
+        val textHeight = fontMetrics.bottom - fontMetrics.top
+
+        val radius = (maxOf(textWidth, textHeight) / 2f + 10f).coerceAtMost(minOf(w, h) / 2f - 2f)
+
+        if (radius > 0f) {
+            circlePaint.color = Color.argb((alpha * 0.75f).toInt(), 20, 20, 20)
+            canvas.drawCircle(centerX, centerY, radius, circlePaint)
         }
+
+        whiteTextPaint.color = Color.argb(alpha, 255, 255, 255)
+        val baseline = centerY - (whiteTextPaint.ascent() + whiteTextPaint.descent()) / 2f
+        canvas.drawText(label, centerX, baseline, whiteTextPaint)
     }
 
     private fun drawCellHighlight(
