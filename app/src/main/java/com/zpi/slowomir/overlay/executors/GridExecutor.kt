@@ -74,6 +74,7 @@ class GridExecutor @Inject constructor(
             preferencesManager.gridRows.collect { rows ->
                 rowsCount = rows
                 if (isEnabled()) {
+                    resetSelection()
                     redraw()
                 }
             }
@@ -82,6 +83,7 @@ class GridExecutor @Inject constructor(
             preferencesManager.gridCols.collect { cols ->
                 colsCount = cols
                 if (isEnabled()) {
+                    resetSelection()
                     redraw()
                 }
             }
@@ -142,7 +144,7 @@ class GridExecutor @Inject constructor(
     }
 
     fun canExecuteActionOnCell(): Boolean {
-        return isCellSelected() && isEnabled() && CommandExecutorService.instance != null
+        return isCellSelected() && isEnabled()
     }
 
     fun enable() {
@@ -179,55 +181,16 @@ class GridExecutor @Inject constructor(
         )
     }
 
-    fun addRow(toAdd: Int) {
-        val oldRows = rowsCount
-        val oldCols = colsCount
-        val newRows = max(1, rowsCount + toAdd)
-        if (newRows != oldRows) {
-            rowsCount = newRows
-            updateSelectionForNewDimensions(oldRows, oldCols, newRows, oldCols)
-        }
+    fun addRows(toAdd: Int) {
+        rowsCount = max(1, rowsCount + toAdd)
+        resetSelection()
         redraw()
     }
 
     fun addCols(toAdd: Int) {
-        val oldRows = rowsCount
-        val oldCols = colsCount
-        val newCols = max(1, colsCount + toAdd)
-        if (newCols != oldCols) {
-            colsCount = newCols
-            updateSelectionForNewDimensions(oldRows, oldCols, oldRows, newCols)
-        }
+        colsCount = max(1, colsCount + toAdd)
+        resetSelection()
         redraw()
-    }
-
-    private fun updateSelectionForNewDimensions(
-        oldRows: Int,
-        oldCols: Int,
-        newRows: Int,
-        newCols: Int
-    ) {
-        if (divisions.isEmpty()) {
-            selectedCell?.let { cell ->
-                val oldRow = (cell - 1) / oldCols
-                val oldCol = (cell - 1) % oldCols
-                val newRow = oldRow.coerceIn(0, newRows - 1)
-                val newCol = oldCol.coerceIn(0, newCols - 1)
-                selectedCell = newRow * newCols + newCol + 1
-            }
-        } else {
-            parentCell?.let { cell ->
-                val oldRow = (cell - 1) / oldCols
-                val oldCol = (cell - 1) % oldCols
-                val newRow = oldRow.coerceIn(0, newRows - 1)
-                val newCol = oldCol.coerceIn(0, newCols - 1)
-                val newParent = newRow * newCols + newCol + 1
-                parentCell = newParent
-                if (divisions.isNotEmpty()) {
-                    divisions[0] = newParent to divisions[0].second
-                }
-            }
-        }
     }
 
     fun selectCell(cell: Int) {

@@ -19,7 +19,7 @@ class AddRowGridCommand @AssistedInject constructor(
         val gridExecutor = gridExecutorProvider.get()
             ?: return CommandResult.Failure("Grid executor is null")
 
-        gridExecutor.addRow(num)
+        gridExecutor.addRows(num)
         return CommandResult.Success()
     }
 
