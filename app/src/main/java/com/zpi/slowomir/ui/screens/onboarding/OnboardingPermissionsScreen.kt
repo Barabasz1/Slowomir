@@ -24,6 +24,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Call
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.PlayArrow
@@ -74,6 +75,7 @@ fun OnboardingPermissionsScreen(
     var hasContacts by remember { mutableStateOf(PermissionUtils.isPermissionGranted(context, Manifest.permission.READ_CONTACTS)) }
     var hasCall by remember { mutableStateOf(PermissionUtils.isPermissionGranted(context, Manifest.permission.CALL_PHONE)) }
     var hasAnswerCalls by remember { mutableStateOf(PermissionUtils.isPermissionGranted(context, Manifest.permission.ANSWER_PHONE_CALLS)) }
+    var hasNotifications by remember { mutableStateOf(PermissionUtils.isPermissionGranted(context, Manifest.permission.POST_NOTIFICATIONS)) }
 
     fun refreshPermissions() {
         hasAccessibility = PermissionUtils.isAccessibilityServiceEnabled(context)
@@ -82,6 +84,7 @@ fun OnboardingPermissionsScreen(
         hasContacts = PermissionUtils.isPermissionGranted(context, Manifest.permission.READ_CONTACTS)
         hasCall = PermissionUtils.isPermissionGranted(context, Manifest.permission.CALL_PHONE)
         hasAnswerCalls = PermissionUtils.isPermissionGranted(context, Manifest.permission.ANSWER_PHONE_CALLS)
+        hasNotifications = PermissionUtils.isPermissionGranted(context, Manifest.permission.POST_NOTIFICATIONS)
     }
 
     DisposableEffect(lifecycleOwner) {
@@ -109,6 +112,10 @@ fun OnboardingPermissionsScreen(
     ) { refreshPermissions() }
 
     val answerCallsLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { refreshPermissions() }
+
+    val notificationsLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { refreshPermissions() }
 
@@ -152,6 +159,13 @@ fun OnboardingPermissionsScreen(
             isGranted = hasAnswerCalls,
             icon = Icons.Filled.Call,
             manifestPermission = Manifest.permission.ANSWER_PHONE_CALLS
+        ),
+        PermissionItem(
+            type = PermissionType.NOTIFICATIONS,
+            title = "Powiadomienia",
+            isGranted = hasNotifications,
+            icon = Icons.Filled.Notifications,
+            manifestPermission = Manifest.permission.POST_NOTIFICATIONS
         )
     )
 
@@ -216,6 +230,7 @@ fun OnboardingPermissionsScreen(
                                 PermissionType.READ_CONTACTS -> contactsLauncher.launch(Manifest.permission.READ_CONTACTS)
                                 PermissionType.CALL_PHONE -> callLauncher.launch(Manifest.permission.CALL_PHONE)
                                 PermissionType.ANSWER_PHONE_CALLS -> answerCallsLauncher.launch(Manifest.permission.ANSWER_PHONE_CALLS)
+                                PermissionType.NOTIFICATIONS -> notificationsLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                             }
                         }
                     )
