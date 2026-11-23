@@ -41,6 +41,7 @@ class CommandResolver @Inject constructor(
     private val screenshotCommandFactory: ScreenshotCommand.Factory,
     private val navigateHomeCommandFactory: NavigateHomeCommand.Factory,
     private val navigateRecentCommandFactory: NavigateRecentCommand.Factory,
+    private val navigateAppLibraryCommandFactory: NavigateAppLibraryCommand.Factory,
     private val navigateBackCommandFactory: NavigateBackCommand.Factory,
     private val keyboardHideCommandFactory: KeyboardHideCommand.Factory,
     private val keyboardShowCommandFactory: KeyboardShowCommand.Factory,
@@ -100,6 +101,7 @@ class CommandResolver @Inject constructor(
         CommandIdentifier.SCREENSHOT -> screenshotCommandFactory.create()
         CommandIdentifier.NAVIGATE_HOME -> navigateHomeCommandFactory.create()
         CommandIdentifier.NAVIGATE_RECENT -> navigateRecentCommandFactory.create()
+        CommandIdentifier.NAVIGATE_APP_LIBRARY -> navigateAppLibraryCommandFactory.create()
         CommandIdentifier.NAVIGATE_BACK -> navigateBackCommandFactory.create()
         // NAVIGATE_APP_OPEN
         CommandIdentifier.NAVIGATE_APP_OPEN -> openAppCommandFactory.create(intent.textArgument())

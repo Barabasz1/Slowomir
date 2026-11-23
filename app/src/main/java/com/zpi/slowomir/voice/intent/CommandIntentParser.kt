@@ -130,6 +130,7 @@ class CommandIntentParser @Inject constructor(
             "cofnij", "wróć", "wstecz", "wróć do poprzedniego ekranu", "przejdź wstecz" -> CommandIdentifier.NAVIGATE_BACK
             "ekran startowy", "przejdź na ekran główny", "ekran główny", "wróć do pulpitu", "przejdź do ekranu startowego", "główny ekran" -> CommandIdentifier.NAVIGATE_HOME
             "ostatnie aplikacje", "pokaż ostatnie aplikacje", "otwórz ostatnie aplikacje", "ostatnio używane aplikacje", "pokaż otwarte aplikacje", "ostatnie" -> CommandIdentifier.NAVIGATE_RECENT
+            "aplikacje", "lista aplikacji", "pokaż listę aplikacji", "otwórz listę aplikacji", "wszystkie aplikacje", "pokaż wszystkie aplikacje", "otwórz wszystkie aplikacje", "szuflada aplikacji", "biblioteka aplikacji" -> CommandIdentifier.NAVIGATE_APP_LIBRARY
             "powiadomienia", "pokaż powiadomienia", "otwórz powiadomienia", "panel powiadomień", "rozwiń powiadomienia" -> CommandIdentifier.NOTIFICATIONS
             "szybkie ustawienia", "pokaż szybkie ustawienia", "otwórz szybkie ustawienia", "rozwiń szybkie ustawienia", "panel szybkich ustawień" -> CommandIdentifier.QUICK_SETTINGS
             "zablokuj", "zablokuj ekran", "zgaś i zablokuj ekran", "włącz blokadę ekranu", "zamknij ekran" -> CommandIdentifier.LOCK_SCREEN

@@ -34,6 +34,7 @@ class CommandResolverTest {
     private val screenshotCommandFactory = mock<ScreenshotCommand.Factory>()
     private val navigateHomeCommandFactory = mock<NavigateHomeCommand.Factory>()
     private val navigateRecentCommandFactory = mock<NavigateRecentCommand.Factory>()
+    private val navigateAppLibraryCommandFactory = mock<NavigateAppLibraryCommand.Factory>()
     private val navigateBackCommandFactory = mock<NavigateBackCommand.Factory>()
     private val keyboardHideCommandFactory = mock<KeyboardHideCommand.Factory>()
     private val keyboardShowCommandFactory = mock<KeyboardShowCommand.Factory>()
@@ -91,6 +92,7 @@ class CommandResolverTest {
         screenshotCommandFactory = screenshotCommandFactory,
         navigateHomeCommandFactory = navigateHomeCommandFactory,
         navigateRecentCommandFactory = navigateRecentCommandFactory,
+        navigateAppLibraryCommandFactory = navigateAppLibraryCommandFactory,
         navigateBackCommandFactory = navigateBackCommandFactory,
         keyboardHideCommandFactory = keyboardHideCommandFactory,
         keyboardShowCommandFactory = keyboardShowCommandFactory,
