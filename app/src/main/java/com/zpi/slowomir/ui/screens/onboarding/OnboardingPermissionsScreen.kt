@@ -1,5 +1,7 @@
 package com.zpi.slowomir.ui.screens.onboarding
 
+import com.zpi.slowomir.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.verticalScroll
 import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -122,47 +124,40 @@ fun OnboardingPermissionsScreen(
     val permissionsList = listOf(
         PermissionItem(
             type = PermissionType.ACCESSIBILITY,
-            title = "Usługa dostępności",
             isGranted = hasAccessibility,
             icon = Icons.Filled.Build
         ),
         PermissionItem(
             type = PermissionType.OVERLAY,
-            title = "Wyświetlanie nad innymi aplikacjami",
             isGranted = hasOverlay,
             icon = Icons.Filled.Settings
         ),
         PermissionItem(
             type = PermissionType.RECORD_AUDIO,
-            title = "Dostęp do mikrofonu",
             isGranted = hasAudio,
             icon = Icons.Filled.PlayArrow,
             manifestPermission = Manifest.permission.RECORD_AUDIO
         ),
         PermissionItem(
             type = PermissionType.READ_CONTACTS,
-            title = "Odczyt kontaktów",
             isGranted = hasContacts,
             icon = Icons.Filled.Person,
             manifestPermission = Manifest.permission.READ_CONTACTS
         ),
         PermissionItem(
             type = PermissionType.CALL_PHONE,
-            title = "Wykonywanie połączeń",
             isGranted = hasCall,
             icon = Icons.Filled.Phone,
             manifestPermission = Manifest.permission.CALL_PHONE
         ),
         PermissionItem(
             type = PermissionType.ANSWER_PHONE_CALLS,
-            title = "Odbieranie połączeń",
             isGranted = hasAnswerCalls,
             icon = Icons.Filled.Call,
             manifestPermission = Manifest.permission.ANSWER_PHONE_CALLS
         ),
         PermissionItem(
             type = PermissionType.NOTIFICATIONS,
-            title = "Powiadomienia",
             isGranted = hasNotifications,
             icon = Icons.Filled.Notifications,
             manifestPermission = Manifest.permission.POST_NOTIFICATIONS
@@ -178,13 +173,13 @@ fun OnboardingPermissionsScreen(
 
         Column {
             Text(
-                text = "Uprawnienia aplikacji",
+                text = stringResource(R.string.onboarding_permissions_title),
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold
             )
             Spacer(modifier = Modifier.height(6.dp))
             Text(
-                text = "SłowoMIR wymaga przyznania odpowiednich uprawnień systemowych do prawidłowego działania.",
+                text = stringResource(R.string.onboarding_permissions_subtitle),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -197,7 +192,7 @@ fun OnboardingPermissionsScreen(
         Spacer(modifier = Modifier.height(40.dp))
 
         Text(
-            text = "Włącz wymagane uprawnienia:",
+            text = stringResource(R.string.onboarding_permissions_enable_required),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold
         )
@@ -298,7 +293,7 @@ fun OnboardingPermissionsScreen(
                 horizontalArrangement = Arrangement.Center
             ) {
                 Text(
-                    text = "Przejdź do aplikacji",
+                    text = stringResource(R.string.onboarding_go_to_app),
                     color = MaterialTheme.colorScheme.onPrimary,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold

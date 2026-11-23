@@ -1,5 +1,7 @@
 package com.zpi.slowomir.ui.navigation
 
+import com.zpi.slowomir.R
+import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Home
@@ -8,11 +10,11 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.ui.graphics.vector.ImageVector
 
 enum class AppTab(
-    val label: String,
+    @StringRes val labelRes: Int,
     val icon: ImageVector
 ) {
-    HOME("Strona główna", Icons.Filled.Home),
-    MACROS("Makra", Icons.Filled.PlayArrow),
-    SETTINGS("Ustawienia", Icons.Filled.Settings),
-    DEV("Dev", Icons.Filled.Build)
+    HOME(R.string.tab_home, Icons.Filled.Home),
+    MACROS(R.string.tab_macros, Icons.Filled.PlayArrow),
+    SETTINGS(R.string.tab_settings, Icons.Filled.Settings),
+    DEV(R.string.tab_dev, Icons.Filled.Build)
 }

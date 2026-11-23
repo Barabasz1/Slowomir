@@ -1,5 +1,7 @@
 package com.zpi.slowomir.ui.screens.macros
 
+import com.zpi.slowomir.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -16,7 +18,7 @@ import com.zpi.slowomir.ui.components.ScreenScaffold
 @Composable
 fun MacrosScreen(modifier: Modifier = Modifier) {
     val scrollState = rememberScrollState()
-    ScreenScaffold(title = "Makra", scrollState = scrollState, modifier = modifier) { innerPadding ->
+    ScreenScaffold(title = stringResource(R.string.macros_title), scrollState = scrollState, modifier = modifier) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()

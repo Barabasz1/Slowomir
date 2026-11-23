@@ -1,5 +1,7 @@
 package com.zpi.slowomir.ui.screens.home
 
+import com.zpi.slowomir.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.MaterialTheme
@@ -14,7 +16,7 @@ fun IntroductionScreen(
     modifier: Modifier = Modifier,
 ) {
     InfoScreenLayout(
-        title = "Wprowadzenie do aplikacji",
+        title = stringResource(R.string.introduction_title),
         onBack = onBack,
         modifier = modifier,
     ) {

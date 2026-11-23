@@ -1,5 +1,7 @@
 package com.zpi.slowomir.ui.components
 
+import com.zpi.slowomir.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
@@ -64,7 +66,7 @@ fun BackIconButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    contentDescription: String = "Wróć",
+    contentDescription: String = stringResource(R.string.action_back),
 ) {
     IconButton(onClick = onClick, enabled = enabled, modifier = modifier) {
         Icon(

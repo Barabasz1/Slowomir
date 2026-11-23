@@ -20,4 +20,76 @@
     <string name="overlay_error_application_not_found">Nie znaleziono aplikacji: %1$s</string>
     <string name="overlay_error_no_application">Nie podano aplikacji.</string>
     <string name="overlay_error_no_macros">Brak dostępnych makr</string>
+
+    <!-- Navigation -->
+    <string name="action_back">Wróć</string>
+    <string name="tab_home">Strona główna</string>
+    <string name="tab_macros">Makra</string>
+    <string name="tab_settings">Ustawienia</string>
+    <string name="tab_dev">Dev</string>
+
+    <!-- Home -->
+    <string name="home_state_off">SłowoMIR wyłączony</string>
+    <string name="home_state_waiting_for_wake_word">SłowoMIR czeka na wybudzenie</string>
+    <string name="home_state_listening">SłowoMIR nasłuchuje komend</string>
+    <string name="home_state_processing">SłowoMIR przetwarza komendę</string>
+    <string name="home_state_error">SłowoMIR napotkał błąd</string>
+    <string name="home_state_command_executed">SłowoMIR wykonał komendę</string>
+    <string name="home_current_state">AKTUALNY STAN</string>
+    <string name="home_start_listening">Rozpocznij nasłuchiwanie</string>
+    <string name="home_stop_listening">Zatrzymaj nasłuchiwanie</string>
+    <string name="home_tile_instructions">Instrukcja</string>
+    <string name="home_tile_commands">Lista komend</string>
+    <string name="home_intro_tooltip">Zobacz, jak korzystać z aplikacji</string>
+    <string name="home_intro_tooltip_dismiss">Zamknij podpowiedź</string>
+    <string name="introduction_title">Wprowadzenie do aplikacji</string>
+
+    <!-- Permissions -->
+    <string name="permission_accessibility">Usługa dostępności</string>
+    <string name="permission_overlay">Wyświetlanie nad innymi aplikacjami</string>
+    <string name="permission_microphone">Dostęp do mikrofonu</string>
+    <string name="permission_contacts">Odczyt kontaktów</string>
+    <string name="permission_call_phone">Wykonywanie połączeń</string>
+    <string name="permission_answer_calls">Odbieranie połączeń</string>
+    <string name="permission_notifications">Powiadomienia</string>
+    <string name="permission_granted">Przyznano</string>
+    <string name="permission_enable">Włącz</string>
+    <string name="permission_privacy_info">Aplikacja przetwarza wszystkie dane lokalnie na Twoim urządzeniu.</string>
+    <string name="permissions_manage_title">Zarządzaj uprawnieniami</string>
+    <string name="permissions_back">Cofnij</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_tagline">Nakładka do precyzyjnej obsługi telefonu za pomocą komend głosowych.</string>
+    <string name="onboarding_start">Rozpocznij</string>
+    <string name="onboarding_permissions_title">Uprawnienia aplikacji</string>
+    <string name="onboarding_permissions_subtitle">SłowoMIR wymaga przyznania odpowiednich uprawnień systemowych do prawidłowego działania.</string>
+    <string name="onboarding_permissions_enable_required">Włącz wymagane uprawnienia:</string>
+    <string name="onboarding_go_to_app">Przejdź do aplikacji</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Ustawienia</string>
+    <string name="settings_section_general">Ogólne</string>
+    <string name="settings_section_touch">Dotyk</string>
+    <string name="settings_section_grid">Siatka</string>
+    <string name="settings_show_overlay">Pokaż nakładkę głosową</string>
+    <string name="settings_inverted_controls">Odwrócone sterowanie</string>
+    <string name="settings_grid_rows">Liczba wierszy</string>
+    <string name="settings_grid_cols">Liczba kolumn</string>
+    <string name="settings_grid_type">Typ siatki</string>
+    <string name="settings_grid_type_single">Jednolita</string>
+    <string name="settings_grid_type_dashed">Przerywana</string>
+    <string name="settings_grid_type_contrast">Kontrastowa</string>
+    <string name="settings_state_on">Włączona</string>
+    <string name="settings_state_off">Wyłączona</string>
+    <string name="settings_state_selected">Wybrana</string>
+    <string name="settings_state_not_selected">Niewybrana</string>
+    <string name="settings_range">Od %1$d do %2$d</string>
+    <string name="settings_a11y_option">Opcja %1$d: %2$s</string>
+    <string name="settings_a11y_decrease">Opcja %1$d: zmniejsz – %2$s, obecnie %3$d</string>
+    <string name="settings_a11y_increase">Opcja %1$d: zwiększ – %2$s, obecnie %3$d</string>
+    <string name="settings_a11y_value">%1$s: %2$d</string>
+
+    <!-- Macros -->
+    <string name="macros_title">Makra</string>
+    <string name="commands_title">Lista komend</string>
 </resources>

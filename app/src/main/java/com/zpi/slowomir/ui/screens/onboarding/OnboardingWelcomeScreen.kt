@@ -1,5 +1,7 @@
 package com.zpi.slowomir.ui.screens.onboarding
 
+import com.zpi.slowomir.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.background
@@ -63,7 +65,7 @@ fun OnboardingWelcomeScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "Nakładka do precyzyjnej obsługi telefonu za pomocą komend głosowych.",
+                text = stringResource(R.string.onboarding_tagline),
                 style = MaterialTheme.typography.bodyLarge,
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -95,7 +97,7 @@ fun OnboardingWelcomeScreen(
                 horizontalArrangement = Arrangement.Center
             ) {
                 Text(
-                    text = "Rozpocznij",
+                    text = stringResource(R.string.onboarding_start),
                     color = MaterialTheme.colorScheme.onPrimary,
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold

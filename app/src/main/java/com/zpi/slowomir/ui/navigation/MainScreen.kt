@@ -1,5 +1,6 @@
 package com.zpi.slowomir.ui.navigation
 
+import androidx.compose.ui.res.stringResource
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -81,10 +82,10 @@ fun MainScreen(
                             }
                             selectedTab = tab
                         },
-                        icon = { Icon(tab.icon, contentDescription = tab.label) },
+                        icon = { Icon(tab.icon, contentDescription = stringResource(tab.labelRes)) },
                         label = {
                             Text(
-                                text = tab.label,
+                                text = stringResource(tab.labelRes),
                                 textAlign = TextAlign.Center
                             )
                         }
