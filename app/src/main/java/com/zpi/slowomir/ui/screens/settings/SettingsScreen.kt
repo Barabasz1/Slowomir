@@ -1,5 +1,7 @@
 package com.zpi.slowomir.ui.screens.settings
 
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -15,13 +17,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
@@ -59,6 +59,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.zpi.slowomir.overlay.ui.grid.GridType
+import com.zpi.slowomir.ui.components.ScreenScaffold
 import com.zpi.slowomir.ui.screens.permissions.ManagePermissionsScreen
 import com.zpi.slowomir.utils.PreferencesManager
 import com.zpi.slowomir.utils.Minus
@@ -86,36 +87,32 @@ fun SettingsScreen(
     onGridTypeChange: (GridType) -> Unit,
     invertedControls: Boolean,
     onInvertedControlsChange: (Boolean) -> Unit,
+    showPermissionsScreen: Boolean,
+    onShowPermissionsScreenChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var showPermissionsScreen by rememberSaveable { mutableStateOf(false) }
-
     BackHandler(enabled = showPermissionsScreen) {
-        showPermissionsScreen = false
+        onShowPermissionsScreenChange(false)
     }
 
     if (showPermissionsScreen) {
         ManagePermissionsScreen(
-            onBack = { showPermissionsScreen = false },
+            onBack = { onShowPermissionsScreenChange(false) },
             modifier = modifier
         )
         return
     }
 
+    val scrollState = rememberScrollState()
+    ScreenScaffold(title = "Ustawienia", scrollState = scrollState, modifier = modifier) { innerPadding ->
     Column(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
+            .padding(innerPadding)
+            .verticalScroll(scrollState)
             .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Text(
-            text = "Ustawienia",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.semantics { heading() }
-        )
-
         SectionTitle("Ogólne")
 
         SettingsCard {
@@ -125,12 +122,12 @@ fun SettingsScreen(
                     .fillMaxWidth()
                     .clickable(
                         role = Role.Button,
-                        onClick = { showPermissionsScreen = true }
+                        onClick = { onShowPermissionsScreenChange(true) }
                     )
                     .clearAndSetSemantics {
                         contentDescription = description
                         role = Role.Button
-                        onClick(label = null) { showPermissionsScreen = true; true }
+                        onClick(label = null) { onShowPermissionsScreenChange(true); true }
                     }
                     .padding(12.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -272,6 +269,7 @@ fun SettingsScreen(
                 }
             }
         }
+    }
     }
 }
 

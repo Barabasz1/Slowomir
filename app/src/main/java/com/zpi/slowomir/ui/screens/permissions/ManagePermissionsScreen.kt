@@ -1,5 +1,7 @@
 package com.zpi.slowomir.ui.screens.permissions
 
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -14,8 +16,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.filled.Build
@@ -45,6 +45,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.zpi.slowomir.ui.components.BackIconButton
+import com.zpi.slowomir.ui.components.ScreenScaffold
 import com.zpi.slowomir.utils.PermissionUtils
 import kotlinx.coroutines.launch
 
@@ -159,19 +161,13 @@ fun ManagePermissionsScreen(
         )
     )
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(
+    val scrollState = rememberScrollState()
+    ScreenScaffold(
+        title = "Zarządzaj uprawnieniami",
+        scrollState = scrollState,
+        modifier = modifier.background(MaterialTheme.colorScheme.background),
+        navigationIcon = {
+            BackIconButton(
                 onClick = {
                     if (!isBackTriggered) {
                         isBackTriggered = true
@@ -189,24 +185,22 @@ fun ManagePermissionsScreen(
                     }
                 },
                 enabled = !isBackTriggered,
+                contentDescription = "Cofnij",
                 modifier = Modifier.graphicsLayer {
                     scaleX = backButtonScale.value
                     scaleY = backButtonScale.value
                 }
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                    contentDescription = "Cofnij"
-                )
-            }
-            Text(
-                text = "Zarządzaj uprawnieniami",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
             )
         }
-
-
+    ) { innerPadding ->
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(innerPadding)
+            .verticalScroll(scrollState)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
         Spacer(modifier = Modifier.height(2.dp))
         permissionsList.sortedBy { it.isGranted }.forEach { item ->
             PermissionCard(
@@ -226,5 +220,6 @@ fun ManagePermissionsScreen(
         }
 
         Spacer(modifier = Modifier.height(16.dp))
+    }
     }
 }

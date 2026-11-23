@@ -15,6 +15,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import com.zpi.slowomir.BuildConfig
 import com.zpi.slowomir.ui.screens.dev.DevScreen
 import com.zpi.slowomir.ui.screens.viewmodel.MainViewModel
@@ -37,6 +38,7 @@ fun MainScreen(
 ) {
     var selectedTab by rememberSaveable { mutableStateOf(AppTab.HOME) }
     var homeDestination by rememberSaveable { mutableStateOf<HomeDestination?>(null) }
+    var showPermissionsScreen by rememberSaveable { mutableStateOf(false) }
 
     val isOnboardingCompleted by mainViewModel.isOnboardingCompleted.collectAsState()
     val showIntroHighlight by mainViewModel.showIntroHighlight.collectAsState()
@@ -62,7 +64,6 @@ fun MainScreen(
         homeDestination = null
     }
 
-    // Obliczamy widoczne zakładki, by użyć ich w obu miejscach i zapobiec nawigacji
     val visibleTabs = AppTab.entries.filter { tab ->
         tab != AppTab.DEV || BuildConfig.DEBUG
     }
@@ -70,7 +71,7 @@ fun MainScreen(
     Scaffold(
         modifier = modifier.fillMaxSize(),
         bottomBar = {
-            NavigationBar {
+            if (!(selectedTab == AppTab.SETTINGS && showPermissionsScreen)) NavigationBar {
                 visibleTabs.forEach { tab ->
                     NavigationBarItem(
                         selected = selectedTab == tab,
@@ -81,7 +82,12 @@ fun MainScreen(
                             selectedTab = tab
                         },
                         icon = { Icon(tab.icon, contentDescription = tab.label) },
-                        label = { Text(tab.label) }
+                        label = {
+                            Text(
+                                text = tab.label,
+                                textAlign = TextAlign.Center
+                            )
+                        }
                     )
                 }
             }
@@ -128,6 +134,8 @@ fun MainScreen(
                 onGridTypeChange = { mainViewModel.setGridType(it) },
                 invertedControls = invertedControls,
                 onInvertedControlsChange = { mainViewModel.setInvertedControls(it) },
+                showPermissionsScreen = showPermissionsScreen,
+                onShowPermissionsScreenChange = { showPermissionsScreen = it },
                 modifier = contentModifier
             )
 
