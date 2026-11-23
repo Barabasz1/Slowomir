@@ -4,6 +4,12 @@ import com.zpi.slowomir.overlay.commands.Command
 import com.zpi.slowomir.overlay.commands.CommandArgument
 import com.zpi.slowomir.overlay.commands.CommandIdentifier
 import com.zpi.slowomir.overlay.commands.LogCommand
+import com.zpi.slowomir.overlay.commands.media.NextTrackCommand
+import com.zpi.slowomir.overlay.commands.media.PauseCommand
+import com.zpi.slowomir.overlay.commands.media.PlayCommand
+import com.zpi.slowomir.overlay.commands.media.PreviousTrackCommand
+import com.zpi.slowomir.overlay.commands.media.SkipBackwardCommand
+import com.zpi.slowomir.overlay.commands.media.SkipForwardCommand
 import com.zpi.slowomir.overlay.commands.media.VolumeDownCommand
 import com.zpi.slowomir.overlay.commands.media.VolumeUpCommand
 import com.zpi.slowomir.overlay.commands.navigation.*
@@ -71,6 +77,12 @@ class CommandResolver @Inject constructor(
     private val zoomOutNavCommandFactory: ZoomOutNavCommand.Factory,
     private val volumeUpCommandFactory: VolumeUpCommand.Factory,
     private val volumeDownCommandFactory: VolumeDownCommand.Factory,
+    private val playCommandFactory: PlayCommand.Factory,
+    private val pauseCommandFactory: PauseCommand.Factory,
+    private val skipForwardCommandFactory: SkipForwardCommand.Factory,
+    private val skipBackwardCommandFactory: SkipBackwardCommand.Factory,
+    private val nextTrackCommandFactory: NextTrackCommand.Factory,
+    private val previousTrackCommandFactory: PreviousTrackCommand.Factory,
     private val openAppCommandFactory: OpenAppCommand.Factory,
     private val gridEnableCommandFactory: GridEnableCommand.Factory,
     private val disableGridCommandFactory: GridDisableCommand.Factory,
@@ -182,6 +194,12 @@ class CommandResolver @Inject constructor(
         // Media
         CommandIdentifier.VOLUME_UP -> volumeUpCommandFactory.create()
         CommandIdentifier.VOLUME_DOWN -> volumeDownCommandFactory.create()
+        CommandIdentifier.MEDIA_PLAY -> playCommandFactory.create()
+        CommandIdentifier.MEDIA_PAUSE -> pauseCommandFactory.create()
+        CommandIdentifier.MEDIA_SKIP_FORWARD -> skipForwardCommandFactory.create()
+        CommandIdentifier.MEDIA_SKIP_BACKWARD -> skipBackwardCommandFactory.create()
+        CommandIdentifier.MEDIA_NEXT_TRACK -> nextTrackCommandFactory.create()
+        CommandIdentifier.MEDIA_PREVIOUS_TRACK -> previousTrackCommandFactory.create()
 
         // Macro
 

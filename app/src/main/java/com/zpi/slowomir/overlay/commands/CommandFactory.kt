@@ -29,7 +29,11 @@ import com.zpi.slowomir.overlay.commands.macro.RecordMacroCommand
 import com.zpi.slowomir.overlay.commands.macro.ShowMacroOverlayCommand
 import com.zpi.slowomir.overlay.commands.macro.StopMacroCommand
 import com.zpi.slowomir.overlay.commands.macro.ToggleMacroOverlayCommand
+import com.zpi.slowomir.overlay.commands.media.NextTrackCommand
 import com.zpi.slowomir.overlay.commands.media.PauseCommand
+import com.zpi.slowomir.overlay.commands.media.PreviousTrackCommand
+import com.zpi.slowomir.overlay.commands.media.SkipBackwardCommand
+import com.zpi.slowomir.overlay.commands.media.SkipForwardCommand
 import com.zpi.slowomir.overlay.commands.media.PlayCommand
 import com.zpi.slowomir.overlay.commands.media.VolumeDownCommand
 import com.zpi.slowomir.overlay.commands.media.VolumeUpCommand
@@ -149,6 +153,10 @@ class CommandFactory @Inject constructor(
     private val pauseCommandFactory: PauseCommand.Factory,
     private val playCommandFactory: PlayCommand.Factory,
     private val volumeDownCommandFactory: VolumeDownCommand.Factory,
+    private val skipForwardCommandFactory: SkipForwardCommand.Factory,
+    private val skipBackwardCommandFactory: SkipBackwardCommand.Factory,
+    private val nextTrackCommandFactory: NextTrackCommand.Factory,
+    private val previousTrackCommandFactory: PreviousTrackCommand.Factory,
     private val volumeUpCommandFactory: VolumeUpCommand.Factory,
     private val lockScreenCommandFactory: LockScreenCommand.Factory,
     private val navigateBackCommandFactory: NavigateBackCommand.Factory,
@@ -314,6 +322,18 @@ class CommandFactory @Inject constructor(
 
             VolumeUpCommand::class.java.name ->
                 volumeUpCommandFactory.create()
+
+            SkipForwardCommand::class.java.name ->
+                skipForwardCommandFactory.create()
+
+            SkipBackwardCommand::class.java.name ->
+                skipBackwardCommandFactory.create()
+
+            NextTrackCommand::class.java.name ->
+                nextTrackCommandFactory.create()
+
+            PreviousTrackCommand::class.java.name ->
+                previousTrackCommandFactory.create()
 
             LockScreenCommand::class.java.name ->
                 lockScreenCommandFactory.create()
