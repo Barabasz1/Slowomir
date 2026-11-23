@@ -41,7 +41,8 @@ enum class PermissionType {
     RECORD_AUDIO,
     READ_CONTACTS,
     CALL_PHONE,
-    ANSWER_PHONE_CALLS
+    ANSWER_PHONE_CALLS,
+    NOTIFICATIONS
 }
 
 data class PermissionItem(

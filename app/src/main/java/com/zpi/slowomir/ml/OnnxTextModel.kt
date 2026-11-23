@@ -8,6 +8,9 @@ import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.nio.LongBuffer
+import java.util.concurrent.locks.ReentrantReadWriteLock
+import kotlin.concurrent.read
+import kotlin.concurrent.write
 
 class ModelOutput(
     val encoding: TokenEncoding,
@@ -30,6 +33,7 @@ class OnnxTextModel(
     private val appContext = context.applicationContext
     private val ortEnv: OrtEnvironment = OrtEnvironment.getEnvironment()
     private val lifecycleLock = Any()
+    private val runLock = ReentrantReadWriteLock()
 
     @Volatile
     private var session: OrtSession? = null
@@ -49,7 +53,11 @@ class OnnxTextModel(
     }
 
     suspend fun infer(text: String): ModelOutput? = withContext(Dispatchers.Default) {
-        val sess = session ?: return@withContext null
+        runLock.read { inferLocked(text) }
+    }
+
+    private fun inferLocked(text: String): ModelOutput? {
+        val sess = session ?: return null
 
         val enc = tokenizer.encode(text, maxLength)
         val shape = longArrayOf(1, enc.ids.size.toLong())
@@ -78,15 +86,17 @@ class OnnxTextModel(
                 }
             }
         }
-        ModelOutput(enc, sequence, allTokens)
+        return ModelOutput(enc, sequence, allTokens)
     }
 
     fun release() {
-        synchronized(lifecycleLock) {
-            session?.close()
-            session = null
-            inputNames = emptySet()
-            tokenizer.close()
+        runLock.write {
+            synchronized(lifecycleLock) {
+                session?.close()
+                session = null
+                inputNames = emptySet()
+                tokenizer.close()
+            }
         }
     }
 

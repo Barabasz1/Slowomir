@@ -6,11 +6,14 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.os.IBinder
+import android.os.PowerManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
@@ -19,6 +22,7 @@ import com.zpi.slowomir.MainActivity
 import com.zpi.slowomir.R
 import com.zpi.slowomir.kws.KeywordSpotter
 import com.zpi.slowomir.kws.KwsResult
+import com.zpi.slowomir.utils.ScreenWaker
 import com.zpi.slowomir.voice.stt.SpeechRecognizer
 import com.zpi.slowomir.voice.stt.SttResult
 import com.zpi.slowomir.voice.stt.VoiceInput
@@ -31,6 +35,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -60,9 +65,13 @@ class VoiceRecognitionService : Service() {
     @Inject
     lateinit var stateSource: VoiceStateSource
 
+    @Inject
+    lateinit var screenWaker: ScreenWaker
+
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var engineJob: Job? = null
     private var watchJob: Job? = null
+    private var idleJob: Job? = null
 
     @Volatile
     private var stopReason: String? = null
@@ -84,9 +93,24 @@ class VoiceRecognitionService : Service() {
     @Inject
     lateinit var pickerOverlayManager: PickerOverlayManager
 
+    private val screenOffReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            if (intent.action == Intent.ACTION_SCREEN_OFF) {
+                Log.i(TAG, "Screen turned off, switching to keyword spotting")
+                sink.accept(VoiceInput.EnableKwsMode)
+            }
+        }
+    }
+
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
+        ContextCompat.registerReceiver(
+            this,
+            screenOffReceiver,
+            IntentFilter(Intent.ACTION_SCREEN_OFF),
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -126,6 +150,7 @@ class VoiceRecognitionService : Service() {
 
         stopReason = null
         engineJob = scope.launch { superviseEngines() }
+        idleJob = scope.launch { returnToKwsWhenIdle() }
         watchJob = scope.launch {
             stateSource.state
                 .dropWhile { it is VoiceState.Failed }
@@ -152,21 +177,43 @@ class VoiceRecognitionService : Service() {
             }
     }
 
+    /**
+     * Goes back to keyword spotting when nothing is said for [LISTENING_TIMEOUT_MS]
+     */
+    private suspend fun returnToKwsWhenIdle() {
+        stateSource.state.collectLatest { state ->
+            if (state is VoiceState.Listening) {
+                delay(LISTENING_TIMEOUT_MS)
+                Log.i(TAG, "No speech for ${LISTENING_TIMEOUT_MS}ms, back to keyword spotting")
+                sink.accept(VoiceInput.EnableKwsMode)
+            }
+        }
+    }
+
     private suspend fun runKws() {
         kws.initialize().onFailure {
             sink.accept(VoiceInput.EnableSpeechRecognition)
             return
         }
 
+        val cpuLock = getSystemService(PowerManager::class.java)
+            .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Slowomir:KeywordSpotting")
+            .apply { setReferenceCounted(false) }
+        cpuLock.acquire()
+
         try {
             kws.startListening().collect { result ->
                 when (result) {
-                    KwsResult.Detected -> sink.accept(VoiceInput.KeywordDetected)
+                    KwsResult.Detected -> {
+                        if (!screenWaker.isScreenOn()) screenWaker.wakeUp()
+                        sink.accept(VoiceInput.KeywordDetected)
+                    }
                     is KwsResult.Error -> sink.accept(VoiceInput.EnableSpeechRecognition)
                 }
             }
         } finally {
             kws.stopListening()
+            if (cpuLock.isHeld) cpuLock.release()
         }
     }
 
@@ -221,6 +268,7 @@ class VoiceRecognitionService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        unregisterReceiver(screenOffReceiver)
         sink.accept(VoiceInput.ServiceStopped(stopReason))
 
         val job = engineJob
@@ -280,6 +328,7 @@ class VoiceRecognitionService : Service() {
         const val ACTION_STOP = "com.zpi.slowomir.action.STOP_VOICE_SERVICE"
         private const val CHANNEL_ID = "slowomir_voice_recognition_channel"
         private const val NOTIFICATION_ID = 1002
+        private const val LISTENING_TIMEOUT_MS = 30_000L
 
         fun start(context: Context) {
             val intent = Intent(context, VoiceRecognitionService::class.java).apply {

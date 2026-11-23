@@ -45,11 +45,11 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.transformLatest
@@ -80,6 +80,7 @@ class VoiceOverlayManager @Inject constructor(
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var trackingJob: Job? = null
+    private var keepScreenOnJob: Job? = null
     private var applied: OverlayPlacement? = null
     private val appliedSide: OverlaySide get() = applied?.side ?: OverlaySide.TOP
     private val appliedOffset: Int get() = applied?.offset ?: 0
@@ -129,11 +130,21 @@ class VoiceOverlayManager @Inject constructor(
     override fun onViewAttached(view: View) {
         applied = null
         trackFocusedField()
+        keepScreenOnJob?.cancel()
+        keepScreenOnJob = scope.launch {
+            combine(state, voiceStateSource.state) { overlay, voice ->
+                overlay.keepsScreenOn() || voice.isTextSession()
+            }
+                .distinctUntilChanged()
+                .collect { keepOn -> withContext(Dispatchers.Main.immediate) { setKeepScreenOn(keepOn) } }
+        }
     }
 
     override fun onViewDetached(view: View) {
         trackingJob?.cancel()
         trackingJob = null
+        keepScreenOnJob?.cancel()
+        keepScreenOnJob = null
         lifecycleOwner?.onDestroy()
         lifecycleOwner = null
     }
@@ -158,6 +169,18 @@ class VoiceOverlayManager @Inject constructor(
                     .settled(SETTLE_MS.milliseconds, MAX_SETTLE_MS.milliseconds)
                     .collect { if (refresh() && !state.value.isHidden) delay(MIN_DWELL_MS.milliseconds) }
             }
+        }
+    }
+
+    private fun OverlayState.keepsScreenOn() = !isHidden && this !is OverlayState.ListeningForCommand
+
+    private fun VoiceState.isTextSession() =
+        this is VoiceState.Dictating || this is VoiceState.Editing || this is VoiceState.TextProcessing
+
+    private fun setKeepScreenOn(keepOn: Boolean) {
+        updateLayout {
+            flags = if (keepOn) flags or WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+            else flags and WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON.inv()
         }
     }
 

@@ -65,11 +65,6 @@ class VoiceSessionManager @Inject constructor(
         scope.launch {
             for (input in inbox) handle(input)
         }
-        scope.launch {
-            intentResolver.initialize().onFailure {
-                Log.w(TAG, "Intent model unavailable, using the rule-based parser only", it)
-            }
-        }
     }
 
     private suspend fun handle(input: SessionEvent) {
@@ -101,6 +96,7 @@ class VoiceSessionManager @Inject constructor(
             Log.d(TAG, "State transition: $oldState + $input -> $newState")
             onStateChanged(newState)
             updatePunctuationModel(oldState, newState)
+            updateIntentModel(oldState, newState)
             if (newState.isIdle()) mediator.handleEvent(OverlayEvent.SessionIdle)
         }
     }
@@ -130,6 +126,20 @@ class VoiceSessionManager @Inject constructor(
             }
 
             wasDictating && !isDictating -> punctuationRestorer.release()
+        }
+    }
+
+    private fun updateIntentModel(oldState: VoiceState, newState: VoiceState) {
+        val wasIdle = oldState.isIdle()
+        val isIdle = newState.isIdle()
+        when {
+            wasIdle && !isIdle -> scope.launch {
+                intentResolver.initialize().onFailure {
+                    Log.w(TAG, "Intent model unavailable, using the rule-based parser only", it)
+                }
+            }
+
+            !wasIdle && isIdle -> intentResolver.release()
         }
     }
 
@@ -257,6 +267,7 @@ class VoiceSessionManager @Inject constructor(
      * extract the argument that command needs.
      */
     private suspend fun resolveWithModel(text: String): VoiceIntent? {
+        intentResolver.initialize().onFailure { return null }
         val result = intentResolver.resolve(normalizer.normalize(text))
         if (result !is IntentResolution.Resolved) {
             Log.d(TAG, "Model could not resolve '$text': $result")
