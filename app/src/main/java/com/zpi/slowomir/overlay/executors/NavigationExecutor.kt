@@ -1,6 +1,7 @@
 package com.zpi.slowomir.overlay.executors
 
 import android.accessibilityservice.AccessibilityService
+import android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_ACCESSIBILITY_ALL_APPS
 import android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK
 import android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_HOME
 import android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN
@@ -90,6 +91,15 @@ class NavigationExecutor(
      */
     fun navigateRecent(): Boolean {
         return service.performGlobalAction(GLOBAL_ACTION_RECENTS)
+    }
+
+    /**
+     * Opens the launcher's list of all installed apps (app drawer / app library).
+     *
+     * @return `true` if the launcher handled the request.
+     */
+    fun navigateAppLibrary(): Boolean {
+        return service.performGlobalAction(GLOBAL_ACTION_ACCESSIBILITY_ALL_APPS)
     }
 
     /**

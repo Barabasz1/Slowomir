@@ -1,5 +1,7 @@
 package com.zpi.slowomir.ui.screens.home
 
+import com.zpi.slowomir.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.MaterialTheme
@@ -14,7 +16,7 @@ fun CommandsScreen(
     modifier: Modifier = Modifier,
 ) {
     InfoScreenLayout(
-        title = "Lista komend",
+        title = stringResource(R.string.commands_title),
         onBack = onBack,
         modifier = modifier,
     ) {

@@ -1,5 +1,9 @@
 package com.zpi.slowomir.ui.screens.settings
 
+import com.zpi.slowomir.R
+import androidx.compose.ui.res.stringResource
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -15,13 +19,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
@@ -59,6 +61,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.zpi.slowomir.overlay.ui.grid.GridType
+import com.zpi.slowomir.ui.components.ScreenScaffold
 import com.zpi.slowomir.ui.screens.permissions.ManagePermissionsScreen
 import com.zpi.slowomir.utils.PreferencesManager
 import com.zpi.slowomir.utils.Minus
@@ -86,51 +89,51 @@ fun SettingsScreen(
     onGridTypeChange: (GridType) -> Unit,
     invertedControls: Boolean,
     onInvertedControlsChange: (Boolean) -> Unit,
+    showPermissionsScreen: Boolean,
+    onShowPermissionsScreenChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var showPermissionsScreen by rememberSaveable { mutableStateOf(false) }
-
     BackHandler(enabled = showPermissionsScreen) {
-        showPermissionsScreen = false
+        onShowPermissionsScreenChange(false)
     }
 
     if (showPermissionsScreen) {
         ManagePermissionsScreen(
-            onBack = { showPermissionsScreen = false },
+            onBack = { onShowPermissionsScreenChange(false) },
             modifier = modifier
         )
         return
     }
 
+    val scrollState = rememberScrollState()
+    val stateOn = stringResource(R.string.settings_state_on)
+    val stateOff = stringResource(R.string.settings_state_off)
+    val overlayDescription = stringResource(R.string.settings_a11y_option, Idx.OVERLAY, stringResource(R.string.settings_show_overlay))
+    val invertedDescription = stringResource(R.string.settings_a11y_option, Idx.OVERLAY, stringResource(R.string.settings_inverted_controls))
+    ScreenScaffold(title = stringResource(R.string.settings_title), scrollState = scrollState, modifier = modifier) { innerPadding ->
     Column(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
+            .padding(innerPadding)
+            .verticalScroll(scrollState)
             .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Text(
-            text = "Ustawienia",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.semantics { heading() }
-        )
-
-        SectionTitle("Ogólne")
+        SectionTitle(stringResource(R.string.settings_section_general))
 
         SettingsCard {
-            val description = "Opcja ${Idx.PERMISSIONS}: Zarządzaj uprawnieniami"
+            val description = stringResource(R.string.settings_a11y_option, Idx.PERMISSIONS, stringResource(R.string.permissions_manage_title))
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable(
                         role = Role.Button,
-                        onClick = { showPermissionsScreen = true }
+                        onClick = { onShowPermissionsScreenChange(true) }
                     )
                     .clearAndSetSemantics {
                         contentDescription = description
                         role = Role.Button
-                        onClick(label = null) { showPermissionsScreen = true; true }
+                        onClick(label = null) { onShowPermissionsScreenChange(true); true }
                     }
                     .padding(12.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -141,7 +144,7 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.width(16.dp))
                 Text(
                     modifier = Modifier.weight(1f),
-                    text = "Zarządzaj uprawnieniami",
+                    text = stringResource(R.string.permissions_manage_title),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -163,8 +166,8 @@ fun SettingsScreen(
                         onValueChange = onOverlayEnabledChange
                     )
                     .clearAndSetSemantics {
-                        contentDescription = "Opcja ${Idx.OVERLAY}: Pokaż nakładkę głosową"
-                        stateDescription = if (isOverlayEnabled) "Włączona" else "Wyłączona"
+                        contentDescription = overlayDescription
+                        stateDescription = if (isOverlayEnabled) stateOn else stateOff
                         role = Role.Switch
                         onClick(label = null) { onOverlayEnabledChange(!isOverlayEnabled); true }
                     }
@@ -177,7 +180,7 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.width(16.dp))
                 Text(
                     modifier = Modifier.weight(1f),
-                    text = "Pokaż nakładkę głosową",
+                    text = stringResource(R.string.settings_show_overlay),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -187,7 +190,7 @@ fun SettingsScreen(
             }
         }
 
-        SectionTitle("Dotyk")
+        SectionTitle(stringResource(R.string.settings_section_touch))
 
         SettingsCard {
             Row(
@@ -199,8 +202,8 @@ fun SettingsScreen(
                         onValueChange = onInvertedControlsChange
                     )
                     .clearAndSetSemantics {
-                        contentDescription = "Opcja ${Idx.OVERLAY}: odwrócone sterowanie"
-                        stateDescription = if (isOverlayEnabled) "Włączona" else "Wyłączona"
+                        contentDescription = invertedDescription
+                        stateDescription = if (isOverlayEnabled) stateOn else stateOff
                         role = Role.Switch
                         onClick(label = null) { onOverlayEnabledChange(!isOverlayEnabled); true }
                     }
@@ -213,7 +216,7 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.width(16.dp))
                 Text(
                     modifier = Modifier.weight(1f),
-                    text = "Odwrócone sterowanie",
+                    text = stringResource(R.string.settings_inverted_controls),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -223,7 +226,7 @@ fun SettingsScreen(
             }
         }
 
-        SectionTitle("Siatka")
+        SectionTitle(stringResource(R.string.settings_section_grid))
 
         SettingsCard {
             Column(
@@ -231,14 +234,14 @@ fun SettingsScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Stepper(
-                    title = "Liczba wierszy",
+                    title = stringResource(R.string.settings_grid_rows),
                     value = gridRows,
                     minusIndex = Idx.ROWS_MINUS,
                     plusIndex = Idx.ROWS_PLUS,
                     onValueChange = onGridRowsChange
                 )
                 Stepper(
-                    title = "Liczba kolumn",
+                    title = stringResource(R.string.settings_grid_cols),
                     value = gridCols,
                     minusIndex = Idx.COLS_MINUS,
                     plusIndex = Idx.COLS_PLUS,
@@ -254,7 +257,7 @@ fun SettingsScreen(
                     .selectableGroup()
             ) {
                 Text(
-                    text = "Typ siatki",
+                    text = stringResource(R.string.settings_grid_type),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier
@@ -273,12 +276,14 @@ fun SettingsScreen(
             }
         }
     }
+    }
 }
 
+@Composable
 private fun GridType.label(): String = when (this) {
-    GridType.SINGLE -> "Jednolita"
-    GridType.DASHED -> "Przerywana"
-    GridType.CONTRAST -> "Kontrastowa"
+    GridType.SINGLE -> stringResource(R.string.settings_grid_type_single)
+    GridType.DASHED -> stringResource(R.string.settings_grid_type_dashed)
+    GridType.CONTRAST -> stringResource(R.string.settings_grid_type_contrast)
 }
 
 @Composable
@@ -350,14 +355,16 @@ private fun ChoiceRow(
     onSelect: () -> Unit,
     trailing: (@Composable () -> Unit)? = null
 ) {
+    val description = stringResource(R.string.settings_a11y_option, index, label)
+    val stateText = if (selected) stringResource(R.string.settings_state_selected) else stringResource(R.string.settings_state_not_selected)
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .defaultMinSize(minHeight = 44.dp)
             .selectable(selected = selected, role = Role.RadioButton, onClick = onSelect)
             .clearAndSetSemantics {
-                contentDescription = "Opcja $index: $label"
-                stateDescription = if (selected) "Wybrana" else "Niewybrana"
+                contentDescription = description
+                stateDescription = stateText
                 role = Role.RadioButton
                 onClick(label = null) { onSelect(); true }
             }
@@ -387,6 +394,7 @@ private fun Stepper(
 ) {
     val min = PreferencesManager.GRID_MIN
     val max = PreferencesManager.GRID_MAX
+    val valueDescription = stringResource(R.string.settings_a11y_value, title, value)
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -399,7 +407,7 @@ private fun Stepper(
                 fontWeight = FontWeight.SemiBold
             )
             Text(
-                text = "Od $min do $max",
+                text = stringResource(R.string.settings_range, min, max),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -412,7 +420,7 @@ private fun Stepper(
             StepperButton(
                 index = minusIndex,
                 icon = Icons.Filled.Minus,
-                description = "Opcja $minusIndex: zmniejsz – $title, obecnie $value",
+                description = stringResource(R.string.settings_a11y_decrease, minusIndex, title, value),
                 enabled = value > min,
                 onClick = { onValueChange(value - 1) }
             )
@@ -428,14 +436,14 @@ private fun Stepper(
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.semantics { contentDescription = "$title: $value" }
+                    modifier = Modifier.semantics { contentDescription = valueDescription }
                 )
             }
 
             StepperButtonReverse(
                 index = plusIndex,
                 icon = Icons.Filled.Add,
-                description = "Opcja $plusIndex: zwiększ – $title, obecnie $value",
+                description = stringResource(R.string.settings_a11y_increase, plusIndex, title, value),
                 enabled = value < max,
                 onClick = { onValueChange(value + 1) }
             )
