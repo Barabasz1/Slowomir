@@ -117,14 +117,19 @@ class MediaExecutor(private val context: Context) {
     }
 
     /**
-     * Skips the media forward by [SEEK_STEP_MS].
+     * Skips the media forward by [seconds] (defaults to [SEEK_STEP_MS]).
      */
-    fun skipForward(): Boolean = seekBy(SEEK_STEP_MS, KeyEvent.KEYCODE_MEDIA_FAST_FORWARD)
+    fun skipForward(seconds: Int? = null): Boolean =
+        seekBy(stepMs(seconds), KeyEvent.KEYCODE_MEDIA_FAST_FORWARD)
 
     /**
-     * Skips the media backward by [SEEK_STEP_MS].
+     * Skips the media backward by [seconds] (defaults to [SEEK_STEP_MS]).
      */
-    fun skipBackward(): Boolean = seekBy(-SEEK_STEP_MS, KeyEvent.KEYCODE_MEDIA_REWIND)
+    fun skipBackward(seconds: Int? = null): Boolean =
+        seekBy(-stepMs(seconds), KeyEvent.KEYCODE_MEDIA_REWIND)
+
+    private fun stepMs(seconds: Int?): Long =
+        if (seconds != null && seconds > 0) seconds * 1_000L else SEEK_STEP_MS
 
     /**
      * Skips to the next track.

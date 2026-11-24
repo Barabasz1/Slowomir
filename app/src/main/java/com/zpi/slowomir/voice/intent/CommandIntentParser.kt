@@ -59,9 +59,31 @@ class CommandIntentParser @Inject constructor(
         option = RegexOption.IGNORE_CASE
     )
 
+    private val skipForwardSecondsRegex = Regex(
+        pattern = """^(?:przewiń|przeskocz|przesuń\s+odtwarzanie)\s+(?:do\s+przodu|naprzód|w\s+przód)\s+o\s+(\d+)(?:\s+(?:sekund\w*|s))?$""",
+        option = RegexOption.IGNORE_CASE
+    )
+
+    private val skipBackwardSecondsRegex = Regex(
+        pattern = """^(?:(?:przewiń|przeskocz|przesuń\s+odtwarzanie)\s+(?:do\s+tyłu|wstecz)|cofnij(?:\s+nagranie)?)\s+o\s+(\d+)(?:\s+(?:sekund\w*|s))?$""",
+        option = RegexOption.IGNORE_CASE
+    )
+
     fun parse(rawInput: String): VoiceIntent? {
         val text = normalizer.normalize(rawInput)
         if (text.isBlank()) return null
+
+        // 0. Media seek with an amount of seconds
+        skipForwardSecondsRegex.find(text)?.let { match ->
+            match.groupValues[1].toIntOrNull()?.let { num ->
+                return VoiceIntent(CommandIdentifier.MEDIA_SKIP_FORWARD, CommandArgument.Number(num), rawInput)
+            }
+        }
+        skipBackwardSecondsRegex.find(text)?.let { match ->
+            match.groupValues[1].toIntOrNull()?.let { num ->
+                return VoiceIntent(CommandIdentifier.MEDIA_SKIP_BACKWARD, CommandArgument.Number(num), rawInput)
+            }
+        }
 
         // 1. Two-number patterns (CELL_SWIPE)
         swipeTwoNumbersRegex.find(text)?.let { match ->

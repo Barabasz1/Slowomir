@@ -324,10 +324,10 @@ class CommandFactory @Inject constructor(
                 volumeUpCommandFactory.create()
 
             SkipForwardCommand::class.java.name ->
-                skipForwardCommandFactory.create()
+                skipForwardCommandFactory.create(arguments.intOrNull("seconds"))
 
             SkipBackwardCommand::class.java.name ->
-                skipBackwardCommandFactory.create()
+                skipBackwardCommandFactory.create(arguments.intOrNull("seconds"))
 
             NextTrackCommand::class.java.name ->
                 nextTrackCommandFactory.create()
@@ -528,6 +528,14 @@ class CommandFactory @Inject constructor(
             is Number -> v.toInt()
             is String -> v.toIntOrNull() ?: default
             else -> default
+        }
+    }
+
+    private fun Map<String, Any?>.intOrNull(key: String): Int? {
+        return when (val v = this[key]) {
+            is Number -> v.toInt()
+            is String -> v.toIntOrNull()
+            else -> null
         }
     }
 

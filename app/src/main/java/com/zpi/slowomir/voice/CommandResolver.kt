@@ -196,8 +196,8 @@ class CommandResolver @Inject constructor(
         CommandIdentifier.VOLUME_DOWN -> volumeDownCommandFactory.create()
         CommandIdentifier.MEDIA_PLAY -> playCommandFactory.create()
         CommandIdentifier.MEDIA_PAUSE -> pauseCommandFactory.create()
-        CommandIdentifier.MEDIA_SKIP_FORWARD -> skipForwardCommandFactory.create()
-        CommandIdentifier.MEDIA_SKIP_BACKWARD -> skipBackwardCommandFactory.create()
+        CommandIdentifier.MEDIA_SKIP_FORWARD -> skipForwardCommandFactory.create(intent.intArgument())
+        CommandIdentifier.MEDIA_SKIP_BACKWARD -> skipBackwardCommandFactory.create(intent.intArgument())
         CommandIdentifier.MEDIA_NEXT_TRACK -> nextTrackCommandFactory.create()
         CommandIdentifier.MEDIA_PREVIOUS_TRACK -> previousTrackCommandFactory.create()
 
