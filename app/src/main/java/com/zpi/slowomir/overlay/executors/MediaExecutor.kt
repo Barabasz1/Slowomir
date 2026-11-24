@@ -1,6 +1,5 @@
 package com.zpi.slowomir.overlay.executors
 
-import android.accessibilityservice.AccessibilityService
 import android.content.ComponentName
 import android.content.Context
 import android.media.AudioManager
@@ -16,20 +15,20 @@ import com.zpi.slowomir.overlay.services.MediaListenerService
 /**
  * Handles media-related actions.
  */
-class MediaExecutor(private val service: AccessibilityService) {
+class MediaExecutor(private val context: Context) {
 
     private val audioManager: AudioManager?
-        get() = service.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+        get() = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
 
     private fun activeController(): MediaController? {
-        val manager = service.getSystemService(Context.MEDIA_SESSION_SERVICE) as? MediaSessionManager
+        val manager = context.getSystemService(Context.MEDIA_SESSION_SERVICE) as? MediaSessionManager
             ?: return null
         return try {
-            val sessions = manager.getActiveSessions(ComponentName(service, MediaListenerService::class.java))
+            val sessions = manager.getActiveSessions(ComponentName(context, MediaListenerService::class.java))
             sessions.firstOrNull { it.playbackState?.state == PlaybackState.STATE_PLAYING }
                 ?: sessions.firstOrNull()
         } catch (e: SecurityException) {
-            Log.w(TAG, "Notification access not granted, using media keys", e)
+            Log.w(TAG, "Notification access not granted, using media keys (${e.message})")
             null
         }
     }

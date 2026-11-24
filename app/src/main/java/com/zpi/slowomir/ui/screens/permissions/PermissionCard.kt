@@ -45,7 +45,8 @@ enum class PermissionType(@StringRes val titleRes: Int) {
     READ_CONTACTS(R.string.permission_contacts),
     CALL_PHONE(R.string.permission_call_phone),
     ANSWER_PHONE_CALLS(R.string.permission_answer_calls),
-    NOTIFICATIONS(R.string.permission_notifications)
+    NOTIFICATIONS(R.string.permission_notifications),
+    NOTIFICATION_ACCESS(R.string.permission_notification_access)
 }
 
 data class PermissionItem(

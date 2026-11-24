@@ -8,6 +8,7 @@ import android.content.Context
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
+import android.os.SystemClock
 import android.util.Log
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -215,6 +216,7 @@ class KeywordSpotterManager @Inject constructor(
                     break
                 }
                 if (n == 0) continue
+                val chunkReadAt = SystemClock.elapsedRealtimeNanos()
 
                 System.arraycopy(window, n, window, 0, WINDOW_SAMPLES - n)
                 System.arraycopy(chunk, 0, window, WINDOW_SAMPLES - n, n)

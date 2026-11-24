@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Call
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
@@ -54,6 +55,7 @@ fun ManagePermissionsScreen(
     var hasCall by remember { mutableStateOf(PermissionUtils.isPermissionGranted(context, Manifest.permission.CALL_PHONE)) }
     var hasAnswerCalls by remember { mutableStateOf(PermissionUtils.isPermissionGranted(context, Manifest.permission.ANSWER_PHONE_CALLS)) }
     var hasNotifications by remember { mutableStateOf(PermissionUtils.isPermissionGranted(context, Manifest.permission.POST_NOTIFICATIONS)) }
+    var hasNotificationAccess by remember { mutableStateOf(PermissionUtils.isNotificationListenerEnabled(context)) }
 
     fun refreshPermissions() {
         hasAccessibility = PermissionUtils.isAccessibilityServiceEnabled(context)
@@ -63,6 +65,7 @@ fun ManagePermissionsScreen(
         hasCall = PermissionUtils.isPermissionGranted(context, Manifest.permission.CALL_PHONE)
         hasAnswerCalls = PermissionUtils.isPermissionGranted(context, Manifest.permission.ANSWER_PHONE_CALLS)
         hasNotifications = PermissionUtils.isPermissionGranted(context, Manifest.permission.POST_NOTIFICATIONS)
+        hasNotificationAccess = PermissionUtils.isNotificationListenerEnabled(context)
     }
 
     DisposableEffect(lifecycleOwner) {
@@ -137,6 +140,11 @@ fun ManagePermissionsScreen(
             isGranted = hasNotifications,
             icon = Icons.Filled.Notifications,
             manifestPermission = Manifest.permission.POST_NOTIFICATIONS
+        ),
+        PermissionItem(
+            type = PermissionType.NOTIFICATION_ACCESS,
+            isGranted = hasNotificationAccess,
+            icon = Icons.Filled.Info
         )
     )
 
@@ -173,6 +181,7 @@ fun ManagePermissionsScreen(
                         PermissionType.CALL_PHONE -> callLauncher.launch(Manifest.permission.CALL_PHONE)
                         PermissionType.ANSWER_PHONE_CALLS -> answerCallsLauncher.launch(Manifest.permission.ANSWER_PHONE_CALLS)
                         PermissionType.NOTIFICATIONS -> notificationsLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        PermissionType.NOTIFICATION_ACCESS -> PermissionUtils.openNotificationListenerSettings(context)
                     }
                 }
             )

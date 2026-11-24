@@ -14,6 +14,7 @@ import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.os.IBinder
 import android.os.PowerManager
+import android.os.SystemClock
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
@@ -22,6 +23,8 @@ import com.zpi.slowomir.MainActivity
 import com.zpi.slowomir.R
 import com.zpi.slowomir.kws.KeywordSpotter
 import com.zpi.slowomir.kws.KwsResult
+import com.zpi.slowomir.overlay.executors.MediaExecutor
+import com.zpi.slowomir.utils.MediaPlaybackMonitor
 import com.zpi.slowomir.utils.ScreenWaker
 import com.zpi.slowomir.voice.stt.SpeechRecognizer
 import com.zpi.slowomir.voice.stt.SttResult
@@ -72,6 +75,14 @@ class VoiceRecognitionService : Service() {
     private var engineJob: Job? = null
     private var watchJob: Job? = null
     private var idleJob: Job? = null
+
+    @Inject
+    lateinit var mediaPlaybackMonitor: MediaPlaybackMonitor
+
+    private var mediaJob: Job? = null
+
+    // Needs no accessibility service: it only uses the context to reach the audio system services
+    private val mediaExecutor by lazy { MediaExecutor(applicationContext) }
 
     @Volatile
     private var stopReason: String? = null
@@ -151,6 +162,7 @@ class VoiceRecognitionService : Service() {
         stopReason = null
         engineJob = scope.launch { superviseEngines() }
         idleJob = scope.launch { returnToKwsWhenIdle() }
+        mediaJob = scope.launch { returnToKwsWhenMediaStarts() }
         watchJob = scope.launch {
             stateSource.state
                 .dropWhile { it is VoiceState.Failed }
@@ -190,6 +202,15 @@ class VoiceRecognitionService : Service() {
         }
     }
 
+    private suspend fun returnToKwsWhenMediaStarts() {
+        mediaPlaybackMonitor.isPlaying.collect { playing ->
+            if (playing && stateSource.state.value.engine() == Engine.STT) {
+                Log.i(TAG, "Media started playing, switching to keyword spotting")
+                sink.accept(VoiceInput.EnableKwsMode)
+            }
+        }
+    }
+
     private suspend fun runKws() {
         kws.initialize().onFailure {
             sink.accept(VoiceInput.EnableSpeechRecognition)
@@ -206,6 +227,10 @@ class VoiceRecognitionService : Service() {
                 when (result) {
                     KwsResult.Detected -> {
                         if (!screenWaker.isScreenOn()) screenWaker.wakeUp()
+                        if (mediaPlaybackMonitor.isPlayingNow()) {
+                            Log.i(TAG, "Keyword detected while media is playing, pausing it")
+                            mediaExecutor.pause()
+                        }
                         sink.accept(VoiceInput.KeywordDetected)
                     }
                     is KwsResult.Error -> sink.accept(VoiceInput.EnableSpeechRecognition)

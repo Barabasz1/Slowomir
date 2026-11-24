@@ -226,6 +226,7 @@ fun OnboardingPermissionsScreen(
                                 PermissionType.CALL_PHONE -> callLauncher.launch(Manifest.permission.CALL_PHONE)
                                 PermissionType.ANSWER_PHONE_CALLS -> answerCallsLauncher.launch(Manifest.permission.ANSWER_PHONE_CALLS)
                                 PermissionType.NOTIFICATIONS -> notificationsLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                PermissionType.NOTIFICATION_ACCESS -> PermissionUtils.openNotificationListenerSettings(context)
                             }
                         }
                     )
