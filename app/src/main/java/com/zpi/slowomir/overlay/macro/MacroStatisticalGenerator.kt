@@ -36,9 +36,12 @@ class MacroStatisticalGenerator @Inject constructor(
         val command: Command,
     )
 
+    private data class SequenceKey(val start: Position, val signatures: List<String>)
+
     suspend fun generateMacros(
         currentPackageName: String? = null,
         limit: Int = DEFAULT_LIMIT,
+        anyPosition: Boolean = false,
     ): List<Macro> {
         val launcherPackages = getLauncherPackages()
         val targetPosition = resolveCurrentPosition(currentPackageName, launcherPackages)
@@ -46,58 +49,60 @@ class MacroStatisticalGenerator @Inject constructor(
         if (events.isEmpty()) return emptyList()
 
         val sessions = splitIntoSessions(events)
-        val frequencyBySignature = linkedMapOf<List<String>, Int>()
-        val commandsBySignature = linkedMapOf<List<String>, List<Command>>()
+        val frequency = linkedMapOf<SequenceKey, Int>()
+        val commands = linkedMapOf<SequenceKey, List<Command>>()
 
         for (session in sessions) {
             val resolvedSession = resolveSessionEvents(session, launcherPackages)
             for (startIdx in resolvedSession.indices) {
-                if (resolvedSession[startIdx].positionBefore != targetPosition) continue
+                val start = resolvedSession[startIdx].positionBefore
+                if (!anyPosition && start != targetPosition) continue
 
                 val maxLen = minOf(MAX_SEQUENCE_LENGTH, resolvedSession.size - startIdx)
                 for (len in MIN_SEQUENCE_LENGTH..maxLen) {
                     val slice = resolvedSession.subList(startIdx, startIdx + len)
-                    val signatures = slice.map { it.signature }
-                    frequencyBySignature[signatures] = (frequencyBySignature[signatures] ?: 0) + 1
-                    commandsBySignature.putIfAbsent(signatures, slice.map { it.command })
+                    val key = SequenceKey(start, slice.map { it.signature })
+                    frequency[key] = (frequency[key] ?: 0) + 1
+                    commands.putIfAbsent(key, slice.map { it.command })
                 }
             }
         }
 
-        if (frequencyBySignature.isEmpty()) return emptyList()
+        if (frequency.isEmpty()) return emptyList()
 
-        val hasNonTrivial = frequencyBySignature.keys.any { it.toSet().size > 1 }
-        val candidates = frequencyBySignature.entries
-            .filter { (seq, count) ->
-                count >= MIN_FREQUENCY && (!hasNonTrivial || seq.toSet().size > 1)
-            }
-            .filterNot { (seq, count) ->
-                frequencyBySignature.any { (otherSeq, otherCount) ->
-                    otherSeq.size > seq.size &&
-                            otherCount == count &&
-                            otherSeq.subList(0, seq.size) == seq
-                }
+        val hasNonTrivial = frequency.keys.any { it.signatures.toSet().size > 1 }
+        val ranked = frequency.entries
+            .filter { (key, count) ->
+                count >= MIN_FREQUENCY && (!hasNonTrivial || key.signatures.toSet().size > 1)
             }
             .sortedWith(
-                compareByDescending<MutableMap.MutableEntry<List<String>, Int>> {
-                    it.value
-                }.thenByDescending { it.key.size }
+                compareByDescending<Map.Entry<SequenceKey, Int>> { it.value }
+                    .thenByDescending { it.key.signatures.size }
             )
-            .take(limit)
 
-        val startingPoint = when (targetPosition) {
-            is Position.Home -> MacroStartingPoint.Home
-            is Position.App -> MacroStartingPoint.App(targetPosition.packageName)
+        val chosen = mutableListOf<SequenceKey>()
+        for ((key, _) in ranked) {
+            if (chosen.none { isNearDuplicate(it, key) }) chosen.add(key)
+            if (chosen.size == limit) break
         }
 
-        return candidates.mapNotNull { (sig, _) ->
-            val commands = commandsBySignature[sig] ?: return@mapNotNull null
+        return chosen.mapNotNull { key ->
+            val sequence = commands[key] ?: return@mapNotNull null
             Macro(
-                commands = commands,
-                startingPoint = startingPoint,
-                serializedCommands = commands.map { commandFactory.serialize(it) },
+                commands = sequence,
+                startingPoint = when (val start = key.start) {
+                    is Position.Home -> MacroStartingPoint.Home
+                    is Position.App -> MacroStartingPoint.App(start.packageName)
+                },
+                serializedCommands = sequence.map { commandFactory.serialize(it) },
             )
         }
+    }
+
+    private fun isNearDuplicate(a: SequenceKey, b: SequenceKey): Boolean {
+        if (a.start != b.start) return false
+        val (short, long) = if (a.signatures.size <= b.signatures.size) a.signatures to b.signatures else b.signatures to a.signatures
+        return (0..long.size - short.size).any { offset -> long.subList(offset, offset + short.size) == short }
     }
 
     private fun resolveSessionEvents(
@@ -217,7 +222,7 @@ class MacroStatisticalGenerator @Inject constructor(
 
     companion object {
         private const val MIN_SEQUENCE_LENGTH = 2
-        private const val MAX_SEQUENCE_LENGTH = 6
+        private const val MAX_SEQUENCE_LENGTH = 4
         private const val MIN_FREQUENCY = 1
         private const val SESSION_TIMEOUT_MS = 60_000L
         private const val DEFAULT_LIMIT = 5

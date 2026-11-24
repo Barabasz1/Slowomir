@@ -14,6 +14,9 @@ class SubtractRowGridCommand @AssistedInject constructor(
     private val gridExecutorProvider: Provider<GridExecutor?>,
     @Assisted("num") private val num: Int = 1
     ) : Command {
+    override val arguments: Map<String, Any?>
+        get() = mapOf("num" to num)
+
 
     override fun execute(): CommandResult {
         val gridExecutor = gridExecutorProvider.get()

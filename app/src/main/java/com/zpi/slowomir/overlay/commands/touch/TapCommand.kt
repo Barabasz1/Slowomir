@@ -28,6 +28,9 @@ class TapCommand @AssistedInject constructor(
     @Assisted("y") private val y: Float,
 ) : Command, ActionLoggable {
 
+    override val arguments: Map<String, Any?>
+        get() = mapOf("x" to x, "y" to y)
+
     private var loggedAction: ActionDescriptor? = null
 
     override fun execute(): CommandResult {

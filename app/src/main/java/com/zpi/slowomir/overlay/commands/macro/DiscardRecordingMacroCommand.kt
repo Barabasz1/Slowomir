@@ -21,7 +21,8 @@ class DiscardRecordingMacroCommand @AssistedInject constructor(
     }
 
     override fun canExecute(context: OverlayContext): Boolean {
-        return true
+        val executor = macroExecutorProvider.get() ?: return false
+        return executor.isRecording() || executor.isAwaitingRecordingConfirmation()
     }
 
     @AssistedFactory

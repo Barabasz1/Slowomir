@@ -32,6 +32,8 @@ class MacroSupplier @Inject constructor(
         macroList.clear()
         loadRecordedMacros()
         loadGeneratedMacros(currentPackageName)
+
+        while (macroList.size > MacroRepository.MAX_LISTED_MACROS) macroList.removeAt(macroList.lastIndex)
     }
 
     private fun loadGeneratedMacros(currentPackageName: String?) {
@@ -43,7 +45,7 @@ class MacroSupplier @Inject constructor(
 
     private fun loadRecordedMacros() {
         macroList.addAll(
-            macroRepository.getRecordedMacros()
+            macroRepository.getRecordedMacros(limit = MacroRepository.MAX_LISTED_MACROS)
                 .map { it.copy(isGenerated = false) }
         )
     }

@@ -59,6 +59,18 @@ class CommandIntentParser @Inject constructor(
         option = RegexOption.IGNORE_CASE
     )
 
+    private val macroDeleteRegex = Regex(
+        pattern = """^(?:usuń|skasuj|wykasuj|kasuj)\s+makro(?:\s+numer)?\s+(\d+)$""",
+        option = RegexOption.IGNORE_CASE
+    )
+
+    private val macroKeepRegex = Regex(
+        pattern = """^zachowaj\s+(?:makro\s+)?(?:numer\s+)?(\d+)$""",
+        option = RegexOption.IGNORE_CASE
+    )
+
+    private val swipeForceRegex = Regex("""^(.+?)\s+([1-5])$""")
+
 
     private val UNIT = """sekund\p{L}*|minut\p{L}*|min|godzin\p{L}*|s"""
 
@@ -146,6 +158,26 @@ class CommandIntentParser @Inject constructor(
 
         // 0. Media seek with an amount of seconds
         parseSkip(text, context)?.let { return it.copy(rawText = rawInput) }
+
+        macroDeleteRegex.find(text)?.let { match ->
+            match.groupValues[1].toIntOrNull()?.let { num ->
+                return VoiceIntent(
+                    identifier = CommandIdentifier.MACRO_DELETE,
+                    argument = CommandArgument.Number(num),
+                    rawText = rawInput
+                )
+            }
+        }
+
+        macroKeepRegex.find(text)?.let { match ->
+            match.groupValues[1].toIntOrNull()?.let { num ->
+                return VoiceIntent(
+                    identifier = CommandIdentifier.MACRO_KEEP,
+                    argument = CommandArgument.Number(num),
+                    rawText = rawInput
+                )
+            }
+        }
 
         // 1. Two-number patterns (CELL_SWIPE)
         swipeTwoNumbersRegex.find(text)?.let { match ->
@@ -257,6 +289,7 @@ class CommandIntentParser @Inject constructor(
             "nagraj makro", "rozpocznij nagrywanie makra", "zacznij nagrywać makro", "utwórz nowe makro", "zapisuj czynności jako makro" -> CommandIdentifier.MACRO_RECORD
             "zakończ makro", "zakończ nagrywanie makra", "zatrzymaj nagrywanie makra", "zapisz makro", "skończ nagrywać makro" -> CommandIdentifier.MACRO_FINISH
             "makro", "makra",  "lista makr", "lista makro", "lista makra" , "pokaż makra", "pokaż makro","otwórz listę makr", "wyświetl makra","wyświetl makro"  -> CommandIdentifier.MACRO_SHOW
+            "usuń ostatnią akcję", "usuń ostatnią komendę", "usuń ostatnią czynność", "skasuj ostatnią akcję", "skasuj ostatnią komendę", "usuń ostatnie polecenie", "cofnij ostatnią akcję", "cofnij ostatnią komendę" -> CommandIdentifier.MACRO_RECORDING_DELETE_LAST
             "schowaj makra", "schowaj makro", "schowaj listę", "zamknij listę", "zamknij makra" -> CommandIdentifier.MACRO_HIDE
 
             else -> null
@@ -268,6 +301,20 @@ class CommandIntentParser @Inject constructor(
                 argument = null,
                 rawText = rawInput
             )
+        }
+
+        // Swipe with force, e.g. "w górę 3"
+        swipeForceRegex.matchEntire(text)?.let { match ->
+            val base = parse(match.groupValues[1])
+            val force = match.groupValues[2].toIntOrNull()
+            if (base != null && base.identifier in SWIPE_IDENTIFIERS && base.argument == null && force != null) {
+                return VoiceIntent(base.identifier, CommandArgument.Number(force), rawInput)
+            }
+        }
+
+        // Recording at the current position, e.g. "nagraj makro tutaj"
+        if (text.endsWith(" tutaj") && parse(text.removeSuffix(" tutaj"))?.identifier == CommandIdentifier.MACRO_RECORD) {
+            return VoiceIntent(CommandIdentifier.MACRO_RECORD, CommandArgument.Text(RECORD_HERE), rawInput)
         }
 
         divideNumberRegex.find(text)?.let { match ->
@@ -325,5 +372,15 @@ class CommandIntentParser @Inject constructor(
         }
 
         return null
+    }
+
+    companion object {
+        const val RECORD_HERE = "tutaj"
+        private val SWIPE_IDENTIFIERS = setOf(
+            CommandIdentifier.SWIPE_UP,
+            CommandIdentifier.SWIPE_DOWN,
+            CommandIdentifier.SWIPE_LEFT,
+            CommandIdentifier.SWIPE_RIGHT,
+        )
     }
 }

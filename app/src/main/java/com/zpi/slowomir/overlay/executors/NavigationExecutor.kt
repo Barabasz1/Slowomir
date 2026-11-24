@@ -9,9 +9,11 @@ import android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_NOTIFICAT
 import android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_QUICK_SETTINGS
 import android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_RECENTS
 import android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_TAKE_SCREENSHOT
+import com.zpi.slowomir.overlay.executors.TouchExecutor.Companion.DEFAULT_SWIPE_FORCE
 import com.zpi.slowomir.utils.ScreenPoint
 import android.content.Intent
 import android.util.Log
+import com.zpi.slowomir.utils.SwipeDirection
 
 /**
  * Executor for navigation commands.
@@ -42,20 +44,27 @@ class NavigationExecutor(
     }
 
 
-    fun swipeUp(xFraction: Float = 0.5f, yFraction: Float = 0.8f): Boolean {
-        return touchExecutor.swipeUp(getFromFraction(xFraction, yFraction))
+    private fun fromFraction(
+        xFraction: Float,
+        yFraction: Float,
+        mirrorX: Boolean,
+        mirrorY: Boolean
+    ): ScreenPoint {
+        val inverted = touchExecutor.invertedControls
+        return getFromFraction(
+            if (inverted && mirrorX) 1f - xFraction else xFraction,
+            if (inverted && mirrorY) 1f - yFraction else yFraction,
+        )
     }
 
-    fun swipeDown(xFraction: Float = 0.5f, yFraction: Float = 0.2f): Boolean {
-        return touchExecutor.swipeDown(getFromFraction(xFraction, yFraction))
-    }
-
-    fun swipeRight(xFraction: Float = 0.2f, yFraction: Float = 0.5f): Boolean {
-        return touchExecutor.swipeRight(getFromFraction(xFraction, yFraction))
-    }
-
-    fun swipeLeft(xFraction: Float = 0.8f, yFraction: Float = 0.5f): Boolean {
-        return touchExecutor.swipeLeft(getFromFraction(xFraction, yFraction))
+    fun swipe(direction: SwipeDirection, force: Int = DEFAULT_SWIPE_FORCE): Boolean {
+        val start = when (direction) {
+            SwipeDirection.UP -> fromFraction(0.5f, 0.8f, mirrorX = false, mirrorY = true)
+            SwipeDirection.DOWN -> fromFraction(0.5f, 0.2f, mirrorX = false, mirrorY = true)
+            SwipeDirection.RIGHT -> fromFraction(0.2f, 0.5f, mirrorX = true, mirrorY = false)
+            SwipeDirection.LEFT -> fromFraction(0.8f, 0.5f, mirrorX = true, mirrorY = false)
+        }
+        return touchExecutor.swipe(start, direction, force)
     }
 
     fun zoomIn(xFraction: Float = 0.5f, yFraction: Float = 0.5f): Boolean {

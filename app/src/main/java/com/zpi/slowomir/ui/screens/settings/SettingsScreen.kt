@@ -91,7 +91,7 @@ fun SettingsScreen(
     val stateOff = stringResource(R.string.settings_state_off)
     val overlayDescription = stringResource(R.string.settings_a11y_option, Idx.OVERLAY, stringResource(R.string.settings_show_overlay))
     val invertedDescription = stringResource(R.string.settings_a11y_option, Idx.OVERLAY, stringResource(R.string.settings_inverted_controls))
-    
+
     ScreenScaffold(title = stringResource(R.string.settings_title), scrollState = scrollState, modifier = modifier) { innerPadding ->
         Column(
             modifier = Modifier

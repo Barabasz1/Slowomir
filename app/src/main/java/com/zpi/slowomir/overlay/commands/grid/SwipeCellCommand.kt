@@ -15,6 +15,9 @@ class SwipeCellCommand @AssistedInject constructor(
     @Assisted("cell0") private val cell0: Int,
     @Assisted("cell1") private val cell1: Int,
 ) : Command {
+    override val arguments: Map<String, Any?>
+        get() = mapOf("cell0" to cell0, "cell1" to cell1)
+
 
     override fun execute(): CommandResult {
         val gridExecutor = gridExecutorProvider.get()

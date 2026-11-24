@@ -76,5 +76,8 @@ enum class CommandIdentifier {
     MACRO_PLAY,
     MACRO_SHOW,
     MACRO_HIDE,
-    MACRO_TOGGLE
+    MACRO_TOGGLE,
+    MACRO_DELETE,
+    MACRO_KEEP,
+    MACRO_RECORDING_DELETE_LAST
 }

@@ -1,8 +1,8 @@
 package com.zpi.slowomir.overlay.ui.macro
 
-import com.zpi.slowomir.overlay.commands.Command
+import android.content.Context
+import android.content.pm.PackageManager
 import com.zpi.slowomir.overlay.macro.Macro
-import java.util.Locale
 
 data class ActionEntry(
     val text: String
@@ -13,24 +13,28 @@ data class MacroEntry(
     val isGenerated: Boolean = false
 )
 
-fun MacroEntry(macro: Macro): MacroEntry {
+
+fun MacroEntry(macro: Macro, appLabel: (String) -> String? = { null }): MacroEntry {
+
+    val stored = macro.serializedCommands
+    val texts = if (stored.isNotEmpty() && stored.size == macro.commands.size) {
+        stored.map { MacroCommandFormatter.format(it.type.substringAfterLast('.'), it.arguments, appLabel) }
+    } else {
+        macro.commands.map { MacroCommandFormatter.format(it, appLabel) }
+    }
     return MacroEntry(
-        list = macro.commands.map { ActionEntry(formatCommand(it)) },
+        list = (listOfNotNull(MacroCommandFormatter.formatStartingPoint(macro.startingPoint, appLabel)) + texts)
+            .map { ActionEntry(it) },
         isGenerated = macro.isGenerated
     )
 }
 
-private fun formatCommand(command: Command): String {
-    val baseName = command.javaClass.simpleName
-        .removeSuffix("Command")
-        .replace(Regex("(?<=[a-z])(?=[A-Z])"), " ")
-    val args = command.arguments.filterValues { it != null }
-    if (args.isEmpty()) return baseName
-    val formattedArgs = args.values.joinToString(", ") { value ->
-        when (value) {
-            is Float -> if (value % 1f == 0f) value.toInt().toString() else "%.1f".format(Locale.US, value)
-            else -> value.toString()
-        }
+fun appLabelResolver(context: Context): (String) -> String? {
+    val packageManager = context.packageManager
+    return { packageName ->
+        runCatching {
+            @Suppress("DEPRECATION")
+            packageManager.getApplicationLabel(packageManager.getApplicationInfo(packageName, 0)).toString()
+        }.getOrNull()
     }
-    return "$baseName ($formattedArgs)"
 }

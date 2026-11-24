@@ -5,6 +5,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.zpi.slowomir.overlay.commands.CommandResult
 import com.zpi.slowomir.overlay.commands.touch.TapCommand
+import com.zpi.slowomir.overlay.macro.MacroRepository
+import com.zpi.slowomir.overlay.macro.MacroScreenState
+import com.zpi.slowomir.overlay.macro.MacroSupplier
+import com.zpi.slowomir.overlay.ui.macro.MacroEntry
+import com.zpi.slowomir.overlay.ui.macro.appLabelResolver
+import com.zpi.slowomir.overlay.ui.confirmation.ConfirmationOverlayManager
+import com.zpi.slowomir.overlay.ui.macro.MacroRecordingOverlayManager
 import com.zpi.slowomir.overlay.commands.grid.GridToggleCommand
 import com.zpi.slowomir.overlay.services.VoiceRecognitionService
 import com.zpi.slowomir.overlay.ui.grid.GridType
@@ -24,6 +31,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -37,6 +45,11 @@ class MainViewModel @Inject constructor(
     private val voiceSessionManager: VoiceSessionManager,
     private val voiceOverlayManager: VoiceOverlayManager,
     pickerOverlayManager: PickerOverlayManager, // injected so it starts observing selections
+    macroRecordingOverlayManager: MacroRecordingOverlayManager, // injected so it starts observing the recorder
+    confirmationOverlayManager: ConfirmationOverlayManager, // injected so it starts observing questions
+    private val macroRepository: MacroRepository,
+    private val macroSupplier: MacroSupplier,
+    private val macroScreenState: MacroScreenState,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<CommandResult?>(null)
@@ -58,6 +71,41 @@ class MainViewModel @Inject constructor(
     val gridType: StateFlow<GridType> = preferencesManager.gridType
     val invertedControls: StateFlow<Boolean> = preferencesManager.invertedControls
 
+    private val appLabel = appLabelResolver(context)
+
+    val recordedMacros: StateFlow<List<MacroEntry>> = macroRepository.recordedMacros
+        .map { macros -> macros.map { MacroEntry(it, appLabel) } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val generatedMacros: StateFlow<List<MacroEntry>> = macroRepository.generatedMacros
+        .map { macros -> macros.map { MacroEntry(it, appLabel) } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    fun setMacrosScreenVisible(visible: Boolean) {
+        macroScreenState.setVisible(visible)
+        if (visible) refreshGeneratedMacros()
+    }
+
+    fun refreshGeneratedMacros() {
+        viewModelScope.launch(Dispatchers.IO) { macroRepository.reloadGeneratedMacros() }
+    }
+
+    fun keepMacro(position: Int) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val index = position - macroRepository.recordedMacros.value.size - 1
+            if (macroRepository.keepGeneratedMacro(index)) macroSupplier.refresh()
+        }
+    }
+
+    fun deleteMacro(position: Int) {
+        viewModelScope.launch(Dispatchers.IO) {
+            if (macroRepository.deleteRecordedMacro(position - 1)) {
+                macroSupplier.refresh()
+                macroRepository.reloadGeneratedMacros()
+            }
+        }
+    }
+
     fun setGridRows(rows: Int) = preferencesManager.setGridRows(rows)
     fun setGridCols(cols: Int) = preferencesManager.setGridCols(cols)
     fun setGridType(type: GridType) = preferencesManager.setGridType(type)
@@ -65,6 +113,7 @@ class MainViewModel @Inject constructor(
     fun setInvertedControls(inverted: Boolean) = preferencesManager.setInvertedControls(inverted)
 
     init {
+        viewModelScope.launch(Dispatchers.IO) { macroRepository.reloadRecordedMacros() }
         viewModelScope.launch {
             if (isOverlayEnabled.value) {
                 voiceOverlayManager.showOverlay()

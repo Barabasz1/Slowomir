@@ -7,6 +7,9 @@ import com.zpi.slowomir.overlay.commands.CommandFactory
 import com.zpi.slowomir.overlay.commands.SerializedCommand
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.runBlocking
 import org.json.JSONArray
 import org.json.JSONObject
@@ -16,7 +19,6 @@ import javax.inject.Singleton
 data class SerializedMacro(
     val startingPoint: MacroStartingPoint?,
     val commands: List<SerializedCommand>,
-    val delaysMs: List<Long> = emptyList(),
 )
 
 @Singleton
@@ -27,28 +29,64 @@ class MacroRepository @Inject constructor(
 ) {
     private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
+    private val _recordedMacros = MutableStateFlow<List<Macro>>(emptyList())
+
+    val recordedMacros: StateFlow<List<Macro>> = _recordedMacros.asStateFlow()
+
+    private val _generatedMacros = MutableStateFlow<List<Macro>>(emptyList())
+
+    val generatedMacros: StateFlow<List<Macro>> = _generatedMacros.asStateFlow()
+
+    @Synchronized
+    fun reloadRecordedMacros() {
+        _recordedMacros.value = getRecordedMacros(limit = MAX_LISTED_MACROS)
+    }
+
+    suspend fun reloadGeneratedMacros() {
+        val recorded = _recordedMacros.value
+        val room = (MAX_LISTED_MACROS - recorded.size).coerceIn(0, GENERATED_TAB_LIMIT)
+        if (room == 0) {
+            _generatedMacros.value = emptyList()
+            return
+        }
+        val kept = recorded.map(::contentOf).toSet()
+        _generatedMacros.value = macroStatisticalGenerator
+            .generateMacros(limit = room + recorded.size, anyPosition = true)
+            .filter { contentOf(it) !in kept }
+            .take(room)
+            .map { it.copy(isGenerated = true) }
+    }
+
+    private fun contentOf(macro: Macro): Pair<MacroStartingPoint?, List<String>> =
+        macro.startingPoint to macro.commands.map { it::class.java.name + CommandArgumentCodec.encode(it.arguments) }
+
+
+    @Synchronized
+    fun keepGeneratedMacro(index: Int): Boolean {
+        val macro = _generatedMacros.value.getOrNull(index) ?: return false
+        saveRecordedMacro(macro.commands, macro.startingPoint)
+        _generatedMacros.value = _generatedMacros.value.filterIndexed { i, _ -> i != index }
+        return true
+    }
+
     @Synchronized
     fun saveRecordedMacro(
         commandSequence: List<Command>,
         startingPoint: MacroStartingPoint? = null,
-        delaysMs: List<Long> = emptyList(),
     ) {
-        if (commandSequence.isEmpty()) return
+        if (commandSequence.isEmpty() && startingPoint !is MacroStartingPoint.App) return
 
         val existing = readStoredArray()
         val macroObj = JSONObject().apply {
             put(KEY_STARTING_POINT, encodeStartingPoint(startingPoint))
             val commandsArray = JSONArray()
-            for (i in commandSequence.indices) {
-                val command = commandSequence[i]
-                val delay = delaysMs.getOrNull(i) ?: 0L
+            for (command in commandSequence) {
                 val serialized = commandFactory.serialize(command)
                 val cmdObj = JSONObject().apply {
                     put(KEY_CMD_TYPE, serialized.type)
                     put(KEY_CMD_NAME, serialized.name)
                     put(KEY_CMD_ARGS, serialized.argumentsJson)
                     put(KEY_CMD_DISPLAY, serialized.displayText)
-                    if (delay > 0) put(KEY_CMD_DELAY, delay)
                 }
                 commandsArray.put(cmdObj)
             }
@@ -61,18 +99,18 @@ class MacroRepository @Inject constructor(
             updated.put(existing.getJSONObject(i))
         }
         prefs.edit().putString(KEY_RECORDED_MACROS, updated.toString()).apply()
+        reloadRecordedMacros()
     }
 
     @Synchronized
     fun getRecordedMacros(limit: Int = 10): List<Macro> {
         return getRecordedMacroDetails(limit).mapNotNull { stored ->
             val commands = stored.commands.mapNotNull { commandFactory.create(it) }
-            if (commands.isEmpty()) return@mapNotNull null
+            if (commands.isEmpty() && stored.startingPoint !is MacroStartingPoint.App) return@mapNotNull null
             Macro(
                 commands = commands,
                 startingPoint = stored.startingPoint,
                 isGenerated = false,
-                delaysMs = stored.delaysMs,
                 serializedCommands = stored.commands,
             )
         }
@@ -89,7 +127,6 @@ class MacroRepository @Inject constructor(
             val startingPoint = decodeStartingPoint(macroObj.optJSONObject(KEY_STARTING_POINT))
             val commandsArray = macroObj.optJSONArray(KEY_COMMANDS) ?: continue
             val commands = ArrayList<SerializedCommand>(commandsArray.length())
-            val delays = ArrayList<Long>(commandsArray.length())
 
             for (j in 0 until commandsArray.length()) {
                 val cmdObj = commandsArray.optJSONObject(j) ?: continue
@@ -98,7 +135,6 @@ class MacroRepository @Inject constructor(
                 val argsJson = cmdObj.optString(KEY_CMD_ARGS)
                 val args = CommandArgumentCodec.decode(argsJson)
                 val display = cmdObj.optString(KEY_CMD_DISPLAY).ifBlank { name }
-                val delayMs = cmdObj.optLong(KEY_CMD_DELAY, 0L)
                 commands.add(
                     SerializedCommand(
                         type = type,
@@ -107,15 +143,13 @@ class MacroRepository @Inject constructor(
                         displayText = display,
                     )
                 )
-                delays.add(delayMs)
             }
 
-            if (commands.isNotEmpty()) {
+            if (commands.isNotEmpty() || startingPoint is MacroStartingPoint.App) {
                 result.add(
                     SerializedMacro(
                         startingPoint = startingPoint,
                         commands = commands,
-                        delaysMs = delays,
                     )
                 )
             }
@@ -132,12 +166,14 @@ class MacroRepository @Inject constructor(
             if (i != index) updated.put(existing.getJSONObject(i))
         }
         prefs.edit().putString(KEY_RECORDED_MACROS, updated.toString()).apply()
+        reloadRecordedMacros()
         return true
     }
 
     @Synchronized
     fun clearRecordedMacros() {
         prefs.edit().remove(KEY_RECORDED_MACROS).apply()
+        reloadRecordedMacros()
     }
 
     fun getGeneratedMacros(
@@ -183,14 +219,12 @@ class MacroRepository @Inject constructor(
                 put(KEY_CMD_NAME, "Open App")
                 put(KEY_CMD_ARGS, "{\"packageName\":\"com.android.settings\"}")
                 put(KEY_CMD_DISPLAY, "Open App (com.android.settings)")
-                put(KEY_CMD_DELAY, 1000L)
             })
             cmds.put(JSONObject().apply {
                 put(KEY_CMD_TYPE, "com.zpi.slowomir.overlay.commands.navigation.NavigateHomeCommand")
                 put(KEY_CMD_NAME, "Navigate Home")
                 put(KEY_CMD_ARGS, "{}")
                 put(KEY_CMD_DISPLAY, "Navigate Home")
-                put(KEY_CMD_DELAY, 1500L)
             })
             put(KEY_COMMANDS, cmds)
         }
@@ -203,14 +237,12 @@ class MacroRepository @Inject constructor(
                 put(KEY_CMD_NAME, "Navigate Recent")
                 put(KEY_CMD_ARGS, "{}")
                 put(KEY_CMD_DISPLAY, "Navigate Recent")
-                put(KEY_CMD_DELAY, 800L)
             })
             cmds.put(JSONObject().apply {
                 put(KEY_CMD_TYPE, "com.zpi.slowomir.overlay.commands.navigation.NavigateHomeCommand")
                 put(KEY_CMD_NAME, "Navigate Home")
                 put(KEY_CMD_ARGS, "{}")
                 put(KEY_CMD_DISPLAY, "Navigate Home")
-                put(KEY_CMD_DELAY, 1200L)
             })
             put(KEY_COMMANDS, cmds)
         }
@@ -229,6 +261,7 @@ class MacroRepository @Inject constructor(
             is MacroStartingPoint.App -> JSONObject().apply {
                 put(KEY_SP_TYPE, SP_TYPE_APP)
                 put(KEY_SP_APP_NAME, startingPoint.appName)
+                startingPoint.section?.let { put(KEY_SP_SECTION, it) }
             }
         }
     }
@@ -239,12 +272,17 @@ class MacroRepository @Inject constructor(
             SP_TYPE_HOME -> MacroStartingPoint.Home
             SP_TYPE_APP -> obj.optString(KEY_SP_APP_NAME)
                 .takeIf { it.isNotBlank() }
-                ?.let { MacroStartingPoint.App(it) }
+                ?.let { MacroStartingPoint.App(it, obj.optString(KEY_SP_SECTION).takeIf { section -> section.isNotBlank() }) }
             else -> null
         }
     }
 
     companion object {
+
+        const val MAX_LISTED_MACROS = 50
+
+        const val GENERATED_TAB_LIMIT = 10
+
         private const val PREFS_NAME = "slowomir_recorded_macros"
         private const val KEY_RECORDED_MACROS = "recorded_macros"
         private const val KEY_STARTING_POINT = "startingPoint"
@@ -253,9 +291,9 @@ class MacroRepository @Inject constructor(
         private const val KEY_CMD_NAME = "name"
         private const val KEY_CMD_ARGS = "arguments"
         private const val KEY_CMD_DISPLAY = "displayText"
-        private const val KEY_CMD_DELAY = "delayMs"
         private const val KEY_SP_TYPE = "type"
         private const val KEY_SP_APP_NAME = "appName"
+        private const val KEY_SP_SECTION = "section"
         private const val SP_TYPE_HOME = "home"
         private const val SP_TYPE_APP = "app"
     }

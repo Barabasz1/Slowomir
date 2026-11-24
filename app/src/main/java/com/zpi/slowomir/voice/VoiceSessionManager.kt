@@ -6,6 +6,8 @@ import com.zpi.slowomir.overlay.commands.CommandIdentifier
 import com.zpi.slowomir.overlay.commands.CommandResult
 import com.zpi.slowomir.overlay.commands.CommandArgument
 import com.zpi.slowomir.utils.MediaPlaybackMonitor
+import com.zpi.slowomir.overlay.ui.confirmation.ConfirmationManager
+import com.zpi.slowomir.overlay.ui.confirmation.ConfirmationSpeechResult
 import com.zpi.slowomir.voice.intent.CommandIntentParser
 import com.zpi.slowomir.voice.intent.CommandIntentResolver
 import com.zpi.slowomir.voice.intent.IntentResolution
@@ -52,6 +54,7 @@ class VoiceSessionManager @Inject constructor(
     private val dictateCommandFactory: DictateCommand.Factory,
     private val punctuationRestorer: PunctuationRestorer,
     private val fieldProfileHolder: FieldProfileHolder,
+    private val confirmationManager: ConfirmationManager = ConfirmationManager(),
     private val mediaPlaybackMonitor: MediaPlaybackMonitor,
 ) : VoiceInputSink, VoiceStateSource {
 
@@ -186,6 +189,15 @@ class VoiceSessionManager @Inject constructor(
 
             Log.d(TAG, "Parsing '$text' (selection active: ${selectionManager.isActive})")
 
+            if (confirmationManager.isActive) {
+
+                val answer = confirmationManager.handleSpeech(normalizer.normalize(text))
+                Log.d(TAG, "Confirmation answer for '$text': $answer")
+                if (answer == ConfirmationSpeechResult.Ignored) mediator.handleEvent(OverlayEvent.InvalidCommand(text))
+                inbox.send(InternalEvent.IntentFailed(text))
+                return@launch
+            }
+
             if (selectionManager.isActive) {
                 when (val result = selectionManager.handleSpeech(text)) {
                     is SelectionSpeechResult.Chosen -> proceed(result.intent)
@@ -292,7 +304,9 @@ class VoiceSessionManager @Inject constructor(
     }
 
     private fun hasRequiredArgument(intent: VoiceIntent): Boolean = when (intent.identifier) {
-        CommandIdentifier.CELL_SELECT -> intent.argument is CommandArgument.Number
+        CommandIdentifier.CELL_SELECT,
+        CommandIdentifier.MACRO_DELETE,
+        CommandIdentifier.MACRO_KEEP -> intent.argument is CommandArgument.Number
         CommandIdentifier.CELL_SWIPE -> intent.argument is CommandArgument.TwoNumbers
         CommandIdentifier.NAVIGATE_APP_OPEN,
         CommandIdentifier.PHONE_CALL,

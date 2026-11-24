@@ -4,18 +4,22 @@ import android.accessibilityservice.AccessibilityService
 import android.graphics.Rect
 import android.util.Log
 import android.view.accessibility.AccessibilityNodeInfo
+import android.view.accessibility.AccessibilityWindowInfo
+import com.zpi.slowomir.overlay.macro.MacroPlaybackState
 import com.zpi.slowomir.overlay.services.CommandExecutorService
 import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class UiNodeDescriber @Inject constructor() {
+class UiNodeDescriber @Inject constructor(
+    private val playbackState: MacroPlaybackState,
+) {
 
     private class PathEntry(val node: AccessibilityNodeInfo, val indexInParent: Int)
 
     fun describeTapAt(x: Float, y: Float): ActionDescriptor? {
-        if (!ActionLogConfig.isEnabled) return null
+        if (!ActionLogConfig.isEnabled || playbackState.isPlaying) return null
 
         return try {
             resolve(x.toInt(), y.toInt())
@@ -44,7 +48,6 @@ class UiNodeDescriber @Inject constructor() {
         val packageName = chain.subList(0, targetIndex + 1).asReversed()
             .firstNotNullOfOrNull { it.node.packageName?.toString()?.takeIf { name -> name.isNotBlank() } }
             ?: return null
-        if (packageName == service.packageName) return null
 
         val path = HierarchyPath.format(
             chain.subList(0, targetIndex + 1)
@@ -57,7 +60,8 @@ class UiNodeDescriber @Inject constructor() {
             packageName = packageName,
             resourceId = target.viewIdResourceName?.takeIf { it.isNotBlank() },
             hierarchyPath = path.takeIf { it.isNotEmpty() },
-            labelHash = label?.let { ActionHasher.sha256Hex(it) },
+            labelHash = label?.let { ActionHasher.sha256Hex(it.lowercase(Locale.ROOT)) },
+            label = label,
         )
     }
 
@@ -66,7 +70,7 @@ class UiNodeDescriber @Inject constructor() {
         val bounds = Rect()
 
         val active = service.rootInActiveWindow
-        if (active != null && active.packageName?.toString() != ownPackage) {
+        if (active != null) {
             active.getBoundsInScreen(bounds)
             if (bounds.contains(x, y)) return active
         }
@@ -76,10 +80,9 @@ class UiNodeDescriber @Inject constructor() {
             .firstNotNullOfOrNull { window ->
                 window.getBoundsInScreen(bounds)
                 val windowRoot = window.root
-                if (bounds.contains(x, y) &&
-                    windowRoot != null &&
-                    windowRoot.packageName?.toString() != ownPackage
-                ) windowRoot else null
+                val isOwnOverlay = windowRoot?.packageName?.toString() == ownPackage &&
+                        window.type != AccessibilityWindowInfo.TYPE_APPLICATION
+                if (bounds.contains(x, y) && windowRoot != null && !isOwnOverlay) windowRoot else null
             }
     }
 
@@ -126,7 +129,6 @@ class UiNodeDescriber @Inject constructor() {
     private fun normalize(value: CharSequence?): String? =
         value?.toString()
             ?.trim()
-            ?.lowercase(Locale.ROOT)
             ?.take(MAX_LABEL_LENGTH)
             ?.takeIf { it.isNotEmpty() }
 

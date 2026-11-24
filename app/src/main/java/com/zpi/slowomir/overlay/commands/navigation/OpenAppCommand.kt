@@ -18,6 +18,9 @@ class OpenAppCommand @AssistedInject constructor(
     private val navigationExecutorProvider: Provider<NavigationExecutor?>,
     @Assisted("packageName") private val packageName: String?
 ) : Command {
+    override val arguments: Map<String, Any?>
+        get() = mapOf("packageName" to packageName)
+
     override fun execute(): CommandResult {
         if (packageName == null) {
             return CommandResult.Failure("No package name provided")

@@ -174,6 +174,16 @@ private fun MacroTitleSection() {
 }
 
 @Composable
+fun MacroSectionHeader(text: String, modifier: Modifier = Modifier) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = modifier.padding(vertical = 2.dp),
+    )
+}
+
+@Composable
 private fun MacroListContent(
     macroList: List<MacroEntry>,
     onSelectMacro: (Int) -> Unit
@@ -183,6 +193,13 @@ private fun MacroListContent(
         contentPadding = PaddingValues(vertical = MacroView.LIST_VERTICAL_PADDING)
     ) {
         itemsIndexed(macroList) { index, entry ->
+            val previous = macroList.getOrNull(index - 1)
+            if (previous == null || previous.isGenerated != entry.isGenerated) {
+                MacroSectionHeader(
+                    text = if (entry.isGenerated) "Proponowane" else "Zapisane",
+                    modifier = Modifier.padding(horizontal = MacroView.ROW_PADDING_HORIZONTAL)
+                )
+            }
             MacroEntryRowHorizontal(
                 position = index + 1,
                 entry = entry,
@@ -280,7 +297,7 @@ private fun MacroEntryRowVertical(
 }
 
 @Composable
-private fun IndexBadge(
+internal fun IndexBadge(
     position: Int,
     isGenerated: Boolean
 ) {
@@ -313,7 +330,7 @@ private fun IndexBadge(
 }
 
 @Composable
-private fun ActionSequenceViewHorizontal(actions: List<ActionEntry>) {
+internal fun ActionSequenceViewHorizontal(actions: List<ActionEntry>) {
     FlowRow(
         verticalArrangement = Arrangement.spacedBy(MacroView.ACTION_CHIP_VERTICAL_SPACING, Alignment.CenterVertically),
         horizontalArrangement = Arrangement.spacedBy(MacroView.ACTION_CHIP_SPACING)
@@ -408,11 +425,11 @@ private fun CloseButton(
 
 object MacroView {
     // Layout & Card Dimensions
-    val OVERLAY_PADDING: Dp = 12.dp
+    val OVERLAY_PADDING: Dp = 6.dp
     val CARD_CORNER_RADIUS: Dp = 20.dp
     val CARD_ELEVATION: Dp = 8.dp
     val CONTENT_PADDING_HORIZONTAL: Dp = 16.dp
-    val HEADER_PADDING_VERTICAL: Dp = 12.dp
+    val HEADER_PADDING_VERTICAL: Dp = 8.dp
     val FOOTER_PADDING_VERTICAL: Dp = 6.dp
 
     // Row & Item Dimensions
@@ -452,5 +469,5 @@ object MacroView {
 
     // Window Layout Params
     const val WIDTH_FRACTION: Float = 1.0f
-    const val HEIGHT_FRACTION: Float = 0.7f
+    const val HEIGHT_FRACTION: Float = 0.92f
 }

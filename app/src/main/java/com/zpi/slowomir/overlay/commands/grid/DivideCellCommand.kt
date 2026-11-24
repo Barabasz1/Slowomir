@@ -14,6 +14,9 @@ class DivideCellCommand @AssistedInject constructor(
     private val gridExecutorProvider: Provider<GridExecutor?>,
     @Assisted("divisionPower") private val divisionPower: Int = 2
     ) : Command {
+    override val arguments: Map<String, Any?>
+        get() = mapOf("divisionPower" to divisionPower)
+
 
     override fun execute(): CommandResult {
         val gridExecutor = gridExecutorProvider.get()

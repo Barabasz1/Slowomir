@@ -17,6 +17,7 @@ import com.zpi.slowomir.overlay.commands.navigation.*
 import com.zpi.slowomir.overlay.commands.phoneCalls.*
 import com.zpi.slowomir.overlay.commands.grid.*
 import com.zpi.slowomir.overlay.commands.textEdit.CancelCommand
+import com.zpi.slowomir.overlay.executors.TouchExecutor.Companion.DEFAULT_SWIPE_FORCE
 import com.zpi.slowomir.overlay.commands.textEdit.EditCommand
 import com.zpi.slowomir.overlay.commands.textEdit.ConfirmCommand
 import com.zpi.slowomir.overlay.commands.textEdit.CursorBackwardCommand
@@ -27,16 +28,20 @@ import com.zpi.slowomir.overlay.commands.textEdit.DeleteCharCommand
 import com.zpi.slowomir.overlay.commands.textEdit.DeleteWordCommand
 import com.zpi.slowomir.overlay.commands.textEdit.EnterCommand
 import com.zpi.slowomir.overlay.commands.textEdit.PunctuationCommand
+import com.zpi.slowomir.overlay.commands.macro.DeleteLastRecordedActionCommand
+import com.zpi.slowomir.overlay.commands.macro.DeleteMacroCommand
+import com.zpi.slowomir.overlay.commands.macro.KeepMacroCommand
 import com.zpi.slowomir.overlay.commands.macro.FinishMacroCommand
+import com.zpi.slowomir.voice.intent.CommandIntentParser
 import com.zpi.slowomir.overlay.commands.macro.HideMacroOverlayCommand
 import com.zpi.slowomir.overlay.commands.macro.PlayMacroCommand
 import com.zpi.slowomir.overlay.commands.macro.RecordMacroCommand
 import com.zpi.slowomir.overlay.commands.macro.ShowMacroOverlayCommand
-import com.zpi.slowomir.overlay.commands.macro.StopMacroCommand
 import com.zpi.slowomir.overlay.commands.macro.ToggleMacroOverlayCommand
 import com.zpi.slowomir.overlay.commands.textEdit.KeyboardHideCommand
 import com.zpi.slowomir.overlay.commands.textEdit.KeyboardShowCommand
 import com.zpi.slowomir.overlay.commands.textEdit.KeyboardToggleCommand
+import com.zpi.slowomir.overlay.executors.TouchExecutor.Companion.MAX_SWIPE_FORCE
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -104,8 +109,11 @@ class CommandResolver @Inject constructor(
     private val playMacroCommandFactory: PlayMacroCommand.Factory,
     private val recordMacroCommandFactory: RecordMacroCommand.Factory,
     private val finishMacroCommandFactory: FinishMacroCommand.Factory,
+    private val deleteMacroCommandFactory: DeleteMacroCommand.Factory,
+    private val keepMacroCommandFactory: KeepMacroCommand.Factory,
+    private val deleteLastRecordedActionCommandFactory: DeleteLastRecordedActionCommand.Factory,
     private val sleepCommandFactory: SleepCommand.Factory,
-    ) {
+) {
 
     fun resolve(intent: VoiceIntent): Command = when (intent.identifier) {
         // Navigation
@@ -125,10 +133,10 @@ class CommandResolver @Inject constructor(
         CommandIdentifier.GRID_SHOW -> gridEnableCommandFactory.create()
         CommandIdentifier.GRID_HIDE -> disableGridCommandFactory.create()
         CommandIdentifier.GRID_RESET -> gridResetCommandFactory.create()
-        CommandIdentifier.GRID_ADD_COL ->  addColumnGridCommandFactory.create()
-        CommandIdentifier.GRID_ADD_ROW ->  addRowGridCommandFactory.create()
-        CommandIdentifier.GRID_SUBTRACT_COL ->  subtractColumnGridCommandFactory.create()
-        CommandIdentifier.GRID_SUBTRACT_ROW ->  subtractRowGridCommandFactory.create()
+        CommandIdentifier.GRID_ADD_COL -> addColumnGridCommandFactory.create()
+        CommandIdentifier.GRID_ADD_ROW -> addRowGridCommandFactory.create()
+        CommandIdentifier.GRID_SUBTRACT_COL -> subtractColumnGridCommandFactory.create()
+        CommandIdentifier.GRID_SUBTRACT_ROW -> subtractRowGridCommandFactory.create()
 
         CommandIdentifier.CELL_SELECT -> {
             val arg = intent.intArgument()
@@ -138,10 +146,10 @@ class CommandResolver @Inject constructor(
                 voidCommand(intent)
         }
 
-        CommandIdentifier.CELL_DIVIDE-> {
+        CommandIdentifier.CELL_DIVIDE -> {
             val arg = intent.intArgument()
             val pow =
-                if(arg!=null && arg == 9)
+                if (arg != null && arg == 9)
                     3
                 else
                     2
@@ -156,10 +164,10 @@ class CommandResolver @Inject constructor(
         //rest of cell actions are shared with navigation commands because they are ambiguous
 
         // Gestures
-        CommandIdentifier.SWIPE_UP -> swipeUpNavCommandFactory.create()
-        CommandIdentifier.SWIPE_DOWN -> swipeDownNavCommandFactory.create()
-        CommandIdentifier.SWIPE_LEFT -> swipeLeftNavCommandFactory.create()
-        CommandIdentifier.SWIPE_RIGHT -> swipeRightNavCommandFactory.create()
+        CommandIdentifier.SWIPE_UP -> swipeUpNavCommandFactory.create(intent.swipeForce())
+        CommandIdentifier.SWIPE_DOWN -> swipeDownNavCommandFactory.create(intent.swipeForce())
+        CommandIdentifier.SWIPE_LEFT -> swipeLeftNavCommandFactory.create(intent.swipeForce())
+        CommandIdentifier.SWIPE_RIGHT -> swipeRightNavCommandFactory.create(intent.swipeForce())
         CommandIdentifier.ZOOM_IN -> zoomInNavCommandFactory.create()
         CommandIdentifier.ZOOM_OUT -> zoomOutNavCommandFactory.create()
 
@@ -218,8 +226,29 @@ class CommandResolver @Inject constructor(
             else
                 voidCommand(intent)
         }
-        CommandIdentifier.MACRO_RECORD -> recordMacroCommandFactory.create()
+
+        CommandIdentifier.MACRO_RECORD -> recordMacroCommandFactory.create(
+            (intent.argument as? CommandArgument.Text)?.value == CommandIntentParser.RECORD_HERE
+        )
+
         CommandIdentifier.MACRO_FINISH -> finishMacroCommandFactory.create()
+        CommandIdentifier.MACRO_DELETE -> {
+            val arg = intent.intArgument()
+            if (arg != null)
+                deleteMacroCommandFactory.create(arg - 1)
+            else
+                voidCommand(intent)
+        }
+
+        CommandIdentifier.MACRO_KEEP -> {
+            val arg = intent.intArgument()
+            if (arg != null)
+                keepMacroCommandFactory.create(arg - 1)
+            else
+                voidCommand(intent)
+        }
+
+        CommandIdentifier.MACRO_RECORDING_DELETE_LAST -> deleteLastRecordedActionCommandFactory.create()
 
 
         else -> LogCommand(intent.identifier, intent.argument)
@@ -231,6 +260,9 @@ class CommandResolver @Inject constructor(
 
     private fun VoiceIntent.intArgument(): Int? =
         (argument as? CommandArgument.Number)?.value
+
+    private fun VoiceIntent.swipeForce(): Int =
+        intArgument()?.coerceIn(1, MAX_SWIPE_FORCE) ?: DEFAULT_SWIPE_FORCE
 
     // fallback when a blank command is needed (user did not provide an argument for example)
     private fun voidCommand(intent: VoiceIntent): Command {

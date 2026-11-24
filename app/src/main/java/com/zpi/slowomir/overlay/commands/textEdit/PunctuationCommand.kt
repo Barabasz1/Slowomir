@@ -21,6 +21,9 @@ class PunctuationCommand @AssistedInject constructor(
 ) : Command {
     override val requiresBackgroundExecution: Boolean = true
 
+    override val arguments: Map<String, Any?>
+        get() = mapOf("mark" to mark)
+
     override fun execute(): CommandResult {
         val executor = textEditExecutorProvider.get()
             ?: return CommandResult.Failure("Accessibility Service is not enabled")

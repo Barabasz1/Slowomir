@@ -18,6 +18,9 @@ class PlayMacroCommand @AssistedInject constructor(
     private val macroExecutorProvider: Provider<MacroExecutor?>,
     @Assisted("index") private val index: Int
 ) : Command {
+    override val arguments: Map<String, Any?>
+        get() = mapOf("index" to index)
+
     override val requiresBackgroundExecution: Boolean = true
 
     override fun execute(): CommandResult {

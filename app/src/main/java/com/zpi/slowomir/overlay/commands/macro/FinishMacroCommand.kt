@@ -25,7 +25,7 @@ class FinishMacroCommand @AssistedInject constructor(
     }
 
     override fun canExecute(context: OverlayContext): Boolean {
-        return true
+        return macroExecutorProvider.get()?.isRecording() ?: false
     }
 
     @AssistedFactory
