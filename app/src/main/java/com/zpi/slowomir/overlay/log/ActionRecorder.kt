@@ -38,12 +38,19 @@ class ActionRecorder @Inject constructor(
     fun record(action: ActionDescriptor, timestamp: Long = System.currentTimeMillis()) {
         if (!ActionLogConfig.isEnabled) return
 
+        val screenSnapshot = runCatching { predictionManagerProvider.get().captureScreenSnapshot(action) }.getOrNull()
+
         scope.launch {
             try {
                 val stored = actionDao.logEvent(action.toEntity(), timestamp)
                 if (ActionLogConfig.logRowsToConsole) printRows(stored)
                 try {
-                    predictionManagerProvider.get().onActionRecorded(action, stored.def.actionHash, stored.def.idActionDef)
+                    predictionManagerProvider.get().onActionRecorded(
+                        action,
+                        stored.def.actionHash,
+                        stored.def.idActionDef,
+                        screenSnapshot
+                    )
                 } catch (e: Exception) {
                     Log.e(TAG, "Prediction observation failed", e)
                 }
@@ -62,6 +69,7 @@ class ActionRecorder @Inject constructor(
         withContext(worker) {
             actionDao.clearAll()
         }
+        runCatching { predictionManagerProvider.get().onHistoryCleared() }
     }
 
     private fun printRows(stored: LoggedAction) {

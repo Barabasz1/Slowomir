@@ -16,6 +16,14 @@ abstract class PredictionDao {
     abstract suspend fun lastTargets(hash: String, m: Int): List<Long>
 
     @Query(
+        "SELECT o.target_action_def_id FROM prediction_observation o " +
+                "INNER JOIN action_def d ON o.target_action_def_id = d.id_action_def " +
+                "WHERE o.context_hash = :hash AND d.action_type = 'UI_CLICK' " +
+                "ORDER BY o.id_observation DESC LIMIT 1"
+    )
+    abstract suspend fun lastUiClickTarget(hash: String): Long?
+
+    @Query(
         "DELETE FROM prediction_observation WHERE context_hash = :hash AND id_observation NOT IN " +
                 "(SELECT id_observation FROM prediction_observation WHERE context_hash = :hash ORDER BY id_observation DESC LIMIT :m)"
     )
@@ -38,6 +46,9 @@ abstract class PredictionDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     abstract suspend fun upsertSuppression(s: PredictionSuppressionEntity)
+
+    @Query("DELETE FROM prediction_suppression WHERE cooldown_until_timestamp > 0 AND cooldown_until_timestamp < :now")
+    abstract suspend fun pruneExpiredSuppressions(now: Long)
 
     @Query("DELETE FROM prediction_observation WHERE package_name = :pkg")
     abstract suspend fun deleteForPackage(pkg: String)

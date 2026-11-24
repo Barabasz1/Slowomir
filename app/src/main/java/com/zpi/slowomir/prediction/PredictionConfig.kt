@@ -10,7 +10,7 @@ object PredictionConfig {
     const val GLOBAL_MAX_ROWS = 20_000
     const val DEBOUNCE_MS = 350L
     const val DEBOUNCE_MAX_WAIT_MS = 2_000L
-    const val SUGGESTION_TIMEOUT_MS = 6_000L
+    const val SUGGESTION_TIMEOUT_MS = 12_000L
     const val SESSION_IDLE_MS = 5 * 60_000L
     const val GUARD_FLAG_MAX_MS = 60_000L
     const val MIN_SCREEN_IDS = 1

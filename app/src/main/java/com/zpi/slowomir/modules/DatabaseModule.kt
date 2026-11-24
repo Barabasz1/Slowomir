@@ -6,7 +6,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.zpi.slowomir.overlay.log.db.ActionDao
-import com.zpi.slowomir.overlay.log.db.SlowomirDatabase
+import com.zpi.slowomir.db.SlowomirDatabase
 import com.zpi.slowomir.overlay.log.db.PredictionDao
 import com.zpi.slowomir.overlay.log.ActionLogConfig
 import dagger.Module

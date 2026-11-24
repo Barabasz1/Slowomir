@@ -23,37 +23,45 @@ class MacroPlayer @Inject constructor(
     @Volatile
     private var stopMacro: Boolean = false
 
+    @Volatile
+    var isPlaying: Boolean = false
+        private set
+
     fun play(macro: Macro): Boolean {
+        isPlaying = true
+        try {
+            onMacroStart(macro)
 
-        onMacroStart(macro)
-
-        if (macro.startingPoint != null) {
-            if (!wait(macro.startingPoint)) {
-                onMacroBreak(macro)
-                return false
+            if (macro.startingPoint != null) {
+                if (!wait(macro.startingPoint)) {
+                    onMacroBreak(macro)
+                    return false
+                }
             }
+
+            for ((index, command) in macro.commands.withIndex()) {
+
+                if (stopMacro) {
+                    onMacroBreak(macro)
+                    return false
+                }
+
+                runBlocking {
+                    mediator.dispatch(command)
+                }
+
+                val overrideDelay = macro.delaysMs.getOrNull(index)?.takeIf { it > 0L }
+                if (!wait(command, overrideDelay)) {
+                    onMacroBreak(macro)
+                    return false
+                }
+            }
+
+            onMacroFinish(macro)
+            return true
+        } finally {
+            isPlaying = false
         }
-
-        for ((index, command) in macro.commands.withIndex()) {
-
-            if (stopMacro) {
-                onMacroBreak(macro)
-                return false
-            }
-
-            runBlocking {
-                mediator.dispatch(command)
-            }
-
-            val overrideDelay = macro.delaysMs.getOrNull(index)?.takeIf { it > 0L }
-            if (!wait(command, overrideDelay)) {
-                onMacroBreak(macro)
-                return false
-            }
-        }
-
-        onMacroFinish(macro)
-        return true
     }
 
     fun stop() {

@@ -5,27 +5,31 @@ import android.graphics.Rect
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
+import com.zpi.slowomir.overlay.commands.predictions.ConfirmCommand
+import com.zpi.slowomir.overlay.commands.predictions.DismissCommand
 import com.zpi.slowomir.overlay.log.ActionDescriptor
 import com.zpi.slowomir.overlay.log.ActionHasher
 import com.zpi.slowomir.overlay.log.ActionType
-import com.zpi.slowomir.overlay.log.HierarchyPath
-import com.zpi.slowomir.overlay.log.UiNodeDescriber
 import com.zpi.slowomir.overlay.log.db.ActionDefEntity
 import com.zpi.slowomir.overlay.log.db.PredictionDao
 import com.zpi.slowomir.overlay.log.db.PredictionObservationEntity
 import com.zpi.slowomir.overlay.log.db.PredictionSuppressionEntity
+import com.zpi.slowomir.overlay.macro.MacroPlayer
 import com.zpi.slowomir.overlay.services.CommandExecutorService
 import com.zpi.slowomir.overlay.ui.prediction.PredictionOverlayManager
+import com.zpi.slowomir.voice.stt.VoiceState
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.min
@@ -46,95 +50,262 @@ data class ActiveSuggestion(
     val shownAt: Long,
 )
 
-@Singleton
-class PredictionManager @Inject constructor(
-    @ApplicationContext private val context: Context,
-    private val dao: PredictionDao,
-    private val engine: VariableOrderMarkovEngine,
-    private val overlayManager: PredictionOverlayManager,
-    private val uiNodeDescriber: UiNodeDescriber,
-) {
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-    private val stateMutex = Mutex()
+data class ScreenSnapshot(
+    val screenFp: String,
+    val isGuardedTarget: Boolean,
+)
 
-    // In-memory prediction state
+internal interface PredictionEnvironment {
+    fun activeRoot(): AccessibilityNodeInfo?
+    fun screenWidth(): Int
+    fun screenHeight(): Int
+    fun keyboardTop(): Int?
+    fun isTextSessionActive(): Boolean
+    fun isMacroPlaying(): Boolean
+}
+
+@Singleton
+class DefaultPredictionEnvironment @Inject constructor(
+    private val macroPlayer: MacroPlayer,
+) : PredictionEnvironment {
+
+    override fun activeRoot(): AccessibilityNodeInfo? =
+        CommandExecutorService.instance?.rootInActiveWindow
+
+    override fun screenWidth(): Int =
+        CommandExecutorService.instance?.resources?.displayMetrics?.widthPixels ?: 1080
+
+    override fun screenHeight(): Int =
+        CommandExecutorService.instance?.resources?.displayMetrics?.heightPixels ?: 2400
+
+    override fun keyboardTop(): Int? =
+        CommandExecutorService.instance?.focusLayout()?.keyboardTop
+
+    override fun isTextSessionActive(): Boolean {
+        val state = CommandExecutorService.instance?.voiceSessionManager?.state?.value
+        return state is VoiceState.Dictating ||
+            state is VoiceState.Editing ||
+            state is VoiceState.TextProcessing
+    }
+
+    override fun isMacroPlaying(): Boolean = macroPlayer.isPlaying
+}
+
+@OptIn(ExperimentalCoroutinesApi::class)
+@Singleton
+class PredictionManager internal constructor(
+    private val ownPackageName: String,
+    private val dao: PredictionDao,
+    @Suppress("unused") private val engine: VariableOrderMarkovEngine,
+    private val overlayManager: PredictionOverlayManager,
+    private val env: PredictionEnvironment,
+) {
+    @Inject
+    constructor(
+        @ApplicationContext context: Context,
+        dao: PredictionDao,
+        engine: VariableOrderMarkovEngine,
+        overlayManager: PredictionOverlayManager,
+        env: DefaultPredictionEnvironment,
+    ) : this(context.packageName, dao, engine, overlayManager, env)
+
+    private sealed interface OverlayAction {
+        data object None : OverlayAction
+        data class Show(val bounds: Rect, val generation: Long) : OverlayAction
+        data class Clear(val generation: Long) : OverlayAction
+    }
+
+    private val workerDispatcher = Dispatchers.Default.limitedParallelism(1)
+    private val scope = CoroutineScope(SupervisorJob() + workerDispatcher)
+    private val stateMutex = Mutex()
+    private val debounceLock = Any()
+
+    // In-memory prediction state (guarded by stateMutex unless @Volatile)
     private val buffer = mutableListOf<String>()
     private var sessionPackage: String? = null
     private var lastCommandTime: Long = 0L
     private var currentKeys: ContextKeys? = null
+    private var lastSettledScreenFp: String? = null
+    private val lastActionPerScreen = mutableMapOf<String, Long>()
+    private var recordedCount: Int = 0
 
+    @Volatile
     private var activeSuggestion: ActiveSuggestion? = null
     private var lastShownPair: Pair<String, Long>? = null
 
-    private var suppressUntilNextCommand: Boolean = false
-    private var guardSuppressionTime: Long = 0L
+    @Volatile
+    private var overlayGeneration: Long = 0L
 
     private var debounceJob: Job? = null
     private var debounceFirstEventTime: Long = 0L
+    private var settleRunning: Boolean = false
     private var suggestionTimeoutJob: Job? = null
 
-    fun onActionRecorded(action: ActionDescriptor, actionHash: String, actionDefId: Long) {
-        scope.launch {
-            stateMutex.withLock {
-                lastCommandTime = System.currentTimeMillis()
-                clearSuggestionInternal()
-                lastShownPair = null
+    fun captureScreenSnapshot(action: ActionDescriptor): ScreenSnapshot? {
+        if (env.isMacroPlaying()) return null
+        val root = env.activeRoot() ?: return null
+        val rootPkg = root.packageName?.toString()
+        if (action.packageName != null && rootPkg != action.packageName) {
+            Log.d(TAG, "captureScreenSnapshot skipped: pkg mismatch root=$rootPkg action=${action.packageName}")
+            return null
+        }
 
-                // Reset suppression flag on new user command
-                if (suppressUntilNextCommand && System.currentTimeMillis() - guardSuppressionTime >= PredictionConfig.GUARD_FLAG_MAX_MS) {
-                    suppressUntilNextCommand = false
+        val screenFp = ScreenFingerprint.compute(root, env.screenWidth(), env.screenHeight())
+        if (screenFp == ScreenFingerprint.UNKNOWN_SCREEN) {
+            Log.d(TAG, "captureScreenSnapshot skipped: UNKNOWN_SCREEN for pkg=$rootPkg")
+            return null
+        }
+
+        val isGuardedPkg = PredictionGuard.isGuardedPackage(action.packageName ?: rootPkg)
+        val isUnsafeClick = if (action.type == ActionType.UI_CLICK) {
+            val tempDef = ActionDefEntity(
+                actionHash = ActionHasher.hash(action),
+                actionType = action.type,
+                packageName = action.packageName,
+                resourceId = action.resourceId,
+                hierarchyPath = action.hierarchyPath,
+                labelHash = action.labelHash,
+            )
+            PredictionNodeMatcher.findMatchingNodes(root, tempDef).isEmpty().also { empty ->
+                if (empty) {
+                    Log.d(
+                        TAG,
+                        "captureScreenSnapshot: click target not re-matched in root (guarded): res=${action.resourceId} path=${action.hierarchyPath}"
+                    )
                 }
+            }
+        } else {
+            false
+        }
+
+        return ScreenSnapshot(
+            screenFp = screenFp,
+            isGuardedTarget = isGuardedPkg || isUnsafeClick,
+        )
+    }
+
+    fun onActionRecorded(
+        action: ActionDescriptor,
+        actionHash: String,
+        actionDefId: Long,
+        screenSnapshot: ScreenSnapshot? = null,
+    ) {
+        if (action.commandType == ConfirmCommand::class.java.name ||
+            action.commandType == DismissCommand::class.java.name ||
+            env.isMacroPlaying()
+        ) {
+            return
+        }
+
+        scope.launch {
+            if (env.isMacroPlaying()) return@launch
+
+            val overlayAction: OverlayAction = stateMutex.withLock {
+                val now = System.currentTimeMillis()
+                lastCommandTime = now
+                val clearAction = clearSuggestionStateLocked()
 
                 val keys = currentKeys
-                val isGuarded = PredictionGuard.isGuardedPackage(action.packageName)
+                val isGuarded = PredictionGuard.isGuardedPackage(action.packageName) ||
+                    screenSnapshot?.isGuardedTarget == true
 
-                if (keys != null && !isGuarded && !suppressUntilNextCommand) {
+                val currentScreenFp = screenSnapshot?.screenFp
+                    ?: keys?.takeIf { it.pkg == action.packageName }?.screenFp
+
+                val pkg = keys?.takeIf { it.pkg == action.packageName }?.pkg
+                    ?: action.packageName
+                    ?: sessionPackage
+                    ?: "unknown"
+
+                if (!isGuarded) {
                     try {
-                        dao.record(
-                            PredictionObservationEntity(
-                                contextHash = keys.key1,
-                                contextOrder = 1,
-                                packageName = keys.pkg,
-                                targetActionDefId = actionDefId
-                            ),
-                            PredictionConfig.WINDOW_M
-                        )
+                        if (action.type == ActionType.UI_CLICK && currentScreenFp != null) {
+                            lastActionPerScreen[currentScreenFp] = actionDefId
+                            lastSettledScreenFp = currentScreenFp
+                            lastShownPair = Pair("screen:$currentScreenFp", actionDefId)
+                            Log.d(
+                                TAG,
+                                "Recorded last UI_CLICK for screen $currentScreenFp: actionDefId=$actionDefId ($actionHash)"
+                            )
 
-                        if (keys.key2 != null) {
                             dao.record(
                                 PredictionObservationEntity(
-                                    contextHash = keys.key2,
-                                    contextOrder = 2,
+                                    contextHash = "screen:$currentScreenFp",
+                                    contextOrder = 0,
+                                    packageName = pkg,
+                                    targetActionDefId = actionDefId
+                                ),
+                                PredictionConfig.WINDOW_M
+                            )
+
+                            dao.upsertSuppression(
+                                PredictionSuppressionEntity(
+                                    contextHash = "screen:$currentScreenFp",
+                                    targetActionDefId = actionDefId,
+                                    consecutiveDismissCount = 0,
+                                    cooldownUntilTimestamp = 0L
+                                )
+                            )
+                        }
+
+                        if (keys != null) {
+                            dao.record(
+                                PredictionObservationEntity(
+                                    contextHash = keys.key1,
+                                    contextOrder = 1,
                                     packageName = keys.pkg,
                                     targetActionDefId = actionDefId
                                 ),
                                 PredictionConfig.WINDOW_M
                             )
+
+                            if (keys.key2 != null) {
+                                dao.record(
+                                    PredictionObservationEntity(
+                                        contextHash = keys.key2,
+                                        contextOrder = 2,
+                                        packageName = keys.pkg,
+                                        targetActionDefId = actionDefId
+                                    ),
+                                    PredictionConfig.WINDOW_M
+                                )
+                            }
+                        }
+
+                        if (++recordedCount % PRUNE_EVERY_N_RECORDS == 0) {
+                            dao.pruneGlobal(PredictionConfig.GLOBAL_MAX_ROWS)
+                            dao.pruneExpiredSuppressions(now)
                         }
                     } catch (e: Exception) {
                         Log.e(TAG, "Error recording observation", e)
                     }
                 }
 
-                // Update buffer
-                val pkg = action.packageName ?: keys?.pkg ?: sessionPackage ?: "unknown"
                 sessionPackage = pkg
                 buffer.add(actionHash)
                 while (buffer.size > 2) {
                     buffer.removeAt(0)
                 }
 
-                scheduleScreenSettled()
+                clearAction
             }
+
+            applyOverlayAction(overlayAction)
+            scheduleScreenSettled()
         }
     }
 
     fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event == null) return
-        val pkg = event.packageName?.toString() ?: return
-        if (pkg == context.packageName) return // Ignore own overlay events
-
         val type = event.eventType
+        if (type == AccessibilityEvent.TYPE_WINDOWS_CHANGED) {
+            scheduleScreenSettled()
+            return
+        }
+
+        val pkg = event.packageName?.toString() ?: return
+        if (pkg == ownPackageName) return
+
         if (type == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED ||
             type == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED
         ) {
@@ -143,58 +314,107 @@ class PredictionManager @Inject constructor(
     }
 
     private fun scheduleScreenSettled() {
-        val now = System.currentTimeMillis()
-        if (debounceFirstEventTime == 0L) {
-            debounceFirstEventTime = now
-        }
-
-        debounceJob?.cancel()
-        debounceJob = scope.launch {
-            val elapsed = now - debounceFirstEventTime
-            val wait = if (elapsed >= PredictionConfig.DEBOUNCE_MAX_WAIT_MS) {
-                0L
-            } else {
-                PredictionConfig.DEBOUNCE_MS
+        synchronized(debounceLock) {
+            val now = System.currentTimeMillis()
+            if (debounceFirstEventTime == 0L) {
+                debounceFirstEventTime = now
             }
 
-            if (wait > 0) delay(wait.milliseconds)
-            debounceFirstEventTime = 0L
-            onScreenSettled()
+            val elapsed = now - debounceFirstEventTime
+            if (elapsed >= PredictionConfig.DEBOUNCE_MAX_WAIT_MS) {
+                debounceFirstEventTime = 0L
+                debounceJob?.cancel()
+                debounceJob = null
+                if (!settleRunning) {
+                    settleRunning = true
+                    scope.launch {
+                        try {
+                            onScreenSettled()
+                        } finally {
+                            synchronized(debounceLock) {
+                                settleRunning = false
+                            }
+                        }
+                    }
+                }
+                return
+            }
+
+            debounceJob?.cancel()
+            debounceJob = scope.launch {
+                delay(PredictionConfig.DEBOUNCE_MS.milliseconds)
+                val shouldRun = synchronized(debounceLock) {
+                    debounceFirstEventTime = 0L
+                    if (settleRunning) {
+                        false
+                    } else {
+                        settleRunning = true
+                        true
+                    }
+                }
+                if (shouldRun) {
+                    scope.launch {
+                        try {
+                            onScreenSettled()
+                        } finally {
+                            synchronized(debounceLock) {
+                                settleRunning = false
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 
     suspend fun onScreenSettled() {
-        stateMutex.withLock {
-            val service = CommandExecutorService.instance ?: return
-            val root = service.rootInActiveWindow ?: return
+        val overlayAction: OverlayAction = stateMutex.withLock {
+            if (env.isTextSessionActive() || env.isMacroPlaying()) {
+                Log.d(
+                    TAG,
+                    "Skipping settle: textSession=${env.isTextSessionActive()}, macroPlaying=${env.isMacroPlaying()}"
+                )
+                lastSettledScreenFp = null
+                lastShownPair = null
+                return@withLock clearSuggestionStateLocked()
+            }
 
-            val pkg = root.packageName?.toString() ?: return
-            if (pkg == context.packageName) return
+            val root = env.activeRoot() ?: return@withLock OverlayAction.None
+            val pkg = root.packageName?.toString() ?: return@withLock OverlayAction.None
+            if (pkg == ownPackageName) {
+                currentKeys = null
+                lastSettledScreenFp = null
+                lastShownPair = null
+                return@withLock clearSuggestionStateLocked()
+            }
             if (PredictionGuard.isGuardedPackage(pkg)) {
                 currentKeys = null
-                clearSuggestionInternal()
-                return
+                lastSettledScreenFp = null
+                lastShownPair = null
+                return@withLock clearSuggestionStateLocked()
             }
 
             val now = System.currentTimeMillis()
-            // Session boundary check (app switch or idle timeout)
             if (pkg != sessionPackage || (now - lastCommandTime > PredictionConfig.SESSION_IDLE_MS && lastCommandTime > 0)) {
                 buffer.clear()
                 buffer.add("START:$pkg")
                 sessionPackage = pkg
             }
 
-            val displayMetrics = service.resources.displayMetrics
-            val screenFp = ScreenFingerprint.compute(
-                root,
-                displayMetrics.widthPixels,
-                displayMetrics.heightPixels
-            )
-
+            val screenFp = ScreenFingerprint.compute(root, env.screenWidth(), env.screenHeight())
             if (screenFp == ScreenFingerprint.UNKNOWN_SCREEN) {
+                Log.d(TAG, "onScreenSettled: UNKNOWN_SCREEN for pkg=$pkg")
                 currentKeys = null
-                clearSuggestionInternal()
-                return
+                lastSettledScreenFp = null
+                lastShownPair = null
+                return@withLock clearSuggestionStateLocked()
+            }
+
+            var pendingClear: OverlayAction = OverlayAction.None
+            if (screenFp != lastSettledScreenFp) {
+                lastShownPair = null
+                lastSettledScreenFp = screenFp
+                pendingClear = clearSuggestionStateLocked()
             }
 
             val t1 = buffer.lastOrNull() ?: "START:$pkg"
@@ -204,39 +424,88 @@ class PredictionManager @Inject constructor(
 
             currentKeys = ContextKeys(pkg, screenFp, key1, key2)
 
-            if (suppressUntilNextCommand) return
+            val targetId = lastActionPerScreen[screenFp]
+                ?: dao.lastUiClickTarget("screen:$screenFp")
+                ?: return@withLock clearOrKeep(pendingClear)
 
-            // Query predictor
-            val candidate = engine.predict(key1, key2) ?: run {
-                clearSuggestionInternal()
-                return
-            }
+            val screenKey = "screen:$screenFp"
+            val candidate = Candidate(targetId = targetId, key = screenKey, k = 1, n = 1)
 
-            // Check if already shown since last command
             if (lastShownPair == Pair(candidate.key, candidate.targetId)) {
-                return
+                val current = activeSuggestion ?: return@withLock pendingClear
+                val refreshedMatches = PredictionNodeMatcher.findMatchingNodes(root, current.targetDef)
+                if (refreshedMatches.size != 1) {
+                    Log.d(
+                        TAG,
+                        "Active suggestion target gone or ambiguous (count=${refreshedMatches.size})"
+                    )
+                    return@withLock clearOrKeep(pendingClear)
+                }
+
+                val freshBounds = Rect()
+                refreshedMatches[0].getBoundsInScreen(freshBounds)
+                if (freshBounds.right <= freshBounds.left ||
+                    freshBounds.bottom <= freshBounds.top ||
+                    isOversizedBackdrop(freshBounds, root) ||
+                    isOccludedByKeyboard(freshBounds)
+                ) {
+                    return@withLock clearOrKeep(pendingClear)
+                }
+
+                if (freshBounds.left != current.bounds.left ||
+                    freshBounds.top != current.bounds.top ||
+                    freshBounds.right != current.bounds.right ||
+                    freshBounds.bottom != current.bounds.bottom
+                ) {
+                    activeSuggestion = current.copy(bounds = freshBounds)
+                    val gen = ++overlayGeneration
+                    return@withLock OverlayAction.Show(freshBounds, gen)
+                }
+
+                return@withLock pendingClear
             }
 
-            // Check cooldown suppression
             val suppression = dao.getSuppression(candidate.key, candidate.targetId)
             if (suppression != null && now < suppression.cooldownUntilTimestamp) {
-                return
+                Log.d(
+                    TAG,
+                    "Suggestion suppressed by cooldown until ${suppression.cooldownUntilTimestamp} for target=${candidate.targetId}"
+                )
+                return@withLock clearOrKeep(pendingClear)
             }
 
-            val targetDef = dao.getActionDef(candidate.targetId) ?: return
-            if (targetDef.actionType != ActionType.UI_CLICK) return
+            val targetDef = dao.getActionDef(candidate.targetId)
+                ?: return@withLock clearOrKeep(pendingClear)
+            if (targetDef.actionType != ActionType.UI_CLICK) {
+                return@withLock clearOrKeep(pendingClear)
+            }
 
-            // Unambiguous target matcher in active window
-            val matchingNodes = findMatchingNodes(root, targetDef)
+            val matchingNodes = PredictionNodeMatcher.findMatchingNodes(root, targetDef)
             if (matchingNodes.size != 1) {
-                Log.d(TAG, "Prediction matching count=${matchingNodes.size} (requires exactly 1)")
-                clearSuggestionInternal()
-                return
+                Log.d(
+                    TAG,
+                    "Prediction matching count=${matchingNodes.size} for ${targetDef.resourceId ?: targetDef.actionHash} (requires exactly 1)"
+                )
+                return@withLock clearOrKeep(pendingClear)
             }
 
             val targetNode = matchingNodes[0]
             val bounds = Rect()
             targetNode.getBoundsInScreen(bounds)
+            if (bounds.right <= bounds.left || bounds.bottom <= bounds.top) {
+                return@withLock clearOrKeep(pendingClear)
+            }
+            if (isOversizedBackdrop(bounds, root)) {
+                Log.d(
+                    TAG,
+                    "Ignoring oversized backdrop target $bounds for ${targetDef.resourceId ?: targetDef.actionHash}"
+                )
+                return@withLock clearOrKeep(pendingClear)
+            }
+            if (isOccludedByKeyboard(bounds)) {
+                Log.d(TAG, "Ignoring target occluded by keyboard: $bounds")
+                return@withLock clearOrKeep(pendingClear)
+            }
 
             val suggestion = ActiveSuggestion(
                 targetDef = targetDef,
@@ -249,103 +518,68 @@ class PredictionManager @Inject constructor(
             activeSuggestion = suggestion
             lastShownPair = Pair(candidate.key, candidate.targetId)
 
-            Log.i(TAG, "Showing suggestion: ${targetDef.resourceId ?: targetDef.actionHash} (k=${candidate.k}, n=${candidate.n})")
-            overlayManager.highlight(bounds)
-
+            val gen = ++overlayGeneration
             suggestionTimeoutJob?.cancel()
             suggestionTimeoutJob = scope.launch {
                 delay(PredictionConfig.SUGGESTION_TIMEOUT_MS.milliseconds)
-                stateMutex.withLock {
-                    clearSuggestionInternal()
-                }
-            }
-        }
-    }
-
-    private fun findMatchingNodes(root: AccessibilityNodeInfo, targetDef: ActionDefEntity): List<AccessibilityNodeInfo> {
-        val matches = mutableListOf<AccessibilityNodeInfo>()
-        val queue = ArrayDeque<AccessibilityNodeInfo>()
-        queue.add(root)
-
-        val targetHash = targetDef.actionHash
-        val chain = ArrayList<Pair<AccessibilityNodeInfo, Int>>()
-
-        while (queue.isNotEmpty() && matches.size < 2) {
-            val node = queue.removeFirst()
-
-            if (node.isVisibleToUser && !node.isPassword && !node.isEditable) {
-                if (PredictionGuard.isGuardedNode(node)) {
-                    // Skip guarded nodes
-                } else {
-                    val descriptor = uiNodeDescriber.describeTapAt(0f, 0f) // or custom node matching
-                    val nodeHash = computeNodeHash(node)
-                    if (nodeHash == targetHash) {
-                        matches.add(node)
+                val timeoutAction = stateMutex.withLock {
+                    val current = activeSuggestion
+                    if (current != null &&
+                        current.shownAt == suggestion.shownAt &&
+                        current.candidate == suggestion.candidate
+                    ) {
+                        clearSuggestionStateLocked()
+                    } else {
+                        OverlayAction.None
                     }
                 }
+                applyOverlayAction(timeoutAction)
             }
 
-            for (i in 0 until node.childCount) {
-                val child = node.getChild(i) ?: continue
-                if (child.isVisibleToUser) {
-                    queue.add(child)
-                }
-            }
+            Log.i(
+                TAG,
+                "Showing suggestion: ${targetDef.resourceId ?: targetDef.actionHash} on screen $screenFp at $bounds"
+            )
+            OverlayAction.Show(bounds, gen)
         }
 
-        return matches
-    }
-
-    private fun computeNodeHash(node: AccessibilityNodeInfo): String {
-        val isClick = true
-        val pkg = node.packageName?.toString() ?: ""
-        val resId = node.viewIdResourceName?.takeIf { it.isNotBlank() }
-        val label = (node.contentDescription ?: node.text)?.toString()?.trim()
-        val labelHash = label?.let { ActionHasher.sha256Hex(it.lowercase()) }
-
-        // Build hierarchy segment
-        val segments = mutableListOf<String>()
-        var curr: AccessibilityNodeInfo? = node
-        var depth = 0
-        while (curr != null && depth < 8) {
-            val parent = curr.parent
-            val index = if (parent != null) {
-                (0 until parent.childCount).firstOrNull { parent.getChild(it) == curr } ?: 0
-            } else 0
-            segments.add(0, HierarchyPath.segment(curr.className, index))
-            curr = parent
-            depth++
-        }
-        val path = HierarchyPath.format(segments)
-
-        val descriptor = ActionDescriptor(
-            type = ActionType.UI_CLICK,
-            packageName = pkg,
-            resourceId = resId,
-            hierarchyPath = path,
-            labelHash = labelHash
-        )
-        return ActionHasher.hash(descriptor)
+        applyOverlayAction(overlayAction)
     }
 
     fun getActiveSuggestion(): ActiveSuggestion? = activeSuggestion
 
-    suspend fun onPredictionConfirmed(): Boolean {
-        return stateMutex.withLock {
-            val suggestion = activeSuggestion ?: return@withLock false
-            val now = System.currentTimeMillis()
+    suspend fun onPredictionConfirmed(): Rect? {
+        val (bounds, overlayAction) = stateMutex.withLock {
+            val suggestion = activeSuggestion ?: return@withLock Pair(null, OverlayAction.None)
 
-            // Double check: screen must be the same
-            val service = CommandExecutorService.instance ?: return@withLock false
-            val root = service.rootInActiveWindow ?: return@withLock false
-            val currentScreen = ScreenFingerprint.compute(root)
-            if (currentScreen != suggestion.screenFp) {
-                Log.w(TAG, "Double-check failed: screen changed from ${suggestion.screenFp} to $currentScreen")
-                clearSuggestionInternal()
-                return@withLock false
+            if (env.isTextSessionActive() || env.isMacroPlaying()) {
+                return@withLock Pair(null, clearSuggestionStateLocked())
             }
 
-            // Reset dismiss count on success
+            val root = env.activeRoot() ?: return@withLock Pair(null, clearSuggestionStateLocked())
+            val currentScreen = ScreenFingerprint.compute(root, env.screenWidth(), env.screenHeight())
+            if (currentScreen != suggestion.screenFp) {
+                Log.w(TAG, "Double-check failed: screen changed from ${suggestion.screenFp} to $currentScreen")
+                return@withLock Pair(null, clearSuggestionStateLocked())
+            }
+
+            val matchingNodes = PredictionNodeMatcher.findMatchingNodes(root, suggestion.targetDef)
+            if (matchingNodes.size != 1) {
+                Log.w(TAG, "Confirm double-check failed: matching count=${matchingNodes.size}")
+                return@withLock Pair(null, clearSuggestionStateLocked())
+            }
+
+            val freshBounds = Rect()
+            matchingNodes[0].getBoundsInScreen(freshBounds)
+            if (freshBounds.right <= freshBounds.left ||
+                freshBounds.bottom <= freshBounds.top ||
+                isOversizedBackdrop(freshBounds, root) ||
+                isOccludedByKeyboard(freshBounds)
+            ) {
+                Log.w(TAG, "Confirm double-check failed: invalid or occluded bounds $freshBounds")
+                return@withLock Pair(null, clearSuggestionStateLocked())
+            }
+
             dao.upsertSuppression(
                 PredictionSuppressionEntity(
                     contextHash = suggestion.candidate.key,
@@ -355,14 +589,17 @@ class PredictionManager @Inject constructor(
                 )
             )
 
-            clearSuggestionInternal()
-            true
+            val clearAction = clearSuggestionStateLocked()
+            Pair(freshBounds, clearAction)
         }
+
+        applyOverlayAction(overlayAction)
+        return bounds
     }
 
-    suspend fun onPredictionDismissed() {
-        stateMutex.withLock {
-            val suggestion = activeSuggestion ?: return@withLock
+    suspend fun onPredictionDismissed(): Boolean {
+        val (dismissed, overlayAction) = stateMutex.withLock {
+            val suggestion = activeSuggestion ?: return@withLock Pair(false, OverlayAction.None)
             val now = System.currentTimeMillis()
 
             val existing = dao.getSuppression(suggestion.candidate.key, suggestion.targetDef.idActionDef)
@@ -380,23 +617,103 @@ class PredictionManager @Inject constructor(
             )
 
             Log.i(TAG, "Dismissed suggestion: count=$count, cooldown=${cooldownDuration / 1000}s")
-            clearSuggestionInternal()
+            Pair(true, clearSuggestionStateLocked())
         }
+
+        applyOverlayAction(overlayAction)
+        return dismissed
     }
 
     suspend fun clearSuggestion() {
-        stateMutex.withLock {
-            clearSuggestionInternal()
+        val overlayAction = stateMutex.withLock {
+            clearSuggestionStateLocked()
+        }
+        applyOverlayAction(overlayAction)
+    }
+
+    fun onServiceDisconnected() {
+        synchronized(debounceLock) {
+            debounceJob?.cancel()
+            debounceJob = null
+            debounceFirstEventTime = 0L
+            settleRunning = false
+        }
+        scope.launch(NonCancellable) {
+            val clearAction = stateMutex.withLock {
+                currentKeys = null
+                lastSettledScreenFp = null
+                lastShownPair = null
+                clearSuggestionStateLocked()
+            }
+            applyOverlayAction(clearAction)
         }
     }
 
-    private suspend fun clearSuggestionInternal() {
+    suspend fun onHistoryCleared() {
+        val clearAction = stateMutex.withLock {
+            lastActionPerScreen.clear()
+            buffer.clear()
+            sessionPackage = null
+            lastCommandTime = 0L
+            currentKeys = null
+            lastSettledScreenFp = null
+            lastShownPair = null
+            clearSuggestionStateLocked()
+        }
+        applyOverlayAction(clearAction)
+    }
+
+    private fun clearSuggestionStateLocked(): OverlayAction {
         suggestionTimeoutJob?.cancel()
+        suggestionTimeoutJob = null
+        val hadSuggestion = activeSuggestion != null
         activeSuggestion = null
-        overlayManager.clearHighlight()
+        val gen = ++overlayGeneration
+        return if (hadSuggestion) OverlayAction.Clear(gen) else OverlayAction.None
+    }
+
+    private fun clearOrKeep(pendingClear: OverlayAction): OverlayAction {
+        val cleared = clearSuggestionStateLocked()
+        return if (cleared !is OverlayAction.None) cleared else pendingClear
+    }
+
+    private fun isOversizedBackdrop(bounds: Rect, root: AccessibilityNodeInfo): Boolean {
+        val winBounds = Rect()
+        root.getBoundsInScreen(winBounds)
+        val winW = (winBounds.right - winBounds.left).coerceAtLeast(0).toLong()
+        val winH = (winBounds.bottom - winBounds.top).coerceAtLeast(0).toLong()
+        val winArea = winW * winH
+        if (winArea <= 0L) return false
+
+        val nodeW = (bounds.right - bounds.left).coerceAtLeast(0).toLong()
+        val nodeH = (bounds.bottom - bounds.top).coerceAtLeast(0).toLong()
+        val nodeArea = nodeW * nodeH
+        return nodeArea * 100L >= winArea * 80L
+    }
+
+    private fun isOccludedByKeyboard(bounds: Rect): Boolean {
+        val keyboardTop = env.keyboardTop() ?: return false
+        return keyboardTop > 0 && bounds.bottom > keyboardTop
+    }
+
+    private suspend fun applyOverlayAction(action: OverlayAction) {
+        when (action) {
+            OverlayAction.None -> Unit
+            is OverlayAction.Show -> withContext(NonCancellable + Dispatchers.Main.immediate) {
+                if (action.generation == overlayGeneration) {
+                    overlayManager.highlight(action.bounds)
+                }
+            }
+            is OverlayAction.Clear -> withContext(NonCancellable + Dispatchers.Main.immediate) {
+                if (action.generation == overlayGeneration) {
+                    overlayManager.clearHighlight()
+                }
+            }
+        }
     }
 
     companion object {
         private const val TAG = "PredictionManager"
+        private const val PRUNE_EVERY_N_RECORDS = 50
     }
 }

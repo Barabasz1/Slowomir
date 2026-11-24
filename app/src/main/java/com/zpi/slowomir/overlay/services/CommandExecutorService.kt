@@ -110,7 +110,7 @@ class CommandExecutorService : AccessibilityService() {
         touchExecutor = touch
         mediaExecutor = MediaExecutor(this)
         navigationExecutor = NavigationExecutor(this, touch)
-        predictionExecutor = PredictionExecutor(this, predictionManager, tapCommandFactory, mediator)
+        predictionExecutor = PredictionExecutor(predictionManager, tapCommandFactory, mediator)
         textEditExecutor = TextEditExecutor(
             service = this,
             touchExecutor = touch,
@@ -187,6 +187,7 @@ class CommandExecutorService : AccessibilityService() {
      * Releases all resources associated with the service.
      */
     private fun release() {
+        predictionManager.onServiceDisconnected()
         overlayHostProvider.useApplication()
         clearExecutors()
         instance = null

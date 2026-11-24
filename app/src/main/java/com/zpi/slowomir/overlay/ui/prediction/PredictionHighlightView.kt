@@ -11,13 +11,18 @@ import android.view.animation.LinearInterpolator
 
 class PredictionHighlightView(context: Context) : View(context) {
 
+    private val density = resources.displayMetrics.density
+    private val basePaddingPx = 3f * density
+    private val cornerRadiusPx = 8f * density
+
     private val targetRect = Rect()
     private val drawRectF = RectF()
+    private val windowLocation = IntArray(2)
     private var isHighlightActive = false
 
     private val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
-        strokeWidth = 6f
+        strokeWidth = 3f * density
         color = 0xFF4CAF50.toInt() // Material Green accent
     }
 
@@ -58,18 +63,23 @@ class PredictionHighlightView(context: Context) : View(context) {
         super.onDraw(canvas)
         if (!isHighlightActive || targetRect.isEmpty) return
 
-        val padding = 6f * pulseFactor
-        val radius = 16f
+        val padding = basePaddingPx * pulseFactor
+        val halfStroke = strokePaint.strokeWidth / 2f
 
-        drawRectF.set(
-            targetRect.left - padding,
-            targetRect.top - padding,
-            targetRect.right + padding,
-            targetRect.bottom + padding
-        )
+        getLocationOnScreen(windowLocation)
+        val offsetX = windowLocation[0].toFloat()
+        val offsetY = windowLocation[1].toFloat()
 
-        canvas.drawRoundRect(drawRectF, radius, radius, fillPaint)
-        canvas.drawRoundRect(drawRectF, radius, radius, strokePaint)
+        val left = (targetRect.left - offsetX - padding).coerceAtLeast(halfStroke)
+        val top = (targetRect.top - offsetY - padding).coerceAtLeast(halfStroke)
+        val right = (targetRect.right - offsetX + padding).coerceAtMost(width - halfStroke)
+        val bottom = (targetRect.bottom - offsetY + padding).coerceAtMost(height - halfStroke)
+
+        if (right > left && bottom > top) {
+            drawRectF.set(left, top, right, bottom)
+            canvas.drawRoundRect(drawRectF, cornerRadiusPx, cornerRadiusPx, fillPaint)
+            canvas.drawRoundRect(drawRectF, cornerRadiusPx, cornerRadiusPx, strokePaint)
+        }
     }
 
     override fun onDetachedFromWindow() {
