@@ -27,11 +27,16 @@ fun InfoScreenLayout(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val scrollState = rememberScrollState()
+
     ScreenScaffold(
         title = title,
         scrollState = scrollState,
         modifier = modifier,
-        navigationIcon = { BackIconButton(onClick = onBack) },
+        navigationIcon = { 
+            BackIconButton(
+                onClick = onBack
+            ) 
+        },
     ) { innerPadding ->
         Column(
             modifier = Modifier

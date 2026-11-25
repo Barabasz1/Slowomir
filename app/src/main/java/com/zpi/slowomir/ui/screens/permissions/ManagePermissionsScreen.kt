@@ -7,19 +7,14 @@ import androidx.compose.foundation.verticalScroll
 import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Notifications
@@ -27,22 +22,15 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -50,7 +38,6 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.zpi.slowomir.ui.components.BackIconButton
 import com.zpi.slowomir.ui.components.ScreenScaffold
 import com.zpi.slowomir.utils.PermissionUtils
-import kotlinx.coroutines.launch
 
 @Composable
 fun ManagePermissionsScreen(
@@ -59,9 +46,6 @@ fun ManagePermissionsScreen(
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    val coroutineScope = rememberCoroutineScope()
-    val backButtonScale = remember { Animatable(1f) }
-    var isBackTriggered by remember { mutableStateOf(false) }
 
     var hasAccessibility by remember { mutableStateOf(PermissionUtils.isAccessibilityServiceEnabled(context)) }
     var hasOverlay by remember { mutableStateOf(PermissionUtils.isOverlayPermissionGranted(context)) }
@@ -163,28 +147,8 @@ fun ManagePermissionsScreen(
         modifier = modifier.background(MaterialTheme.colorScheme.background),
         navigationIcon = {
             BackIconButton(
-                onClick = {
-                    if (!isBackTriggered) {
-                        isBackTriggered = true
-                        coroutineScope.launch {
-                            backButtonScale.animateTo(
-                                targetValue = 0.85f,
-                                animationSpec = tween(durationMillis = 40)
-                            )
-                            backButtonScale.animateTo(
-                                targetValue = 1f,
-                                animationSpec = tween(durationMillis = 40)
-                            )
-                            onBack()
-                        }
-                    }
-                },
-                enabled = !isBackTriggered,
-                contentDescription = stringResource(R.string.permissions_back),
-                modifier = Modifier.graphicsLayer {
-                    scaleX = backButtonScale.value
-                    scaleY = backButtonScale.value
-                }
+                onClick = onBack,
+                contentDescription = stringResource(R.string.permissions_back)
             )
         }
     ) { innerPadding ->

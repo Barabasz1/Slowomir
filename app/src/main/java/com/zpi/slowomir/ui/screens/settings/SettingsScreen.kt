@@ -4,7 +4,6 @@ import com.zpi.slowomir.R
 import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -38,10 +37,6 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -62,7 +57,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.zpi.slowomir.overlay.ui.grid.GridType
 import com.zpi.slowomir.ui.components.ScreenScaffold
-import com.zpi.slowomir.ui.screens.permissions.ManagePermissionsScreen
 import com.zpi.slowomir.utils.PreferencesManager
 import com.zpi.slowomir.utils.Minus
 
@@ -89,193 +83,181 @@ fun SettingsScreen(
     onGridTypeChange: (GridType) -> Unit,
     invertedControls: Boolean,
     onInvertedControlsChange: (Boolean) -> Unit,
-    showPermissionsScreen: Boolean,
-    onShowPermissionsScreenChange: (Boolean) -> Unit,
+    onManagePermissionsClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    BackHandler(enabled = showPermissionsScreen) {
-        onShowPermissionsScreenChange(false)
-    }
-
-    if (showPermissionsScreen) {
-        ManagePermissionsScreen(
-            onBack = { onShowPermissionsScreenChange(false) },
-            modifier = modifier
-        )
-        return
-    }
-
     val scrollState = rememberScrollState()
     val stateOn = stringResource(R.string.settings_state_on)
     val stateOff = stringResource(R.string.settings_state_off)
     val overlayDescription = stringResource(R.string.settings_a11y_option, Idx.OVERLAY, stringResource(R.string.settings_show_overlay))
     val invertedDescription = stringResource(R.string.settings_a11y_option, Idx.OVERLAY, stringResource(R.string.settings_inverted_controls))
+    
     ScreenScaffold(title = stringResource(R.string.settings_title), scrollState = scrollState, modifier = modifier) { innerPadding ->
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(innerPadding)
-            .verticalScroll(scrollState)
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        SectionTitle(stringResource(R.string.settings_section_general))
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .verticalScroll(scrollState)
+                .padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            SectionTitle(stringResource(R.string.settings_section_general))
 
-        SettingsCard {
-            val description = stringResource(R.string.settings_a11y_option, Idx.PERMISSIONS, stringResource(R.string.permissions_manage_title))
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable(
-                        role = Role.Button,
-                        onClick = { onShowPermissionsScreenChange(true) }
-                    )
-                    .clearAndSetSemantics {
-                        contentDescription = description
-                        role = Role.Button
-                        onClick(label = null) { onShowPermissionsScreenChange(true); true }
-                    }
-                    .padding(12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IndexBadge(Idx.PERMISSIONS)
-                Spacer(modifier = Modifier.width(12.dp))
-                IconTile(Icons.Rounded.Lock)
-                Spacer(modifier = Modifier.width(16.dp))
-                Text(
-                    modifier = Modifier.weight(1f),
-                    text = stringResource(R.string.permissions_manage_title),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Icon(
-                    imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-
-        SettingsCard {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .toggleable(
-                        value = isOverlayEnabled,
-                        role = Role.Switch,
-                        onValueChange = onOverlayEnabledChange
-                    )
-                    .clearAndSetSemantics {
-                        contentDescription = overlayDescription
-                        stateDescription = if (isOverlayEnabled) stateOn else stateOff
-                        role = Role.Switch
-                        onClick(label = null) { onOverlayEnabledChange(!isOverlayEnabled); true }
-                    }
-                    .padding(12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IndexBadge(Idx.OVERLAY)
-                Spacer(modifier = Modifier.width(12.dp))
-                IconTile(Icons.Filled.Build)
-                Spacer(modifier = Modifier.width(16.dp))
-                Text(
-                    modifier = Modifier.weight(1f),
-                    text = stringResource(R.string.settings_show_overlay),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-
-                Switch(checked = isOverlayEnabled, onCheckedChange = null)
-            }
-        }
-
-        SectionTitle(stringResource(R.string.settings_section_touch))
-
-        SettingsCard {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .toggleable(
-                        value = invertedControls,
-                        role = Role.Switch,
-                        onValueChange = onInvertedControlsChange
-                    )
-                    .clearAndSetSemantics {
-                        contentDescription = invertedDescription
-                        stateDescription = if (isOverlayEnabled) stateOn else stateOff
-                        role = Role.Switch
-                        onClick(label = null) { onOverlayEnabledChange(!isOverlayEnabled); true }
-                    }
-                    .padding(12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IndexBadge(Idx.INVERTED_CONTROLS)
-                Spacer(modifier = Modifier.width(12.dp))
-                IconTile(Icons.Filled.Build)
-                Spacer(modifier = Modifier.width(16.dp))
-                Text(
-                    modifier = Modifier.weight(1f),
-                    text = stringResource(R.string.settings_inverted_controls),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-
-                Switch(checked = invertedControls, onCheckedChange = null)
-            }
-        }
-
-        SectionTitle(stringResource(R.string.settings_section_grid))
-
-        SettingsCard {
-            Column(
-                modifier = Modifier.padding(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Stepper(
-                    title = stringResource(R.string.settings_grid_rows),
-                    value = gridRows,
-                    minusIndex = Idx.ROWS_MINUS,
-                    plusIndex = Idx.ROWS_PLUS,
-                    onValueChange = onGridRowsChange
-                )
-                Stepper(
-                    title = stringResource(R.string.settings_grid_cols),
-                    value = gridCols,
-                    minusIndex = Idx.COLS_MINUS,
-                    plusIndex = Idx.COLS_PLUS,
-                    onValueChange = onGridColsChange
-                )
-            }
-        }
-
-        SettingsCard {
-            Column(
-                modifier = Modifier
-                    .padding(vertical = 6.dp)
-                    .selectableGroup()
-            ) {
-                Text(
-                    text = stringResource(R.string.settings_grid_type),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
+            SettingsCard {
+                val description = stringResource(R.string.settings_a11y_option, Idx.PERMISSIONS, stringResource(R.string.permissions_manage_title))
+                Row(
                     modifier = Modifier
-                        .padding(horizontal = 12.dp, vertical = 6.dp)
-                        .semantics { heading() }
-                )
-                GridType.entries.forEachIndexed { i, type ->
-                    ChoiceRow(
-                        index = Idx.GRID_TYPE_FIRST + i,
-                        label = type.label(),
-                        selected = type == gridType,
-                        onSelect = { onGridTypeChange(type) },
-                        trailing = { GridTypePreview(type) }
+                        .fillMaxWidth()
+                        .clickable(
+                            role = Role.Button,
+                            onClick = { onManagePermissionsClick() }
+                        )
+                        .clearAndSetSemantics {
+                            contentDescription = description
+                            role = Role.Button
+                            onClick(label = null) { onManagePermissionsClick(); true }
+                        }
+                        .padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IndexBadge(Idx.PERMISSIONS)
+                    Spacer(modifier = Modifier.width(12.dp))
+                    IconTile(Icons.Rounded.Lock)
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Text(
+                        modifier = Modifier.weight(1f),
+                        text = stringResource(R.string.permissions_manage_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
+
+            SettingsCard {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .toggleable(
+                            value = isOverlayEnabled,
+                            role = Role.Switch,
+                            onValueChange = onOverlayEnabledChange
+                        )
+                        .clearAndSetSemantics {
+                            contentDescription = overlayDescription
+                            stateDescription = if (isOverlayEnabled) stateOn else stateOff
+                            role = Role.Switch
+                            onClick(label = null) { onOverlayEnabledChange(!isOverlayEnabled); true }
+                        }
+                        .padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IndexBadge(Idx.OVERLAY)
+                    Spacer(modifier = Modifier.width(12.dp))
+                    IconTile(Icons.Filled.Build)
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Text(
+                        modifier = Modifier.weight(1f),
+                        text = stringResource(R.string.settings_show_overlay),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    Switch(checked = isOverlayEnabled, onCheckedChange = null)
+                }
+            }
+
+            SectionTitle(stringResource(R.string.settings_section_touch))
+
+            SettingsCard {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .toggleable(
+                            value = invertedControls,
+                            role = Role.Switch,
+                            onValueChange = onInvertedControlsChange
+                        )
+                        .clearAndSetSemantics {
+                            contentDescription = invertedDescription
+                            stateDescription = if (isOverlayEnabled) stateOn else stateOff
+                            role = Role.Switch
+                            onClick(label = null) { onOverlayEnabledChange(!isOverlayEnabled); true }
+                        }
+                        .padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IndexBadge(Idx.INVERTED_CONTROLS)
+                    Spacer(modifier = Modifier.width(12.dp))
+                    IconTile(Icons.Filled.Build)
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Text(
+                        modifier = Modifier.weight(1f),
+                        text = stringResource(R.string.settings_inverted_controls),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    Switch(checked = invertedControls, onCheckedChange = null)
+                }
+            }
+
+            SectionTitle(stringResource(R.string.settings_section_grid))
+
+            SettingsCard {
+                Column(
+                    modifier = Modifier.padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Stepper(
+                        title = stringResource(R.string.settings_grid_rows),
+                        value = gridRows,
+                        minusIndex = Idx.ROWS_MINUS,
+                        plusIndex = Idx.ROWS_PLUS,
+                        onValueChange = onGridRowsChange
+                    )
+                    Stepper(
+                        title = stringResource(R.string.settings_grid_cols),
+                        value = gridCols,
+                        minusIndex = Idx.COLS_MINUS,
+                        plusIndex = Idx.COLS_PLUS,
+                        onValueChange = onGridColsChange
+                    )
+                }
+            }
+
+            SettingsCard {
+                Column(
+                    modifier = Modifier
+                        .padding(vertical = 6.dp)
+                        .selectableGroup()
+                ) {
+                    Text(
+                        text = stringResource(R.string.settings_grid_type),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier
+                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                            .semantics { heading() }
+                    )
+                    GridType.entries.forEachIndexed { i, type ->
+                        ChoiceRow(
+                            index = Idx.GRID_TYPE_FIRST + i,
+                            label = type.label(),
+                            selected = type == gridType,
+                            onSelect = { onGridTypeChange(type) },
+                            trailing = { GridTypePreview(type) }
+                        )
+                    }
+                }
+            }
         }
-    }
     }
 }
 
