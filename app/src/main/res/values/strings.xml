@@ -93,4 +93,5 @@
     <!-- Macros -->
     <string name="macros_title">Macros</string>
     <string name="commands_title">Command list</string>
+    <string name="home_stop_confirm">Tap again to turn off</string>
 </resources>
