@@ -1,15 +1,9 @@
 package com.zpi.slowomir.ui.components
 
-import com.zpi.slowomir.R
-import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -59,19 +53,4 @@ fun ScreenScaffold(
         },
         content = content,
     )
-}
-
-@Composable
-fun BackIconButton(
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-    contentDescription: String = stringResource(R.string.action_back),
-) {
-    IconButton(onClick = onClick, enabled = enabled, modifier = modifier) {
-        Icon(
-            imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-            contentDescription = contentDescription,
-        )
-    }
 }

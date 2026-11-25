@@ -1,12 +1,6 @@
 package com.zpi.slowomir.ui.screens.onboarding
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -16,6 +10,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import com.zpi.slowomir.ui.components.animation.NavigationDirection
+import com.zpi.slowomir.ui.components.animation.SlideNavigationContent
 
 private enum class OnboardingStep {
     WELCOME,
@@ -37,13 +33,13 @@ fun OnboardingFlow(
         modifier = modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
     ) {
-        AnimatedContent(
+        SlideNavigationContent(
             targetState = step,
-            transitionSpec = {
-                if (targetState == OnboardingStep.PERMISSIONS) {
-                    (slideInHorizontally { it } + fadeIn()) togetherWith (slideOutHorizontally { -it } + fadeOut())
+            direction = { _, target ->
+                if (target == OnboardingStep.PERMISSIONS) {
+                    NavigationDirection.Forward
                 } else {
-                    (slideInHorizontally { -it } + fadeIn()) togetherWith (slideOutHorizontally { it } + fadeOut())
+                    NavigationDirection.Backward
                 }
             },
             label = "onboardingTransition",

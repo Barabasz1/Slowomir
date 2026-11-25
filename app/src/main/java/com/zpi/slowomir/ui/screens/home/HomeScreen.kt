@@ -82,11 +82,6 @@ enum class SlowomirState(@StringRes val titleRes: Int) {
 
     val isRunning: Boolean
         get() = this != Off
-
-    val isPulsing: Boolean
-        get() = this == WaitingForWakeWord ||
-                this == Listening ||
-                this == Processing
 }
 
 fun computeSlowomirState(

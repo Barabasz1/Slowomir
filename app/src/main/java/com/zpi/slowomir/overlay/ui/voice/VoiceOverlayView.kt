@@ -3,10 +3,6 @@ package com.zpi.slowomir.overlay.ui.voice
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Row
@@ -32,6 +28,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.zpi.slowomir.ui.components.animation.rememberPulse
 import com.zpi.slowomir.ui.icons.edit
 import com.zpi.slowomir.ui.icons.hourglass_empty
 import com.zpi.slowomir.ui.icons.mic
@@ -103,11 +100,10 @@ private fun OverlayState.icon(): ImageVector = when (this) {
 private fun StatusIcon(state: OverlayState) {
     val color by animateColorAsState(state.color(), tween(250), label = "iconColor")
 
-    val pulse = rememberInfiniteTransition(label = "pulse")
-    val pulseAlpha by pulse.animateFloat(
+    val pulseAlpha by rememberPulse(
         initialValue = 1f,
         targetValue = 0.3f,
-        animationSpec = infiniteRepeatable(tween(700), RepeatMode.Reverse),
+        durationMillis = 700,
         label = "pulseAlpha",
     )
 

@@ -2,9 +2,12 @@ package com.zpi.slowomir.ui.navigation
 
 import androidx.compose.ui.res.stringResource
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
@@ -14,10 +17,14 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import com.zpi.slowomir.ui.screens.permissions.ManagePermissionsScreen
 import androidx.compose.ui.text.style.TextAlign
 import com.zpi.slowomir.BuildConfig
+import com.zpi.slowomir.ui.components.animation.NavigationDirection
+import com.zpi.slowomir.ui.components.animation.SlideNavigationContent
 import com.zpi.slowomir.ui.screens.dev.DevScreen
 import com.zpi.slowomir.ui.screens.viewmodel.MainViewModel
 import com.zpi.slowomir.ui.screens.home.CommandsScreen
@@ -69,86 +76,126 @@ fun MainScreen(
         tab != AppTab.DEV || BuildConfig.DEBUG
     }
 
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
-        bottomBar = {
-            if (!(selectedTab == AppTab.SETTINGS && showPermissionsScreen)) NavigationBar {
-                visibleTabs.forEach { tab ->
-                    NavigationBarItem(
-                        selected = selectedTab == tab,
-                        onClick = {
-                            if (tab == AppTab.HOME && selectedTab == AppTab.HOME) {
-                                homeDestination = null
+    val isManagingPermissions = selectedTab == AppTab.SETTINGS && showPermissionsScreen
+    val mainContentState = rememberSaveableStateHolder()
+
+    BackHandler(enabled = isManagingPermissions) {
+        showPermissionsScreen = false
+    }
+
+    // Animate the entire destination, including its navigation bar. Removing the bar
+    // from a shared Scaffold would resize both screens in the middle of the slide.
+    SlideNavigationContent(
+        targetState = isManagingPermissions,
+        direction = { _, target ->
+            if (target) NavigationDirection.Forward else NavigationDirection.Backward
+        },
+        label = "Settings to Permissions Animation",
+        modifier = modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+    ) { managingPermissions ->
+        if (managingPermissions) {
+            ManagePermissionsScreen(
+                onBack = { showPermissionsScreen = false },
+                modifier = Modifier.fillMaxSize().safeDrawingPadding()
+            )
+        } else {
+            // Restore the settings scroll position after returning from permissions.
+            mainContentState.SaveableStateProvider("main") {
+                Scaffold(
+                    modifier = Modifier.fillMaxSize(),
+                    bottomBar = {
+                        NavigationBar {
+                            visibleTabs.forEach { tab ->
+                                NavigationBarItem(
+                                    selected = selectedTab == tab,
+                                    onClick = {
+                                        if (tab == AppTab.HOME && selectedTab == AppTab.HOME) {
+                                            homeDestination = null
+                                        }
+                                        selectedTab = tab
+                                    },
+                                    icon = { Icon(tab.icon, contentDescription = stringResource(tab.labelRes)) },
+                                    label = {
+                                        Text(
+                                            text = stringResource(tab.labelRes),
+                                            textAlign = TextAlign.Center
+                                        )
+                                    }
+                                )
                             }
-                            selectedTab = tab
-                        },
-                        icon = { Icon(tab.icon, contentDescription = stringResource(tab.labelRes)) },
-                        label = {
-                            Text(
-                                text = stringResource(tab.labelRes),
-                                textAlign = TextAlign.Center
+                        }
+                    }
+                ) { innerPadding ->
+                    val contentModifier = Modifier.padding(innerPadding)
+
+                    when (selectedTab) {
+                        AppTab.HOME -> {
+                            SlideNavigationContent(
+                                targetState = homeDestination,
+                                direction = { _, target ->
+                                    if (target != null) NavigationDirection.Forward else NavigationDirection.Backward
+                                },
+                                label = "Home Navigation Animation",
+                                modifier = contentModifier.fillMaxSize()
+                            ) { targetDestination ->
+                                when (targetDestination) {
+                                    null -> HomeScreen(
+                                        isServiceRunning = isServiceRunning,
+                                        voiceState = voiceState,
+                                        overlayState = mediatorState.overlayState,
+                                        resultState = resultState,
+                                        onStartVoiceService = { mainViewModel.startVoiceService() },
+                                        onStopVoiceService = { mainViewModel.stopVoiceService() },
+                                        modifier = Modifier,
+                                        onIntroductionClick = { homeDestination = HomeDestination.INTRODUCTION },
+                                        onCommandsClick = { homeDestination = HomeDestination.COMMANDS },
+                                        showIntroHighlight = showIntroHighlight,
+                                        onDismissIntroHighlight = { mainViewModel.dismissIntroHighlight() },
+                                    )
+
+                                    HomeDestination.INTRODUCTION -> IntroductionScreen(
+                                        onBack = { homeDestination = null },
+                                        modifier = Modifier,
+                                    )
+
+                                    HomeDestination.COMMANDS -> CommandsScreen(
+                                        onBack = { homeDestination = null },
+                                        modifier = Modifier,
+                                    )
+                                }
+                            }
+                        }
+
+                        AppTab.MACROS -> MacrosScreen(modifier = contentModifier)
+                        AppTab.SETTINGS -> SettingsScreen(
+                            isOverlayEnabled = isOverlayEnabled,
+                            onOverlayEnabledChange = { mainViewModel.setOverlayEnabled(it) },
+                            gridRows = gridRows,
+                            onGridRowsChange = { mainViewModel.setGridRows(it) },
+                            gridCols = gridCols,
+                            onGridColsChange = { mainViewModel.setGridCols(it) },
+                            gridType = gridType,
+                            onGridTypeChange = { mainViewModel.setGridType(it) },
+                            invertedControls = invertedControls,
+                            onInvertedControlsChange = { mainViewModel.setInvertedControls(it) },
+                            onManagePermissionsClick = { showPermissionsScreen = true },
+                            modifier = contentModifier
+                        )
+
+                        AppTab.DEV -> if (BuildConfig.DEBUG) {
+                            DevScreen(
+                                onSpeechInput = { mainViewModel.simulateSpeechInput(it) },
+                                onSpeechCompleted = { mainViewModel.simulateSpeechCompletion(it) },
+                                onWakeWord = { mainViewModel.simulateWakeWord() },
+                                onToggleGrid = { mainViewModel.toggleGrid() },
+                                onTapAt = { x, y -> mainViewModel.executeTapAt(x, y) },
+                                modifier = contentModifier
                             )
                         }
-                    )
+                    }
                 }
-            }
-        }
-    ) { innerPadding ->
-        val contentModifier = Modifier.padding(innerPadding)
-
-        when (selectedTab) {
-            AppTab.HOME -> when (homeDestination) {
-                null -> HomeScreen(
-                    isServiceRunning = isServiceRunning,
-                    voiceState = voiceState,
-                    overlayState = mediatorState.overlayState,
-                    resultState = resultState,
-                    onStartVoiceService = { mainViewModel.startVoiceService() },
-                    onStopVoiceService = { mainViewModel.stopVoiceService() },
-                    modifier = contentModifier,
-                    onIntroductionClick = { homeDestination = HomeDestination.INTRODUCTION },
-                    onCommandsClick = { homeDestination = HomeDestination.COMMANDS },
-                    showIntroHighlight = showIntroHighlight,
-                    onDismissIntroHighlight = { mainViewModel.dismissIntroHighlight() },
-                )
-
-                HomeDestination.INTRODUCTION -> IntroductionScreen(
-                    onBack = { homeDestination = null },
-                    modifier = contentModifier,
-                )
-
-                HomeDestination.COMMANDS -> CommandsScreen(
-                    onBack = { homeDestination = null },
-                    modifier = contentModifier,
-                )
-            }
-
-            AppTab.MACROS -> MacrosScreen(modifier = contentModifier)
-            AppTab.SETTINGS -> SettingsScreen(
-                isOverlayEnabled = isOverlayEnabled,
-                onOverlayEnabledChange = { mainViewModel.setOverlayEnabled(it) },
-                gridRows = gridRows,
-                onGridRowsChange = { mainViewModel.setGridRows(it) },
-                gridCols = gridCols,
-                onGridColsChange = { mainViewModel.setGridCols(it) },
-                gridType = gridType,
-                onGridTypeChange = { mainViewModel.setGridType(it) },
-                invertedControls = invertedControls,
-                onInvertedControlsChange = { mainViewModel.setInvertedControls(it) },
-                showPermissionsScreen = showPermissionsScreen,
-                onShowPermissionsScreenChange = { showPermissionsScreen = it },
-                modifier = contentModifier
-            )
-
-            AppTab.DEV -> if (BuildConfig.DEBUG) {
-                DevScreen(
-                    onSpeechInput = { mainViewModel.simulateSpeechInput(it) },
-                    onSpeechCompleted = { mainViewModel.simulateSpeechCompletion(it) },
-                    onWakeWord = { mainViewModel.simulateWakeWord() },
-                    onToggleGrid = { mainViewModel.toggleGrid() },
-                    onTapAt = { x, y -> mainViewModel.executeTapAt(x, y) },
-                    modifier = contentModifier
-                )
             }
         }
     }

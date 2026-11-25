@@ -1,16 +1,5 @@
 package com.zpi.slowomir.overlay.ui.macro
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -38,11 +27,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -54,6 +39,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zpi.slowomir.overlay.macro.Macro
+import com.zpi.slowomir.ui.components.animation.OverlayAppearContent
+import com.zpi.slowomir.ui.components.animation.rememberPulse
 
 @Composable
 fun MacroView(
@@ -62,25 +49,12 @@ fun MacroView(
     onSelectMacro: (Int) -> Unit = {},
     onClose: () -> Unit = {},
 ) {
-    var isAppeared by remember { mutableStateOf(false) }
-
-    LaunchedEffect(Unit) {
-        isAppeared = true
-    }
-
-    AnimatedVisibility(
-        visible = isAppeared,
-        enter = fadeIn(animationSpec = tween(durationMillis = MacroView.FADE_IN_DURATION_MS)) +
-                slideInVertically(
-                    initialOffsetY = { MacroView.SLIDE_IN_OFFSET_Y },
-                    animationSpec = tween(durationMillis = MacroView.FADE_IN_DURATION_MS)
-                ) +
-                scaleIn(
-                    initialScale = MacroView.INITIAL_SCALE,
-                    animationSpec = tween(durationMillis = MacroView.FADE_IN_DURATION_MS)
-                ),
-        exit = fadeOut(animationSpec = tween(durationMillis = MacroView.FADE_OUT_DURATION_MS)),
-        modifier = modifier.fillMaxSize()
+    OverlayAppearContent(
+        modifier = modifier.fillMaxSize(),
+        enterDurationMillis = MacroView.FADE_IN_DURATION_MS,
+        exitDurationMillis = MacroView.FADE_OUT_DURATION_MS,
+        initialOffsetY = MacroView.SLIDE_IN_OFFSET_Y,
+        initialScale = MacroView.INITIAL_SCALE,
     ) {
         Box(
             modifier = Modifier
@@ -155,18 +129,11 @@ fun MacroView(
 
 @Composable
 private fun MacroHeaderIndicator() {
-    val transition = rememberInfiniteTransition(label = "macro_pulse")
-    val scale by transition.animateFloat(
+    val scale by rememberPulse(
         initialValue = 0.8f,
         targetValue = 1.2f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(
-                durationMillis = MacroView.PULSE_ANIMATION_DURATION_MS,
-                easing = FastOutSlowInEasing
-            ),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "pulse_scale",
+        durationMillis = MacroView.PULSE_ANIMATION_DURATION_MS,
+        label = "macro_pulse",
     )
 
     Row(
@@ -345,7 +312,6 @@ private fun IndexBadge(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ActionSequenceViewHorizontal(actions: List<ActionEntry>) {
     FlowRow(

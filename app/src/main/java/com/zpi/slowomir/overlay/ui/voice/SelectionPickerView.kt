@@ -1,11 +1,5 @@
 package com.zpi.slowomir.overlay.ui.voice
 
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -37,6 +31,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.zpi.slowomir.R
+import com.zpi.slowomir.ui.components.animation.rememberPulse
 import com.zpi.slowomir.overlay.commands.CommandIdentifier
 
 @Composable
@@ -103,15 +98,11 @@ fun SelectionPickerView(
 
 @Composable
 private fun ListeningHeader() {
-    val transition = rememberInfiniteTransition(label = "listening")
-    val scale by transition.animateFloat(
+    val scale by rememberPulse(
         initialValue = 0.7f,
         targetValue = 1.25f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 800, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "pulse",
+        durationMillis = 800,
+        label = "listening",
     )
 
     Row(
