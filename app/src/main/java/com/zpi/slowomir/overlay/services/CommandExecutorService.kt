@@ -10,7 +10,6 @@ import android.view.accessibility.AccessibilityNodeInfo
 import android.view.inputmethod.EditorInfo
 import com.zpi.slowomir.overlay.executors.GridExecutor
 import com.zpi.slowomir.overlay.executors.MacroExecutor
-import com.zpi.slowomir.overlay.executors.MediaExecutor
 import com.zpi.slowomir.overlay.executors.NavigationExecutor
 import com.zpi.slowomir.overlay.executors.PhoneCallExecutor
 import com.zpi.slowomir.overlay.executors.PredictionExecutor
@@ -35,7 +34,6 @@ import javax.inject.Inject
  * @see TouchExecutor
  * @see GridExecutor
  * @see MacroExecutor
- * @see MediaExecutor
  * @see NavigationExecutor
  * @see PredictionExecutor
  * @see TextEditExecutor
@@ -75,9 +73,6 @@ class CommandExecutorService : AccessibilityService() {
     var touchExecutor: TouchExecutor? = null
         private set
 
-    var mediaExecutor: MediaExecutor? = null
-        private set
-
     var navigationExecutor: NavigationExecutor? = null
         private set
 
@@ -104,7 +99,6 @@ class CommandExecutorService : AccessibilityService() {
         softKeyboardController.setShowMode(SHOW_MODE_AUTO)
         val touch = TouchExecutor(this, preferencesManager)
         touchExecutor = touch
-        mediaExecutor = MediaExecutor(this)
         navigationExecutor = NavigationExecutor(this, touch)
         predictionExecutor = PredictionExecutor(this)
         textEditExecutor = TextEditExecutor(
@@ -178,7 +172,6 @@ class CommandExecutorService : AccessibilityService() {
      */
     private fun clearExecutors() {
         touchExecutor = null
-        mediaExecutor = null
         navigationExecutor = null
         predictionExecutor = null
         textEditExecutor = null

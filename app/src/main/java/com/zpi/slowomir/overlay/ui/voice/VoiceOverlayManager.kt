@@ -119,6 +119,7 @@ class VoiceOverlayManager @Inject constructor(
                 .withMinDisplayTime(MIN_DISPLAY.milliseconds)
                 .hideResultsAfter(RESULT_VISIBLE.milliseconds)
         }
+        .stateIn(scope, SharingStarted.Eagerly, OverlayState.Idle)
 
     private val _strip = MutableStateFlow(stripOf(OverlaySide.TOP, 0))
     val strip: StateFlow<OverlayStrip> = _strip.asStateFlow()

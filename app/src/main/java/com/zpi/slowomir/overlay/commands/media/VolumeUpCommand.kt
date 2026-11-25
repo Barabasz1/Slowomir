@@ -18,7 +18,7 @@ class VolumeUpCommand @AssistedInject constructor(
 ) : Command {
     override fun execute(): CommandResult {
         val executor = mediaExecutorProvider.get()
-            ?: return CommandResult.Failure("Accessibility Service is not enabled")
+            ?: return CommandResult.Failure("Media executor unavailable")
 
         val success = executor.volumeUp()
         return if (success) CommandResult.Success() else CommandResult.Failure("Media volume up failed")

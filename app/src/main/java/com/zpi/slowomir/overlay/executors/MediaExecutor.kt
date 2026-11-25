@@ -11,11 +11,17 @@ import android.os.SystemClock
 import android.util.Log
 import android.view.KeyEvent
 import com.zpi.slowomir.overlay.services.MediaListenerService
+import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
+import javax.inject.Singleton
 
 /**
  * Handles media-related actions.
  */
-class MediaExecutor(private val context: Context) {
+@Singleton
+class MediaExecutor @Inject constructor(
+    @ApplicationContext private val context: Context,
+) {
 
     private val audioManager: AudioManager?
         get() = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
