@@ -4,6 +4,13 @@ import com.zpi.slowomir.overlay.commands.CommandArgument
 import com.zpi.slowomir.overlay.commands.CommandIdentifier
 import com.zpi.slowomir.overlay.commands.grid.*
 import com.zpi.slowomir.overlay.commands.macro.*
+import com.zpi.slowomir.overlay.commands.overlay.SleepCommand
+import com.zpi.slowomir.overlay.commands.media.NextTrackCommand
+import com.zpi.slowomir.overlay.commands.media.PauseCommand
+import com.zpi.slowomir.overlay.commands.media.PlayCommand
+import com.zpi.slowomir.overlay.commands.media.PreviousTrackCommand
+import com.zpi.slowomir.overlay.commands.media.SkipBackwardCommand
+import com.zpi.slowomir.overlay.commands.media.SkipForwardCommand
 import com.zpi.slowomir.overlay.commands.media.VolumeDownCommand
 import com.zpi.slowomir.overlay.commands.media.VolumeUpCommand
 import com.zpi.slowomir.overlay.commands.navigation.*
@@ -64,6 +71,12 @@ class CommandResolverTest {
     private val zoomOutNavCommandFactory = mock<ZoomOutNavCommand.Factory>()
     private val volumeUpCommandFactory = mock<VolumeUpCommand.Factory>()
     private val volumeDownCommandFactory = mock<VolumeDownCommand.Factory>()
+    private val playCommandFactory = mock<PlayCommand.Factory>()
+    private val pauseCommandFactory = mock<PauseCommand.Factory>()
+    private val skipForwardCommandFactory = mock<SkipForwardCommand.Factory>()
+    private val skipBackwardCommandFactory = mock<SkipBackwardCommand.Factory>()
+    private val nextTrackCommandFactory = mock<NextTrackCommand.Factory>()
+    private val previousTrackCommandFactory = mock<PreviousTrackCommand.Factory>()
     private val openAppCommandFactory = mock<OpenAppCommand.Factory>()
     private val gridEnableCommandFactory = mock<GridEnableCommand.Factory>()
     private val disableGridCommandFactory = mock<GridDisableCommand.Factory>()
@@ -84,6 +97,7 @@ class CommandResolverTest {
     private val playMacroCommandFactory = mock<PlayMacroCommand.Factory>()
     private val recordMacroCommandFactory = mock<RecordMacroCommand.Factory>()
     private val finishMacroCommandFactory = mock<FinishMacroCommand.Factory>()
+    private val sleepCommandFactory = mock<SleepCommand.Factory>()
 
     private val resolver = CommandResolver(
         notificationsCommandFactory = notificationsCommandFactory,
@@ -122,6 +136,12 @@ class CommandResolverTest {
         zoomOutNavCommandFactory = zoomOutNavCommandFactory,
         volumeUpCommandFactory = volumeUpCommandFactory,
         volumeDownCommandFactory = volumeDownCommandFactory,
+        playCommandFactory = playCommandFactory,
+        pauseCommandFactory = pauseCommandFactory,
+        skipForwardCommandFactory = skipForwardCommandFactory,
+        skipBackwardCommandFactory = skipBackwardCommandFactory,
+        nextTrackCommandFactory = nextTrackCommandFactory,
+        previousTrackCommandFactory = previousTrackCommandFactory,
         openAppCommandFactory = openAppCommandFactory,
         gridEnableCommandFactory = gridEnableCommandFactory,
         disableGridCommandFactory = disableGridCommandFactory,
@@ -138,6 +158,7 @@ class CommandResolverTest {
         playMacroCommandFactory = playMacroCommandFactory,
         recordMacroCommandFactory = recordMacroCommandFactory,
         finishMacroCommandFactory = finishMacroCommandFactory,
+        sleepCommandFactory = sleepCommandFactory,
         addColumnGridCommandFactory = addColumnGridCommandFactory,
         addRowGridCommandFactory = addRowGridCommandFactory,
         subtractColumnGridCommandFactory = subtractColumnGridCommand,

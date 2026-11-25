@@ -52,6 +52,7 @@
     <string name="permission_call_phone">Make phone calls</string>
     <string name="permission_answer_calls">Answer phone calls</string>
     <string name="permission_notifications">Notifications</string>
+    <string name="permission_notification_access">Media control (notification access)</string>
     <string name="permission_granted">Granted</string>
     <string name="permission_enable">Enable</string>
     <string name="permission_privacy_info">The app processes all data locally on your device.</string>

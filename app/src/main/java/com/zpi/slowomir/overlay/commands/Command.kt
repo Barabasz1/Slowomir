@@ -12,6 +12,9 @@ interface Command {
     val requiresBackgroundExecution: Boolean
         get() = false
 
+    val returnsToKeywordSpotting: Boolean
+        get() = false
+
     val commandType: String
         get() = this::class.java.name
 

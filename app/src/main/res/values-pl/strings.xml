@@ -52,6 +52,7 @@
     <string name="permission_call_phone">Wykonywanie połączeń</string>
     <string name="permission_answer_calls">Odbieranie połączeń</string>
     <string name="permission_notifications">Powiadomienia</string>
+    <string name="permission_notification_access">Sterowanie multimediami (dostęp do powiadomień)</string>
     <string name="permission_granted">Przyznano</string>
     <string name="permission_enable">Włącz</string>
     <string name="permission_privacy_info">Aplikacja przetwarza wszystkie dane lokalnie na Twoim urządzeniu.</string>

@@ -172,7 +172,7 @@ class KeywordSpotterManager @Inject constructor(
                 return
             }
             record = AudioRecord(
-                MediaRecorder.AudioSource.MIC,
+                MediaRecorder.AudioSource.VOICE_RECOGNITION,
                 SAMPLE_RATE,
                 AudioFormat.CHANNEL_IN_MONO,
                 AudioFormat.ENCODING_PCM_16BIT,
@@ -289,7 +289,6 @@ class KeywordSpotterManager @Inject constructor(
         const val CHUNK_SAMPLES = 1600
         const val FRAMES = 49
         const val BINS = 40
-        const val NUM_CLASSES = 3
         const val TARGET_INDEX = 2
         val INPUT_SHAPE = longArrayOf(1, FRAMES.toLong(), BINS.toLong(), 1)
 
