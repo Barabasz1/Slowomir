@@ -42,9 +42,12 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.buffer
@@ -99,19 +102,35 @@ class VoiceOverlayManager @Inject constructor(
     private val appliedSide: OverlaySide get() = applied?.side ?: OverlaySide.TOP
     private val appliedOffset: Int get() = applied?.offset ?: 0
 
+    private val resetTrigger = MutableStateFlow(0)
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val state: StateFlow<OverlayState> = resetTrigger
+        .flatMapLatest {
+            var first = true
+            mediator.mediatorState
+                .map { it.overlayState }
+                .map { overlay ->
+                    val stale = first && overlay.isResult
+                    first = false
+                    if (stale) OverlayState.Idle else overlay
+                }
+                .distinctUntilChanged()
+                .withMinDisplayTime(MIN_DISPLAY.milliseconds)
+                .hideResultsAfter(RESULT_VISIBLE.milliseconds)
+        }
+
     private val _strip = MutableStateFlow(stripOf(OverlaySide.TOP, 0))
     val strip: StateFlow<OverlayStrip> = _strip.asStateFlow()
+
     private fun stripOf(side: OverlaySide, offsetPx: Int): OverlayStrip {
         val density = Resources.getSystem().displayMetrics.density
         return OverlayStrip(side, offsetPx + ((CARD_HEIGHT_DP + GAP_DP) * density).toInt())
     }
 
-    val state: StateFlow<OverlayState> = mediator.mediatorState
-        .map { it.overlayState }
-        .distinctUntilChanged()
-        .withMinDisplayTime(MIN_DISPLAY.milliseconds)
-        .hideResultsAfter(RESULT_VISIBLE.milliseconds)
-        .stateIn(scope, SharingStarted.Eagerly, OverlayState.Idle)
+    fun clearEvents() {
+        resetTrigger.update { it + 1 }
+    }
 
     val macroStatus: StateFlow<MacroStatus?> = combine(
         macroRecorder.state,
