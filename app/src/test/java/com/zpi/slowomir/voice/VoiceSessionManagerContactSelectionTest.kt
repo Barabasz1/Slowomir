@@ -43,6 +43,7 @@ class VoiceSessionManagerContactSelectionTest {
             dictateCommandFactory = mock(),
             punctuationRestorer = mock(),
             fieldProfileHolder = FieldProfileHolder(),
+            mediaPlaybackMonitor = mock(),
         )
     }
 

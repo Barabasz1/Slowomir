@@ -6,6 +6,7 @@ import android.annotation.SuppressLint
 import android.content.Intent
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
+import android.view.accessibility.AccessibilityNodeInfo
 import android.view.inputmethod.EditorInfo
 import com.zpi.slowomir.overlay.executors.GridExecutor
 import com.zpi.slowomir.overlay.executors.MacroExecutor
@@ -16,6 +17,7 @@ import com.zpi.slowomir.overlay.executors.PredictionExecutor
 import com.zpi.slowomir.overlay.executors.TextEditExecutor
 import com.zpi.slowomir.overlay.ui.common.OverlayHostProvider
 import com.zpi.slowomir.overlay.executors.TouchExecutor
+import com.zpi.slowomir.utils.AccessibilityUtils
 import com.zpi.slowomir.utils.PreferencesManager
 import com.zpi.slowomir.overlay.ui.voice.VoiceOverlayManager
 import com.zpi.slowomir.voice.dictation.FieldProfileHolder
@@ -114,6 +116,10 @@ class CommandExecutorService : AccessibilityService() {
         )
         phoneCallExecutor = PhoneCallExecutor(this, touch)
 
+        fieldProfileHolder.focusProbe = {
+            findFocus(AccessibilityNodeInfo.FOCUS_INPUT)?.let { AccessibilityUtils.isInputCandidate(it) } == true
+        }
+
         instance = this
     }
 
@@ -161,6 +167,7 @@ class CommandExecutorService : AccessibilityService() {
      * Releases all resources associated with the service.
      */
     private fun release() {
+        fieldProfileHolder.focusProbe = null
         overlayHostProvider.useApplication()
         clearExecutors()
         instance = null

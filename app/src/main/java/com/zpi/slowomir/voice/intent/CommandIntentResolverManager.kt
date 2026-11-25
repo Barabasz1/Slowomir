@@ -32,7 +32,7 @@ class CommandIntentResolverManager @Inject constructor(
         return model.initialize()
     }
 
-    override suspend fun resolve(text: String): IntentResolution {
+    override suspend fun resolve(text: String, context: CommandIntentParser.Context): IntentResolution {
         val output = try {
             model.infer(text)
         } catch (t: Throwable) {
@@ -43,7 +43,7 @@ class CommandIntentResolverManager @Inject constructor(
         val logits = output.sequenceLogits
             ?: return IntentResolution.Error(IntentResolverError.INFERENCE_FAILED)
 
-        val probs = softmax(logits)
+        val probs = CommandIntentLabels.applyContext(softmax(logits), context)
         val best = argmax(probs)
         val identifier = CommandIntentLabels.INTENTS.getOrNull(best)
         if (identifier == null || probs[best] < THRESHOLD) return IntentResolution.Unrecognized
@@ -113,6 +113,33 @@ internal object CommandIntentLabels {
                     "Add an alias in CommandIntentLabels.ALIASES or update the model/enum so they match."
         }
         LABELS.map { byName.getValue(ALIASES[it] ?: it) }
+    }
+
+
+    private val CONFUSABLE: List<Map<CommandIntentParser.Context, CommandIdentifier>> = listOf(
+        mapOf(
+            CommandIntentParser.Context.TEXT_EDIT to CommandIdentifier.TEXT_CURSOR_FORWARD,
+            CommandIntentParser.Context.MEDIA to CommandIdentifier.MEDIA_SKIP_FORWARD,
+        ),
+        mapOf(
+            CommandIntentParser.Context.TEXT_EDIT to CommandIdentifier.TEXT_CURSOR_BACKWARD,
+            CommandIntentParser.Context.MEDIA to CommandIdentifier.MEDIA_SKIP_BACKWARD,
+        ),
+    )
+
+
+    fun applyContext(probs: FloatArray, context: CommandIntentParser.Context): FloatArray {
+        if (context == CommandIntentParser.Context.DEFAULT) return probs
+        val result = probs.copyOf()
+        for (group in CONFUSABLE) {
+            val target = INTENTS.indexOf(group[context] ?: continue)
+            val members = group.values.map { INTENTS.indexOf(it) }
+            if (target < 0 || members.any { it < 0 }) continue
+            val pooled = members.sumOf { probs[it].toDouble() }.toFloat()
+            members.forEach { result[it] = 0f }
+            result[target] = pooled
+        }
+        return result
     }
 
     val TAGS = listOf("B-NAME", "B-NUMBER", "I-NAME", "I-NUMBER", "O")

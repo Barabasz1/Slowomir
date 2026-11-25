@@ -1,16 +1,13 @@
 package com.zpi.slowomir.overlay.ui.voice
 
 import android.content.Context
-import android.content.Intent
 import android.graphics.PixelFormat
-import android.provider.Settings
 import android.util.Log
 import android.view.Gravity
 import android.view.View
 import android.view.WindowInsets
 import android.view.WindowManager
 import androidx.compose.ui.platform.ComposeView
-import androidx.core.net.toUri
 import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.lifecycle.setViewTreeViewModelStoreOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
@@ -247,12 +244,7 @@ class VoiceOverlayManager @Inject constructor(
         this !is VoiceState.Failed && this !is VoiceState.KeywordSpotting
 
     override fun onAttachDenied(host: OverlayHost) {
-        val intent = Intent(
-            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-            "package:${host.context.packageName}".toUri()
-        ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        runCatching { host.context.startActivity(intent) }
-            .onFailure { Log.e(tag, "Failed to open overlay permission screen", it) }
+        Log.w(tag, "Overlay permission not granted, overlay not shown")
     }
 
     private companion object {

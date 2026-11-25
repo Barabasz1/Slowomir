@@ -1,9 +1,13 @@
 package com.zpi.slowomir.utils
 
+import android.content.ComponentName
 import android.content.Context
 import android.media.AudioAttributes
 import android.media.AudioManager
 import android.media.AudioPlaybackConfiguration
+import android.media.session.MediaSessionManager
+import android.media.session.PlaybackState
+import com.zpi.slowomir.overlay.services.MediaListenerService
 import android.os.Handler
 import android.os.Looper
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -54,11 +58,28 @@ class MediaPlaybackMonitor @Inject constructor(
         return audioManager.activePlaybackConfigurations.any { it.isMedia() }
     }
 
+    fun hasMediaSession(): Boolean {
+        val manager = context.getSystemService(Context.MEDIA_SESSION_SERVICE) as? MediaSessionManager
+            ?: return false
+        return try {
+            manager.getActiveSessions(ComponentName(context, MediaListenerService::class.java))
+                .any { it.playbackState?.state in LIVE_STATES }
+        } catch (e: SecurityException) {
+            false
+        }
+    }
+
     private fun AudioPlaybackConfiguration.isMedia(): Boolean =
         audioAttributes.usage in MEDIA_USAGES
 
     private companion object {
         const val SETTLE_MS = 1_000L
+
+        val LIVE_STATES = setOf(
+            PlaybackState.STATE_PLAYING,
+            PlaybackState.STATE_PAUSED,
+            PlaybackState.STATE_BUFFERING,
+        )
 
         val MEDIA_USAGES = setOf(
             AudioAttributes.USAGE_MEDIA,

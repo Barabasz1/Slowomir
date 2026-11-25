@@ -5,6 +5,7 @@ import com.zpi.slowomir.overlay.commands.Command
 import com.zpi.slowomir.overlay.commands.CommandIdentifier
 import com.zpi.slowomir.overlay.commands.CommandResult
 import com.zpi.slowomir.overlay.commands.CommandArgument
+import com.zpi.slowomir.utils.MediaPlaybackMonitor
 import com.zpi.slowomir.voice.intent.CommandIntentParser
 import com.zpi.slowomir.voice.intent.CommandIntentResolver
 import com.zpi.slowomir.voice.intent.IntentResolution
@@ -51,6 +52,7 @@ class VoiceSessionManager @Inject constructor(
     private val dictateCommandFactory: DictateCommand.Factory,
     private val punctuationRestorer: PunctuationRestorer,
     private val fieldProfileHolder: FieldProfileHolder,
+    private val mediaPlaybackMonitor: MediaPlaybackMonitor,
 ) : VoiceInputSink, VoiceStateSource {
 
     val selection: StateFlow<Selection?> = selectionManager.selection
@@ -193,7 +195,13 @@ class VoiceSessionManager @Inject constructor(
                 return@launch
             }
 
-            val intent = intentParser.parse(text) ?: resolveWithModel(text)
+            val parseContext = when {
+                fieldProfileHolder.hasFocusedField -> CommandIntentParser.Context.TEXT_EDIT
+                mediaPlaybackMonitor.isPlayingNow() || mediaPlaybackMonitor.hasMediaSession() ->
+                    CommandIntentParser.Context.MEDIA
+                else -> CommandIntentParser.Context.DEFAULT
+            }
+            val intent = intentParser.parse(text, parseContext) ?: resolveWithModel(text, parseContext)
 
             if (intent == null) {
                 mediator.handleEvent(OverlayEvent.InvalidCommand(text))
@@ -229,7 +237,7 @@ class VoiceSessionManager @Inject constructor(
             mediator.handleEvent(OverlayEvent.SpeechRecognized(text, mode))
             val allowed = if (mode == TextMode.EDIT) EDIT_MODE_COMMANDS else DICTATION_MODE_COMMANDS
 
-            val spoken = intentParser.parse(text) ?: if (mode == TextMode.EDIT) resolveWithModel(text) else null
+            val spoken = intentParser.parse(text, CommandIntentParser.Context.TEXT_EDIT) ?: if (mode == TextMode.EDIT) resolveWithModel(text, CommandIntentParser.Context.TEXT_EDIT) else null
             val intent = spoken?.takeIf { it.identifier in allowed }
             when {
                 intent != null -> proceed(intent)
@@ -266,9 +274,9 @@ class VoiceSessionManager @Inject constructor(
      * command and its argument. Returns null when the model is unsure, unavailable, or did not
      * extract the argument that command needs.
      */
-    private suspend fun resolveWithModel(text: String): VoiceIntent? {
+    private suspend fun resolveWithModel(text: String, context: CommandIntentParser.Context): VoiceIntent? {
         intentResolver.initialize().onFailure { return null }
-        val result = intentResolver.resolve(normalizer.normalize(text))
+        val result = intentResolver.resolve(normalizer.normalize(text), context)
         if (result !is IntentResolution.Resolved) {
             Log.d(TAG, "Model could not resolve '$text': $result")
             return null

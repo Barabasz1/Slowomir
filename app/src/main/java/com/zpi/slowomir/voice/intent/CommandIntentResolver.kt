@@ -28,7 +28,10 @@ sealed interface IntentResolution {
 interface CommandIntentResolver {
     suspend fun initialize(): Result<Unit>
 
-    suspend fun resolve(text: String): IntentResolution
+    suspend fun resolve(
+        text: String,
+        context: CommandIntentParser.Context = CommandIntentParser.Context.DEFAULT,
+    ): IntentResolution
 
     fun release()
 }

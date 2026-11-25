@@ -60,7 +60,7 @@ class VoiceSessionManagerSelectionFlowTest {
         runBlocking { whenever(mediator.dispatch(any())).thenReturn(CommandResult.Success()) }
         whenever(contactUtils.lookup(any(), eq("Jan"))).thenReturn(ContactLookupResult.Ambiguous(jan))
 
-        sessionManager = VoiceSessionManager(mediator, intentParser, commandResolver, selectionManager, intentResolver, PolishTextNormalizer(), mock(), mock(), FieldProfileHolder())
+        sessionManager = VoiceSessionManager(mediator, intentParser, commandResolver, selectionManager, intentResolver, PolishTextNormalizer(), mock(), mock(), FieldProfileHolder(), mock())
         sessionManager.accept(VoiceInput.ServiceStarted)
         sessionManager.accept(VoiceInput.KeywordDetected)
         eventually("session is listening") { sessionManager.state.value is VoiceState.Listening }

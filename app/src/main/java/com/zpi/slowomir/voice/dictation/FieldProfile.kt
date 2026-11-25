@@ -79,11 +79,22 @@ class FieldProfileHolder @Inject constructor() {
     var profile: FieldProfile = FieldProfile.DEFAULT
         private set
 
+    @Volatile
+    var focusProbe: (() -> Boolean)? = null
+
+    @Volatile
+    private var inputStarted: Boolean = false
+
+    val hasFocusedField: Boolean
+        get() = focusProbe?.let { probe -> runCatching(probe).getOrDefault(false) } ?: inputStarted
+
     fun update(info: EditorInfo?) {
         profile = FieldProfile.from(info)
+        inputStarted = info != null && info.inputType != InputType.TYPE_NULL
     }
 
     fun reset() {
         profile = FieldProfile.DEFAULT
+        inputStarted = false
     }
 }
