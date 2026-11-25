@@ -318,7 +318,8 @@ class VoiceSessionManager @Inject constructor(
         scope.launch {
             val result = mediator.dispatch(command)
             mediator.handleEvent(OverlayEvent.CommandExecuted(command, result))
-            val returnToKws = intent.identifier == CommandIdentifier.OVERLAY_STOP
+            val returnToKws = result is CommandResult.Success &&
+                (command.returnsToKeywordSpotting || intent.identifier in CALL_STARTING_COMMANDS)
 
             inbox.send(InternalEvent.CommandFinished(result, returnToKws = returnToKws))
         }
@@ -370,6 +371,11 @@ class VoiceSessionManager @Inject constructor(
             CommandIdentifier.TEXT_PUNCTUATION_EXCLAMATION,
             CommandIdentifier.TEXT_CONFIRM,
             CommandIdentifier.OVERLAY_STOP,
+        )
+
+        private val CALL_STARTING_COMMANDS = setOf(
+            CommandIdentifier.PHONE_CALL,
+            CommandIdentifier.PHONE_PICK_UP,
         )
 
         private val SELECTABLE_INTENTS = setOf(

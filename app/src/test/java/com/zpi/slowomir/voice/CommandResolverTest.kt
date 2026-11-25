@@ -4,6 +4,7 @@ import com.zpi.slowomir.overlay.commands.CommandArgument
 import com.zpi.slowomir.overlay.commands.CommandIdentifier
 import com.zpi.slowomir.overlay.commands.grid.*
 import com.zpi.slowomir.overlay.commands.macro.*
+import com.zpi.slowomir.overlay.commands.overlay.SleepCommand
 import com.zpi.slowomir.overlay.commands.media.NextTrackCommand
 import com.zpi.slowomir.overlay.commands.media.PauseCommand
 import com.zpi.slowomir.overlay.commands.media.PlayCommand
@@ -96,6 +97,7 @@ class CommandResolverTest {
     private val playMacroCommandFactory = mock<PlayMacroCommand.Factory>()
     private val recordMacroCommandFactory = mock<RecordMacroCommand.Factory>()
     private val finishMacroCommandFactory = mock<FinishMacroCommand.Factory>()
+    private val sleepCommandFactory = mock<SleepCommand.Factory>()
 
     private val resolver = CommandResolver(
         notificationsCommandFactory = notificationsCommandFactory,
@@ -156,6 +158,7 @@ class CommandResolverTest {
         playMacroCommandFactory = playMacroCommandFactory,
         recordMacroCommandFactory = recordMacroCommandFactory,
         finishMacroCommandFactory = finishMacroCommandFactory,
+        sleepCommandFactory = sleepCommandFactory,
         addColumnGridCommandFactory = addColumnGridCommandFactory,
         addRowGridCommandFactory = addRowGridCommandFactory,
         subtractColumnGridCommandFactory = subtractColumnGridCommand,

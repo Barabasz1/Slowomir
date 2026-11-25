@@ -4,6 +4,7 @@ import com.zpi.slowomir.overlay.commands.Command
 import com.zpi.slowomir.overlay.commands.CommandArgument
 import com.zpi.slowomir.overlay.commands.CommandIdentifier
 import com.zpi.slowomir.overlay.commands.LogCommand
+import com.zpi.slowomir.overlay.commands.overlay.SleepCommand
 import com.zpi.slowomir.overlay.commands.media.NextTrackCommand
 import com.zpi.slowomir.overlay.commands.media.PauseCommand
 import com.zpi.slowomir.overlay.commands.media.PlayCommand
@@ -103,6 +104,7 @@ class CommandResolver @Inject constructor(
     private val playMacroCommandFactory: PlayMacroCommand.Factory,
     private val recordMacroCommandFactory: RecordMacroCommand.Factory,
     private val finishMacroCommandFactory: FinishMacroCommand.Factory,
+    private val sleepCommandFactory: SleepCommand.Factory,
     ) {
 
     fun resolve(intent: VoiceIntent): Command = when (intent.identifier) {
@@ -190,6 +192,9 @@ class CommandResolver @Inject constructor(
 
         CommandIdentifier.SMS_WRITE ->
             writeSMSCommandFactory.create(recipient = intent.textArgument())
+
+        // Overlay
+        CommandIdentifier.OVERLAY_STOP -> sleepCommandFactory.create()
 
         // Media
         CommandIdentifier.VOLUME_UP -> volumeUpCommandFactory.create()

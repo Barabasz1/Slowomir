@@ -8,7 +8,6 @@ import android.content.Context
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
-import android.os.SystemClock
 import android.util.Log
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -173,7 +172,7 @@ class KeywordSpotterManager @Inject constructor(
                 return
             }
             record = AudioRecord(
-                MediaRecorder.AudioSource.MIC,
+                MediaRecorder.AudioSource.VOICE_RECOGNITION,
                 SAMPLE_RATE,
                 AudioFormat.CHANNEL_IN_MONO,
                 AudioFormat.ENCODING_PCM_16BIT,
@@ -216,7 +215,6 @@ class KeywordSpotterManager @Inject constructor(
                     break
                 }
                 if (n == 0) continue
-                val chunkReadAt = SystemClock.elapsedRealtimeNanos()
 
                 System.arraycopy(window, n, window, 0, WINDOW_SAMPLES - n)
                 System.arraycopy(chunk, 0, window, WINDOW_SAMPLES - n, n)
@@ -291,7 +289,6 @@ class KeywordSpotterManager @Inject constructor(
         const val CHUNK_SAMPLES = 1600
         const val FRAMES = 49
         const val BINS = 40
-        const val NUM_CLASSES = 3
         const val TARGET_INDEX = 2
         val INPUT_SHAPE = longArrayOf(1, FRAMES.toLong(), BINS.toLong(), 1)
 
