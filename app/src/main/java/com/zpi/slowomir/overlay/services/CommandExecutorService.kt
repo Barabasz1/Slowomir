@@ -4,24 +4,21 @@ import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.InputMethod
 import android.annotation.SuppressLint
 import android.content.Intent
-import android.graphics.Rect
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import com.zpi.slowomir.overlay.commands.touch.TapCommand
 import android.view.accessibility.AccessibilityNodeInfo
-import android.view.accessibility.AccessibilityWindowInfo
 import android.view.inputmethod.EditorInfo
 import com.zpi.slowomir.overlay.executors.GridExecutor
 import com.zpi.slowomir.overlay.executors.MacroExecutor
-import com.zpi.slowomir.overlay.executors.MediaExecutor
 import com.zpi.slowomir.overlay.executors.NavigationExecutor
 import com.zpi.slowomir.overlay.executors.PhoneCallExecutor
 import com.zpi.slowomir.overlay.executors.PredictionExecutor
 import com.zpi.slowomir.overlay.executors.TextEditExecutor
-import com.zpi.slowomir.overlay.ui.common.FieldPosition
-import com.zpi.slowomir.overlay.ui.common.FocusLayout
 import com.zpi.slowomir.overlay.ui.common.OverlayHostProvider
 import com.zpi.slowomir.overlay.executors.TouchExecutor
+import com.zpi.slowomir.utils.AccessibilityUtils
+import com.zpi.slowomir.utils.PreferencesManager
 import com.zpi.slowomir.overlay.ui.voice.VoiceOverlayManager
 import com.zpi.slowomir.voice.dictation.FieldProfileHolder
 import com.zpi.slowomir.prediction.PredictionManager
@@ -39,7 +36,6 @@ import javax.inject.Inject
  * @see TouchExecutor
  * @see GridExecutor
  * @see MacroExecutor
- * @see MediaExecutor
  * @see NavigationExecutor
  * @see PredictionExecutor
  * @see TextEditExecutor
@@ -64,6 +60,9 @@ class CommandExecutorService : AccessibilityService() {
     lateinit var voiceOverlayManager: VoiceOverlayManager
 
     @Inject
+    lateinit var screenEventsBus: ScreenEventsBus
+
+    @Inject
     lateinit var gridExecutor: GridExecutor
 
     @Inject
@@ -75,11 +74,11 @@ class CommandExecutorService : AccessibilityService() {
     @Inject
     lateinit var tapCommandFactory: TapCommand.Factory
 
+    @Inject
+    lateinit var preferencesManager: PreferencesManager
+
     // Executors for different modules
     var touchExecutor: TouchExecutor? = null
-        private set
-
-    var mediaExecutor: MediaExecutor? = null
         private set
 
     var navigationExecutor: NavigationExecutor? = null
@@ -106,9 +105,8 @@ class CommandExecutorService : AccessibilityService() {
 
         // Ensure soft keyboard mode is restored to AUTO so system input is not globally suppressed
         softKeyboardController.setShowMode(SHOW_MODE_AUTO)
-        val touch = TouchExecutor(this)
+        val touch = TouchExecutor(this, preferencesManager)
         touchExecutor = touch
-        mediaExecutor = MediaExecutor(this)
         navigationExecutor = NavigationExecutor(this, touch)
         predictionExecutor = PredictionExecutor(predictionManager, tapCommandFactory, mediator)
         textEditExecutor = TextEditExecutor(
@@ -120,11 +118,16 @@ class CommandExecutorService : AccessibilityService() {
         )
         phoneCallExecutor = PhoneCallExecutor(this, touch)
 
+        fieldProfileHolder.focusProbe = {
+            findFocus(AccessibilityNodeInfo.FOCUS_INPUT)?.let { AccessibilityUtils.isInputCandidate(it) } == true
+        }
+
         instance = this
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         predictionManager.onAccessibilityEvent(event)
+        event?.let { screenEventsBus.publish(it.eventType) }
     }
 
     @Volatile
@@ -151,25 +154,6 @@ class CommandExecutorService : AccessibilityService() {
         }.also { textInputMethod = it }
     }
 
-    fun focusLayout(): FocusLayout {
-        val field = runCatching {
-            findFocus(AccessibilityNodeInfo.FOCUS_INPUT)?.let { node ->
-                val bounds = Rect()
-                node.getBoundsInScreen(bounds)
-                FieldPosition(bounds.top, bounds.bottom).takeIf { !bounds.isEmpty }
-            }
-        }.getOrNull()
-
-        val keyboardTop = runCatching {
-            windows.firstOrNull { it.type == AccessibilityWindowInfo.TYPE_INPUT_METHOD }?.let { window ->
-                val bounds = Rect()
-                window.getBoundsInScreen(bounds)
-                bounds.top.takeIf { !bounds.isEmpty }
-            }
-        }.getOrNull()
-
-        return FocusLayout(field, keyboardTop)
-    }
 
     override fun onInterrupt() {}
 
@@ -187,6 +171,7 @@ class CommandExecutorService : AccessibilityService() {
      * Releases all resources associated with the service.
      */
     private fun release() {
+        fieldProfileHolder.focusProbe = null
         predictionManager.onServiceDisconnected()
         overlayHostProvider.useApplication()
         clearExecutors()
@@ -198,7 +183,6 @@ class CommandExecutorService : AccessibilityService() {
      */
     private fun clearExecutors() {
         touchExecutor = null
-        mediaExecutor = null
         navigationExecutor = null
         predictionExecutor = null
         textEditExecutor = null

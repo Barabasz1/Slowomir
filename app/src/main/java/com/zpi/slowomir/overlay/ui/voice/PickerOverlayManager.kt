@@ -8,6 +8,7 @@ import android.view.View
 import android.view.WindowManager
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.ComposeView
 import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.lifecycle.setViewTreeViewModelStoreOwner
@@ -17,9 +18,11 @@ import com.zpi.slowomir.overlay.ui.common.OverlayLifecycleOwner
 import com.zpi.slowomir.overlay.ui.common.OverlayWindowManager
 import com.zpi.slowomir.overlay.ui.macro.MacroEntry
 import com.zpi.slowomir.overlay.ui.macro.MacroView
+import com.zpi.slowomir.overlay.ui.macro.appLabelResolver
 import com.zpi.slowomir.ui.theme.SłowomirTheme
 import com.zpi.slowomir.voice.VoiceSessionManager
 import com.zpi.slowomir.voice.selection.Selection
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -31,6 +34,7 @@ import javax.inject.Singleton
 @Singleton
 class PickerOverlayManager @Inject constructor(
     private val voiceSessionManager: VoiceSessionManager,
+    @ApplicationContext private val appContext: Context,
     hostProvider: OverlayHostProvider
 ) : OverlayWindowManager(hostProvider) {
 
@@ -82,7 +86,8 @@ class PickerOverlayManager @Inject constructor(
                 SłowomirTheme {
                     when (selection) {
                         is Selection.MacroSelection -> {
-                            val entries = selection.options.map { MacroEntry(it) }
+                            val appLabel = remember { appLabelResolver(appContext) }
+                            val entries = selection.options.map { MacroEntry(it, appLabel) }
                             MacroView(
                                 macroList = entries,
                                 onSelectMacro = { index -> voiceSessionManager.selectOption(index) },

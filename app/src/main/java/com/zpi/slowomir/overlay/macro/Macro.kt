@@ -7,6 +7,5 @@ data class Macro(
     val commands: List<Command> = emptyList(),
     val startingPoint: MacroStartingPoint? = null,
     val isGenerated: Boolean = false,
-    val delaysMs: List<Long> = emptyList(),
     val serializedCommands: List<SerializedCommand> = emptyList(),
 )

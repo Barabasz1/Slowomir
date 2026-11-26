@@ -214,6 +214,9 @@ class CommandIntentParserTest {
         val recents = parser.parse("Pokaż ostatnie aplikacje")
         assertEquals(CommandIdentifier.NAVIGATE_RECENT, recents?.identifier)
 
+        val appLibrary = parser.parse("Otwórz listę aplikacji")
+        assertEquals(CommandIdentifier.NAVIGATE_APP_LIBRARY, appLibrary?.identifier)
+
         val notifs1 = parser.parse("Panel powiadomień")
         assertEquals(CommandIdentifier.NOTIFICATIONS, notifs1?.identifier)
 

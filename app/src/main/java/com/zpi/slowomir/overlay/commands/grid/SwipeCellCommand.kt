@@ -4,6 +4,7 @@ import com.zpi.slowomir.overlay.OverlayContext
 import com.zpi.slowomir.overlay.commands.Command
 import com.zpi.slowomir.overlay.commands.CommandResult
 import com.zpi.slowomir.overlay.executors.GridExecutor
+import com.zpi.slowomir.overlay.services.CommandExecutorService
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -14,6 +15,9 @@ class SwipeCellCommand @AssistedInject constructor(
     @Assisted("cell0") private val cell0: Int,
     @Assisted("cell1") private val cell1: Int,
 ) : Command {
+    override val arguments: Map<String, Any?>
+        get() = mapOf("cell0" to cell0, "cell1" to cell1)
+
 
     override fun execute(): CommandResult {
         val gridExecutor = gridExecutorProvider.get()
@@ -23,7 +27,7 @@ class SwipeCellCommand @AssistedInject constructor(
     }
 
     override fun canExecute(context: OverlayContext): Boolean {
-        return gridExecutorProvider.get()?.canExecuteActionOnCell() ?: false
+        return CommandExecutorService.instance != null && (gridExecutorProvider.get()?.canExecuteActionOnCell() ?: false)
     }
 
     @AssistedFactory

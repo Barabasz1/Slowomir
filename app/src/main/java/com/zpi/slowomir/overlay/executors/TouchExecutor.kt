@@ -6,13 +6,16 @@ import android.graphics.Path
 import android.graphics.Rect
 import android.util.Log
 import android.view.accessibility.AccessibilityNodeInfo
+import com.zpi.slowomir.utils.PreferencesManager
 import com.zpi.slowomir.utils.ScreenPoint
+import com.zpi.slowomir.utils.SwipeDirection
 import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.math.min
 
 class TouchExecutor(
-    private val service: AccessibilityService
+    private val service: AccessibilityService,
+    private val preferencesManager: PreferencesManager? = null
 ) {
     companion object {
         private const val TAG = "TouchExecutor"
@@ -20,15 +23,25 @@ class TouchExecutor(
         const val DEFAULT_HOLD_DURATION: Long = 1000L
         const val DEFAULT_SWIPE_HOLD_DURATION: Long = 200L
         const val DEFAULT_PINCH_HOLD_DURATION: Long = 200L
-        const val DEFAULT_SWIPE_DISTANCE: Float = 0f
         const val DEFAULT_PINCH_POWER: Float = 10f
         const val SWIPE_RATIO: Float = 0.7f
+        const val MAX_SWIPE_FORCE: Int = 5
+        const val DEFAULT_SWIPE_FORCE: Int = MAX_SWIPE_FORCE
         const val PINCH_MIN_GAP_RATIO: Float = 0.05f
         const val PINCH_MAX_GAP_RATIO: Float = 0.25f
-        const val MOVE_DURATION_MS: Long = 350L
+        const val MOVE_DURATION_MS: Long = 150L
         const val HOLD_DURATION_MS: Long = 150L
         private const val SHORT_TAP_DURATION: Long = 20L
     }
+
+    private val isInverted: Boolean
+        get() = preferencesManager?.invertedControls?.value == true
+
+
+    val invertedControls: Boolean get() = isInverted
+
+    private fun swipeDistance(force: Int, axisLength: Float): Float =
+        axisLength * SWIPE_RATIO * force.coerceIn(1, MAX_SWIPE_FORCE) / MAX_SWIPE_FORCE
 
     fun doGesture(gesture: GestureDescription): Boolean {
         val currentService = service
@@ -121,105 +134,41 @@ class TouchExecutor(
         duration: Long = DEFAULT_SWIPE_HOLD_DURATION,
         startTime: Long = DEFAULT_START_TIME
     ): Boolean {
+        val (actualDestX, actualDestY) = if (isInverted) {
+            val dx = destX - startX
+            val dy = destY - startY
+            Pair(startX - dx, startY - dy)
+        } else {
+            Pair(destX, destY)
+        }
         val path = Path().apply {
             moveTo(startX, startY)
-            lineTo(destX, destY)
+            lineTo(actualDestX, actualDestY)
         }
         val stroke = getStroke(path, duration, startTime)
         val gesture = GestureDescription.Builder().addStroke(stroke).build()
         return doGesture(gesture)
     }
 
-    fun swipeUp(
-        startX: Float,
-        startY: Float,
-        distance: Float? = null,
+    fun swipe(
+        start: ScreenPoint,
+        direction: SwipeDirection,
+        force: Int = DEFAULT_SWIPE_FORCE,
         moveDuration: Long = MOVE_DURATION_MS,
         holdDuration: Long = HOLD_DURATION_MS
     ): Boolean {
-        val height = service.resources.displayMetrics.heightPixels.toFloat()
-        val swipeDistance =
-            if (distance != null && distance > 0f) distance else (height * SWIPE_RATIO)
-        val endY = (startY - swipeDistance).coerceAtLeast(0f)
-        return performSwipeWithHold(startX, startY, startX, endY, moveDuration, holdDuration)
-    }
-
-    fun swipeUp(
-        point: ScreenPoint,
-        distance: Float? = null,
-        moveDuration: Long = MOVE_DURATION_MS,
-        holdDuration: Long = HOLD_DURATION_MS
-    ): Boolean {
-        return swipeUp(point.x, point.y, distance, moveDuration, holdDuration)
-    }
-
-    fun swipeDown(
-        startX: Float,
-        startY: Float,
-        distance: Float? = null,
-        moveDuration: Long = MOVE_DURATION_MS,
-        holdDuration: Long = HOLD_DURATION_MS
-    ): Boolean {
-        val height = service.resources.displayMetrics.heightPixels.toFloat()
-        val swipeDistance =
-            if (distance != null && distance > 0f) distance else (height * SWIPE_RATIO)
-        val endY = (startY + swipeDistance).coerceAtMost(height)
-        return performSwipeWithHold(startX, startY, startX, endY, moveDuration, holdDuration)
-    }
-
-    fun swipeDown(
-        point: ScreenPoint,
-        distance: Float? = null,
-        moveDuration: Long = MOVE_DURATION_MS,
-        holdDuration: Long = HOLD_DURATION_MS
-    ): Boolean {
-        return swipeDown(point.x, point.y, distance, moveDuration, holdDuration)
-    }
-
-    fun swipeRight(
-        startX: Float,
-        startY: Float,
-        distance: Float? = null,
-        moveDuration: Long = MOVE_DURATION_MS,
-        holdDuration: Long = HOLD_DURATION_MS
-    ): Boolean {
-        val width = service.resources.displayMetrics.widthPixels.toFloat()
-        val swipeDistance =
-            if (distance != null && distance > 0f) distance else (width * SWIPE_RATIO)
-        val endX = (startX + swipeDistance).coerceAtMost(width)
-        return performSwipeWithHold(startX, startY, endX, startY, moveDuration, holdDuration)
-    }
-
-    fun swipeRight(
-        point: ScreenPoint,
-        distance: Float? = null,
-        moveDuration: Long = MOVE_DURATION_MS,
-        holdDuration: Long = HOLD_DURATION_MS
-    ): Boolean {
-        return swipeRight(point.x, point.y, distance, moveDuration, holdDuration)
-    }
-
-    fun swipeLeft(
-        startX: Float,
-        startY: Float,
-        distance: Float? = null,
-        moveDuration: Long = MOVE_DURATION_MS,
-        holdDuration: Long = HOLD_DURATION_MS
-    ): Boolean {
-        val width = service.resources.displayMetrics.widthPixels.toFloat()
-        val swipeDistance =
-            if (distance != null && distance > 0f) distance else (width * SWIPE_RATIO)
-        val endX = (startX - swipeDistance).coerceAtLeast(0f)
-        return performSwipeWithHold(startX, startY, endX, startY, moveDuration, holdDuration)
-    }
-
-    fun swipeLeft(
-        point: ScreenPoint,
-        distance: Float? = null,
-        moveDuration: Long = MOVE_DURATION_MS,
-        holdDuration: Long = HOLD_DURATION_MS
-    ): Boolean {
-        return swipeLeft(point.x, point.y, distance, moveDuration, holdDuration)
+        val metrics = service.resources.displayMetrics
+        val width = metrics.widthPixels.toFloat()
+        val height = metrics.heightPixels.toFloat()
+        val horizontal = direction == SwipeDirection.LEFT || direction == SwipeDirection.RIGHT
+        val distance = swipeDistance(force, if (horizontal) width else height)
+        val sign = when (direction) {
+            SwipeDirection.UP, SwipeDirection.LEFT -> -1f
+            SwipeDirection.DOWN, SwipeDirection.RIGHT -> 1f
+        } * if (isInverted) -1f else 1f
+        val endX = if (horizontal) (start.x + sign * distance).coerceIn(0f, width) else start.x
+        val endY = if (horizontal) start.y else (start.y + sign * distance).coerceIn(0f, height)
+        return performSwipeWithHold(start.x, start.y, endX, endY, moveDuration, holdDuration)
     }
 
     private fun pinch(

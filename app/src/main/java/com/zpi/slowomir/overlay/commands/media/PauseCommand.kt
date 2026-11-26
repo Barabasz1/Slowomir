@@ -18,7 +18,7 @@ class PauseCommand @AssistedInject constructor(
 ) : Command {
     override fun execute(): CommandResult {
         val executor = mediaExecutorProvider.get()
-            ?: return CommandResult.Failure("Accessibility Service is not enabled")
+            ?: return CommandResult.Failure("Media executor unavailable")
 
         val success = executor.pause()
         return if (success) CommandResult.Success() else CommandResult.Failure("Media pause failed")

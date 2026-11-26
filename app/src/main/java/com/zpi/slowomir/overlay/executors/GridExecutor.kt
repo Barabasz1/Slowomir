@@ -7,6 +7,8 @@ import android.view.Gravity
 import android.view.View
 import android.view.WindowManager
 import com.zpi.slowomir.overlay.commands.Command
+import com.zpi.slowomir.overlay.log.ActionDescriptor
+import com.zpi.slowomir.overlay.log.UiNodeDescriber
 import com.zpi.slowomir.overlay.commands.touch.LongTapCommand
 import com.zpi.slowomir.overlay.commands.touch.PinchInCommand
 import com.zpi.slowomir.overlay.commands.touch.PinchOutCommand
@@ -18,13 +20,19 @@ import com.zpi.slowomir.overlay.commands.touch.SwipeUpCommand
 import com.zpi.slowomir.overlay.commands.touch.TapCommand
 import com.zpi.slowomir.overlay.executors.TouchExecutor.Companion.DEFAULT_HOLD_DURATION
 import com.zpi.slowomir.overlay.executors.TouchExecutor.Companion.DEFAULT_PINCH_POWER
-import com.zpi.slowomir.overlay.executors.TouchExecutor.Companion.DEFAULT_SWIPE_DISTANCE
+import com.zpi.slowomir.overlay.executors.TouchExecutor.Companion.DEFAULT_SWIPE_FORCE
 import com.zpi.slowomir.overlay.services.CommandExecutorService
 import com.zpi.slowomir.overlay.ui.common.OverlayHostProvider
 import com.zpi.slowomir.overlay.ui.common.OverlayWindowManager
 import com.zpi.slowomir.overlay.ui.grid.GridView
+import com.zpi.slowomir.utils.PreferencesManager
 import com.zpi.slowomir.utils.ScreenPoint
+import com.zpi.slowomir.utils.SwipeDirection
 import com.zpi.slowomir.voice.mediator.CommandMediator
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.max
@@ -42,21 +50,49 @@ class GridExecutor @Inject constructor(
     private val pinchInCommandFactory: PinchInCommand.Factory,
     private val pinchOutCommandFactory: PinchOutCommand.Factory,
     private val swipeCommandFactory: SwipeCommand.Factory,
+    private val preferencesManager: PreferencesManager,
+    private val uiNodeDescriber: UiNodeDescriber,
 ) : OverlayWindowManager(hostProvider) {
 
     override val tag = "GridManager"
 
-    companion object {
-        const val DEFAULT_ROWS = 8
-        const val DEFAULT_COLS = 4
-    }
 
     private var gridView: GridView? = null
     private var parentCell: Int? = null
     private val divisions = mutableListOf<Pair<Int, Int>>()
     private var selectedCell: Int? = null
-    private var rowsCount: Int = DEFAULT_ROWS
-    private var colsCount: Int = DEFAULT_COLS
+    private var rowsCount: Int = preferencesManager.gridRows.value
+    private var colsCount: Int = preferencesManager.gridCols.value
+
+    private val coroutineScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+
+    init {
+        coroutineScope.launch {
+            preferencesManager.gridType.collect { _ ->
+                if (isEnabled()) {
+                    redraw()
+                }
+            }
+        }
+        coroutineScope.launch {
+            preferencesManager.gridRows.collect { rows ->
+                rowsCount = rows
+                if (isEnabled()) {
+                    resetSelection()
+                    redraw()
+                }
+            }
+        }
+        coroutineScope.launch {
+            preferencesManager.gridCols.collect { cols ->
+                colsCount = cols
+                if (isEnabled()) {
+                    resetSelection()
+                    redraw()
+                }
+            }
+        }
+    }
 
     override fun onCreateView(context: Context): View {
         return GridView(
@@ -67,7 +103,8 @@ class GridExecutor @Inject constructor(
             labelOpacity = 220,
             overlayOpacity = 0,
             lineWidthPx = 2f,
-            labelTextSizePx = 32f
+            labelTextSizePx = 32f,
+            gridType = preferencesManager.gridType.value
         )
     }
 
@@ -127,8 +164,8 @@ class GridExecutor @Inject constructor(
     }
 
     fun resetDimensions() {
-        rowsCount = DEFAULT_ROWS
-        colsCount = DEFAULT_COLS
+        rowsCount = preferencesManager.gridRows.value
+        colsCount = preferencesManager.gridCols.value
     }
 
     fun resetSelection() {
@@ -138,58 +175,26 @@ class GridExecutor @Inject constructor(
     }
 
     fun redraw() {
-        gridView?.update(rowsCount, colsCount, selectedCell, parentCell, divisions.toList())
+        gridView?.update(
+            rowsCount,
+            colsCount,
+            selectedCell,
+            parentCell,
+            divisions.toList(),
+            preferencesManager.gridType.value
+        )
     }
 
-    fun addRow(toAdd: Int) {
-        val oldRows = rowsCount
-        val oldCols = colsCount
-        val newRows = max(1, rowsCount + toAdd)
-        if (newRows != oldRows) {
-            rowsCount = newRows
-            updateSelectionForNewDimensions(oldRows, oldCols, newRows, oldCols)
-        }
+    fun addRows(toAdd: Int) {
+        rowsCount = max(1, rowsCount + toAdd)
+        resetSelection()
         redraw()
     }
 
     fun addCols(toAdd: Int) {
-        val oldRows = rowsCount
-        val oldCols = colsCount
-        val newCols = max(1, colsCount + toAdd)
-        if (newCols != oldCols) {
-            colsCount = newCols
-            updateSelectionForNewDimensions(oldRows, oldCols, oldRows, newCols)
-        }
+        colsCount = max(1, colsCount + toAdd)
+        resetSelection()
         redraw()
-    }
-
-    private fun updateSelectionForNewDimensions(
-        oldRows: Int,
-        oldCols: Int,
-        newRows: Int,
-        newCols: Int
-    ) {
-        if (divisions.isEmpty()) {
-            selectedCell?.let { cell ->
-                val oldRow = (cell - 1) / oldCols
-                val oldCol = (cell - 1) % oldCols
-                val newRow = oldRow.coerceIn(0, newRows - 1)
-                val newCol = oldCol.coerceIn(0, newCols - 1)
-                selectedCell = newRow * newCols + newCol + 1
-            }
-        } else {
-            parentCell?.let { cell ->
-                val oldRow = (cell - 1) / oldCols
-                val oldCol = (cell - 1) % oldCols
-                val newRow = oldRow.coerceIn(0, newRows - 1)
-                val newCol = oldCol.coerceIn(0, newCols - 1)
-                val newParent = newRow * newCols + newCol + 1
-                parentCell = newParent
-                if (divisions.isNotEmpty()) {
-                    divisions[0] = newParent to divisions[0].second
-                }
-            }
-        }
     }
 
     fun selectCell(cell: Int) {
@@ -326,20 +331,25 @@ class GridExecutor @Inject constructor(
         return getCellCenter(cell)
     }
 
+    private var lastTarget: ActionDescriptor? = null
+    fun consumeLastTarget(): ActionDescriptor? = lastTarget.also { lastTarget = null }
+
     private inline fun dispatchCellCommand(
         cell: Int,
+        describeTarget: Boolean = false,
         commandFactory: (x: Float, y: Float) -> Command
     ): Boolean {
         if (gridView == null) return false
         val (x, y) = getTouchCoords(cell)
-        mediator.dispatchScoped(commandFactory(x, y))
+        lastTarget = if (describeTarget) uiNodeDescriber.describeTapAt(x, y) else null
+        mediator.dispatchScoped(commandFactory(x, y), logged = false)
         resetSelection()
         redraw()
         return true
     }
 
     private fun tapCell(cell: Int): Boolean {
-        return dispatchCellCommand(cell) { x, y ->
+        return dispatchCellCommand(cell, describeTarget = true) { x, y ->
             tapCommandFactory.create(x, y)
         }
     }
@@ -349,7 +359,7 @@ class GridExecutor @Inject constructor(
     }
 
     private fun longTapCell(cell: Int, duration: Long = DEFAULT_HOLD_DURATION): Boolean {
-        return dispatchCellCommand(cell) { x, y ->
+        return dispatchCellCommand(cell, describeTarget = true) { x, y ->
             longTapCommandFactory.create(x, y, duration)
         }
     }
@@ -358,47 +368,21 @@ class GridExecutor @Inject constructor(
         return selectedCell != null && longTapCell(selectedCell!!, duration)
     }
 
-    private fun swipeUpCell(cell: Int, distance: Float = DEFAULT_SWIPE_DISTANCE): Boolean {
+    private fun swipeCell(cell: Int, direction: SwipeDirection, force: Int): Boolean {
         return dispatchCellCommand(cell) { x, y ->
-            swipeUpCommandFactory.create(x, y, distance)
+            when (direction) {
+                SwipeDirection.UP -> swipeUpCommandFactory.create(x, y, force)
+                SwipeDirection.DOWN -> swipeDownCommandFactory.create(x, y, force)
+                SwipeDirection.LEFT -> swipeLeftCommandFactory.create(x, y, force)
+                SwipeDirection.RIGHT -> swipeRightCommandFactory.create(x, y, force)
+            }
         }
     }
 
-    fun swipeUpCell(distance: Float = DEFAULT_SWIPE_DISTANCE): Boolean {
-        return selectedCell != null && swipeUpCell(selectedCell!!, distance)
+    fun swipeCell(direction: SwipeDirection, force: Int = DEFAULT_SWIPE_FORCE): Boolean {
+        return selectedCell != null && swipeCell(selectedCell!!, direction, force)
     }
 
-    private fun swipeDownCell(cell: Int, distance: Float = DEFAULT_SWIPE_DISTANCE): Boolean {
-        return dispatchCellCommand(cell) { x, y ->
-            swipeDownCommandFactory.create(x, y, distance)
-        }
-    }
-
-    fun swipeDownCell(distance: Float = DEFAULT_SWIPE_DISTANCE): Boolean {
-        return selectedCell != null && swipeDownCell(selectedCell!!, distance)
-    }
-
-    private fun swipeRightCell(cell: Int, distance: Float = DEFAULT_SWIPE_DISTANCE): Boolean {
-        return dispatchCellCommand(cell) { x, y ->
-            swipeRightCommandFactory.create(x, y, distance)
-        }
-    }
-
-    fun swipeRightCell(distance: Float = DEFAULT_SWIPE_DISTANCE): Boolean {
-        return selectedCell != null && swipeRightCell(selectedCell!!, distance)
-    }
-
-    private fun swipeLeftCell(cell: Int, distance: Float = DEFAULT_SWIPE_DISTANCE): Boolean {
-        return dispatchCellCommand(cell) { x, y ->
-            swipeLeftCommandFactory.create(x, y, distance)
-        }
-    }
-
-    fun swipeLeftCell(distance: Float = DEFAULT_SWIPE_DISTANCE): Boolean {
-        return selectedCell != null && swipeLeftCell(selectedCell!!, distance)
-    }
-
-    //TODO
     fun swipe(cell0: Int, cell1: Int): Boolean {
         val (x0, y0) = getTouchCoords(cell0)
         val (x1, y1) = getTouchCoords(cell1)

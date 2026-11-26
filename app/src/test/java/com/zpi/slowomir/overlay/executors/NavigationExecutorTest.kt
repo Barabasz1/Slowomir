@@ -4,6 +4,7 @@ import android.accessibilityservice.AccessibilityService
 import android.content.res.Resources
 import android.util.DisplayMetrics
 import com.zpi.slowomir.utils.ScreenPoint
+import com.zpi.slowomir.utils.SwipeDirection
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -28,16 +29,30 @@ class NavigationExecutorTest {
 
         whenever(service.resources).thenReturn(resources)
         whenever(resources.displayMetrics).thenReturn(displayMetrics)
-        
+
         whenever(service.performGlobalAction(any())).thenReturn(true)
 
         mockTouchExecutor = mock()
-        whenever(mockTouchExecutor.swipeUp(any<ScreenPoint>(), anyOrNull(), any(), any())).thenReturn(true)
-        whenever(mockTouchExecutor.swipeDown(any<ScreenPoint>(), anyOrNull(), any(), any())).thenReturn(true)
-        whenever(mockTouchExecutor.swipeLeft(any<ScreenPoint>(), anyOrNull(), any(), any())).thenReturn(true)
-        whenever(mockTouchExecutor.swipeRight(any<ScreenPoint>(), anyOrNull(), any(), any())).thenReturn(true)
-        whenever(mockTouchExecutor.pinchIn(any<ScreenPoint>(), any(), any(), any())).thenReturn(true)
-        whenever(mockTouchExecutor.pinchOut(any<ScreenPoint>(), any(), any(), any())).thenReturn(true)
+        whenever(
+            mockTouchExecutor.swipe(
+                any<ScreenPoint>(),
+                any(),
+                any(),
+                any(),
+                any()
+            )
+        ).thenReturn(true)
+        whenever(
+            mockTouchExecutor.pinchIn(
+                any<ScreenPoint>(),
+                any(),
+                any(),
+                any()
+            )
+        ).thenReturn(true)
+        whenever(mockTouchExecutor.pinchOut(any<ScreenPoint>(), any(), any(), any())).thenReturn(
+            true
+        )
 
         executor = NavigationExecutor(service, mockTouchExecutor)
     }
@@ -100,34 +115,58 @@ class NavigationExecutorTest {
 
     @Test
     fun `swipeUp should dispatch gesture`() {
-        val result = executor.swipeUp(0.5f, 0.8f)
+        val result = executor.swipe(SwipeDirection.UP)
 
         assertTrue(result)
-        verify(mockTouchExecutor).swipeUp(any<ScreenPoint>(), anyOrNull(), any(), any())
+        verify(mockTouchExecutor).swipe(
+            any<ScreenPoint>(),
+            eq(SwipeDirection.UP),
+            any(),
+            any(),
+            any()
+        )
     }
 
     @Test
     fun `swipeDown should dispatch gesture`() {
-        val result = executor.swipeDown(0.5f, 0.2f)
+        val result = executor.swipe(SwipeDirection.DOWN)
 
         assertTrue(result)
-        verify(mockTouchExecutor).swipeDown(any<ScreenPoint>(), anyOrNull(), any(), any())
+        verify(mockTouchExecutor).swipe(
+            any<ScreenPoint>(),
+            eq(SwipeDirection.DOWN),
+            any(),
+            any(),
+            any()
+        )
     }
 
     @Test
     fun `swipeLeft should dispatch gesture`() {
-        val result = executor.swipeLeft(0.8f, 0.5f)
+        val result = executor.swipe(SwipeDirection.LEFT)
 
         assertTrue(result)
-        verify(mockTouchExecutor).swipeLeft(any<ScreenPoint>(), anyOrNull(), any(), any())
+        verify(mockTouchExecutor).swipe(
+            any<ScreenPoint>(),
+            eq(SwipeDirection.LEFT),
+            any(),
+            any(),
+            any()
+        )
     }
 
     @Test
     fun `swipeRight should dispatch gesture`() {
-        val result = executor.swipeRight(0.2f, 0.5f)
+        val result = executor.swipe(SwipeDirection.RIGHT)
 
         assertTrue(result)
-        verify(mockTouchExecutor).swipeRight(any<ScreenPoint>(), anyOrNull(), any(), any())
+        verify(mockTouchExecutor).swipe(
+            any<ScreenPoint>(),
+            eq(SwipeDirection.RIGHT),
+            any(),
+            any(),
+            any()
+        )
     }
 
     @Test

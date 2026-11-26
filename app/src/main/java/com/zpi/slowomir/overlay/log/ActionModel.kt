@@ -16,6 +16,7 @@ data class ActionDescriptor(
     val labelHash: String? = null,
     val commandType: String? = null,
     val commandArgs: String? = null,
+    val label: String? = null,
 ) {
     companion object {
         fun system(type: ActionType): ActionDescriptor {

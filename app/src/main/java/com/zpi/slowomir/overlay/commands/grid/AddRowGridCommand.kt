@@ -14,12 +14,15 @@ class AddRowGridCommand @AssistedInject constructor(
     private val gridExecutorProvider: Provider<GridExecutor?>,
     @Assisted("num") private val num: Int = 1
     ) : Command {
+    override val arguments: Map<String, Any?>
+        get() = mapOf("num" to num)
+
 
     override fun execute(): CommandResult {
         val gridExecutor = gridExecutorProvider.get()
             ?: return CommandResult.Failure("Grid executor is null")
 
-        gridExecutor.addRow(num)
+        gridExecutor.addRows(num)
         return CommandResult.Success()
     }
 

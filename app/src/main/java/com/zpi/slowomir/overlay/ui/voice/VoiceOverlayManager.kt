@@ -2,25 +2,34 @@ package com.zpi.slowomir.overlay.ui.voice
 
 import android.content.Context
 import android.content.Intent
+import android.content.res.Resources
 import android.graphics.PixelFormat
-import android.provider.Settings
 import android.util.Log
 import android.view.Gravity
 import android.view.View
 import android.view.WindowInsets
 import android.view.WindowManager
 import androidx.compose.ui.platform.ComposeView
-import androidx.core.net.toUri
 import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.lifecycle.setViewTreeViewModelStoreOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
-import com.zpi.slowomir.overlay.ui.common.FocusLayout
-import com.zpi.slowomir.overlay.ui.common.FocusLayoutSource
+import com.zpi.slowomir.overlay.macro.MacroPlaybackState
+import com.zpi.slowomir.overlay.macro.MacroRecorder
+import com.zpi.slowomir.overlay.macro.RecordingState
+import com.zpi.slowomir.overlay.ui.common.AccessibilityUiTreeSource
+import com.zpi.slowomir.overlay.ui.common.Obstacle
+import com.zpi.slowomir.overlay.ui.common.settled
+import com.zpi.slowomir.overlay.ui.common.toAvoidByOverlay
+import com.zpi.slowomir.overlay.ui.common.toObstacles
 import com.zpi.slowomir.overlay.ui.common.OverlayHost
 import com.zpi.slowomir.overlay.ui.common.OverlayHostProvider
 import com.zpi.slowomir.overlay.ui.common.OverlayLifecycleOwner
-import com.zpi.slowomir.overlay.ui.common.OverlayPlacementPolicy
+import com.zpi.slowomir.overlay.ui.common.OverlayPlacement
+import com.zpi.slowomir.overlay.ui.common.OverlayShape
 import com.zpi.slowomir.overlay.ui.common.OverlaySide
+import com.zpi.slowomir.overlay.ui.common.ObstacleKind
+import com.zpi.slowomir.overlay.ui.common.ScreenGeometry
+import com.zpi.slowomir.overlay.ui.common.SlidingWindowSearch
 import com.zpi.slowomir.overlay.ui.common.OverlayWindowManager
 import com.zpi.slowomir.ui.theme.SłowomirTheme
 import com.zpi.slowomir.voice.OverlayState
@@ -33,24 +42,41 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.merge
+import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.math.abs
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.TimeSource
 
+
+sealed interface MacroStatus {
+    data object Recording : MacroStatus
+    data class Playing(val remaining: Int) : MacroStatus
+}
+
+data class OverlayStrip(val side: OverlaySide, val sizePx: Int)
 
 /**
  * UI Window Manager that renders the floating [VoiceOverlayView] on top of system interfaces.
@@ -60,7 +86,9 @@ import kotlin.time.TimeSource
 class VoiceOverlayManager @Inject constructor(
     private val mediator: CommandMediator,
     private val voiceStateSource: VoiceStateSource,
-    private val focusLayoutSource: FocusLayoutSource,
+    private val uiTree: AccessibilityUiTreeSource,
+    macroRecorder: MacroRecorder,
+    macroPlaybackState: MacroPlaybackState,
     hostProvider: OverlayHostProvider
 ) : OverlayWindowManager(hostProvider) {
 
@@ -69,20 +97,52 @@ class VoiceOverlayManager @Inject constructor(
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var trackingJob: Job? = null
+    private var keepScreenOnJob: Job? = null
+    private var applied: OverlayPlacement? = null
+    private val appliedSide: OverlaySide get() = applied?.side ?: OverlaySide.TOP
+    private val appliedOffset: Int get() = applied?.offset ?: 0
 
-    private var lastLoggedLayout: FocusLayout? = null
+    private val resetTrigger = MutableStateFlow(0)
 
-    private var side = OverlaySide.TOP
-    private var edgeOffset = 0
-
-    private var topInset = 0
-
-    val state: StateFlow<OverlayState> = mediator.mediatorState
-        .map { it.overlayState }
-        .distinctUntilChanged()
-        .withMinDisplayTime(MIN_DISPLAY.milliseconds)
-        .hideResultsAfter(RESULT_VISIBLE.milliseconds)
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val state: StateFlow<OverlayState> = resetTrigger
+        .flatMapLatest {
+            var first = true
+            mediator.mediatorState
+                .map { it.overlayState }
+                .map { overlay ->
+                    val stale = first && overlay.isResult
+                    first = false
+                    if (stale) OverlayState.Idle else overlay
+                }
+                .distinctUntilChanged()
+                .withMinDisplayTime(MIN_DISPLAY.milliseconds)
+                .hideResultsAfter(RESULT_VISIBLE.milliseconds)
+        }
         .stateIn(scope, SharingStarted.Eagerly, OverlayState.Idle)
+
+    private val _strip = MutableStateFlow(stripOf(OverlaySide.TOP, 0))
+    val strip: StateFlow<OverlayStrip> = _strip.asStateFlow()
+
+    private fun stripOf(side: OverlaySide, offsetPx: Int): OverlayStrip {
+        val density = Resources.getSystem().displayMetrics.density
+        return OverlayStrip(side, offsetPx + ((CARD_HEIGHT_DP + GAP_DP) * density).toInt())
+    }
+
+    fun clearEvents() {
+        resetTrigger.update { it + 1 }
+    }
+
+    val macroStatus: StateFlow<MacroStatus?> = combine(
+        macroRecorder.state,
+        macroPlaybackState.playback,
+    ) { recording, playback ->
+        when {
+            recording is RecordingState.Recording -> MacroStatus.Recording
+            playback != null -> MacroStatus.Playing(playback.remaining)
+            else -> null
+        }
+    }.distinctUntilChanged().stateIn(scope, SharingStarted.Eagerly, null)
 
 
     override fun onCreateView(context: Context): View {
@@ -93,13 +153,14 @@ class VoiceOverlayManager @Inject constructor(
         lifecycleOwner = lifecycle
 
         return ComposeView(context).apply {
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
             setViewTreeLifecycleOwner(lifecycle)
             setViewTreeViewModelStoreOwner(lifecycle)
             setViewTreeSavedStateRegistryOwner(lifecycle)
 
             setContent {
                 SłowomirTheme {
-                    VoiceOverlayView(state = state)
+                    VoiceOverlayView(state = state, macroStatus = macroStatus)
                 }
             }
         }
@@ -111,6 +172,7 @@ class VoiceOverlayManager @Inject constructor(
         windowType,
         WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                 WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+                WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
                 WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
         PixelFormat.TRANSLUCENT
     ).apply {
@@ -118,91 +180,150 @@ class VoiceOverlayManager @Inject constructor(
     }
 
     override fun onViewAttached(view: View) {
-        side = OverlaySide.TOP
-        edgeOffset = 0
+        applied = null
         trackFocusedField()
+        keepScreenOnJob?.cancel()
+        keepScreenOnJob = scope.launch {
+            combine(state, voiceStateSource.state) { overlay, voice ->
+                overlay.keepsScreenOn() || voice.isTextSession()
+            }
+                .distinctUntilChanged()
+                .collect { keepOn -> withContext(Dispatchers.Main.immediate) { setKeepScreenOn(keepOn) } }
+        }
     }
 
     override fun onViewDetached(view: View) {
         trackingJob?.cancel()
         trackingJob = null
+        keepScreenOnJob?.cancel()
+        keepScreenOnJob = null
         lifecycleOwner?.onDestroy()
         lifecycleOwner = null
     }
 
-        private fun trackFocusedField() {
+    private fun trackFocusedField() {
         trackingJob?.cancel()
         trackingJob = scope.launch {
-            voiceStateSource.state.collectLatest { state ->
-                if (!state.isVoiceActive()) {
-                    withContext(Dispatchers.Main.immediate) { reposition(FocusLayout()) }
+            voiceStateSource.state.collectLatest { voiceState ->
+                if (!voiceState.isVoiceActive()) {
+                    withContext(Dispatchers.Main.immediate) {
+                        reposition(
+                            emptyList(),
+                            keepCurrent = false
+                        )
+                    }
                     return@collectLatest
                 }
 
-                while (true) {
-                    val layout = focusLayoutSource.read()
-                    withContext(Dispatchers.Main.immediate) { reposition(layout) }
-                    delay(TRACKING_INTERVAL_MS)
+                suspend fun refresh(): Boolean {
+                    val obstacles = uiTree.snapshot().toObstacles()
+                    return withContext(Dispatchers.Main.immediate) { reposition(obstacles) }
                 }
+
+                if (applied == null) refresh()
+                merge(uiTree.changes, fallbackTicks())
+                    .onStart { emit(Unit) }
+                    .settled(SETTLE_MS.milliseconds, MAX_SETTLE_MS.milliseconds)
+                    .collect { if (refresh() && !state.value.isHidden) delay(MIN_DWELL_MS.milliseconds) }
             }
         }
     }
 
-    private fun reposition(layout: FocusLayout) {
-        val view = attachedView ?: return
-        val windowManager = view.context.getSystemService(WindowManager::class.java) ?: return
+    private fun OverlayState.keepsScreenOn() = !isHidden && this !is OverlayState.ListeningForCommand
+
+    private fun VoiceState.isTextSession() =
+        this is VoiceState.Dictating || this is VoiceState.Editing || this is VoiceState.TextProcessing
+
+    private fun setKeepScreenOn(keepOn: Boolean) {
+        updateLayout {
+            flags = if (keepOn) flags or WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+            else flags and WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON.inv()
+        }
+    }
+
+    private fun fallbackTicks() = flow {
+        while (true) {
+            delay(FALLBACK_INTERVAL_MS.milliseconds)
+            emit(Unit)
+        }
+    }
+
+    /**
+     * @param keepCurrent false puts the overlay back to its default place instead of staying where it is.
+     * @return true when the overlay was moved.
+     */
+    private fun reposition(obstacles: List<Obstacle>, keepCurrent: Boolean = true): Boolean {
+        val view = attachedView ?: return false
         val density = view.resources.displayMetrics.density
 
-        val insets = view.rootWindowInsets?.getInsets(
-            WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout()
-        )
-
-        if (side == OverlaySide.TOP) {
-            topInset = IntArray(2).also { view.getLocationOnScreen(it) }[1]
+        val hidden = state.value.isHidden
+        val found = measureScreen(view, obstacles)?.let { screen ->
+            SlidingWindowSearch.place(
+                shape = OverlayShape.Bar((CARD_HEIGHT_DP * density).toInt()),
+                screen = screen,
+                obstacles = obstacles.toAvoidByOverlay(
+                    tinyPx = (TINY_DP * density).toInt(),
+                    fullPx = (FULL_SIZE_DP * density).toInt(),
+                    fieldGapPx = (GAP_DP * density).toInt(),
+                ),
+                step = (SEARCH_STEP_DP * density).toInt().coerceAtLeast(1),
+                current = applied?.position.takeIf { keepCurrent && !hidden },
+            )
         }
+        val newSide = found?.side ?: OverlaySide.TOP
+        val newOffset = found?.offset ?: 0
 
-        val placement = OverlayPlacementPolicy.choose(
-            layout = layout,
-            screenHeight = windowManager.currentWindowMetrics.bounds.height(),
-            topInset = maxOf(insets?.top ?: 0, topInset),
-            bottomInset = insets?.bottom ?: 0,
-            overlayHeight = maxOf(view.height, (CARD_HEIGHT_DP * density).toInt()),
-            gap = (GAP_DP * density).toInt(),
-            current = side,
-        )
+        val small = newSide == appliedSide && abs(newOffset - appliedOffset) < MIN_MOVE_DP * density
+        if (keepCurrent && small && !hidden) return false
 
-        if (layout != lastLoggedLayout) {
-            lastLoggedLayout = layout
-            Log.d(tag, "[PLACEMENT] $layout screenH=${windowManager.currentWindowMetrics.bounds.height()} " +
-                "insets(top=${maxOf(insets?.top ?: 0, topInset)}, bottom=${insets?.bottom ?: 0}) " +
-                "overlayH=${view.height} current=$side -> $placement")
-        }
+        val unchanged = newSide == appliedSide && newOffset == appliedOffset
+        applied = found
+        _strip.value = stripOf(newSide, newOffset)
+        if (unchanged) return false
 
-        if (placement.side == side && placement.edgeOffset == edgeOffset) return
-
-        side = placement.side
-        edgeOffset = placement.edgeOffset
         updateLayout {
-            gravity = (if (side == OverlaySide.TOP) Gravity.TOP else Gravity.BOTTOM) or Gravity.CENTER_HORIZONTAL
-            y = edgeOffset
+            gravity =
+                (if (newSide == OverlaySide.TOP) Gravity.TOP else Gravity.BOTTOM) or Gravity.CENTER_HORIZONTAL
+            y = newOffset
         }
+
+        return true
+    }
+
+    private fun measureScreen(view: View, obstacles: List<Obstacle>): ScreenGeometry? {
+        val metrics = view.context.getSystemService(WindowManager::class.java)?.currentWindowMetrics
+            ?: return null
+        val insets =
+            metrics.windowInsets.getInsets(WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout())
+        return ScreenGeometry(
+            width = metrics.bounds.width(),
+            height = metrics.bounds.height(),
+            topInset = insets.top,
+            bottomInset = insets.bottom,
+            keyboardTop = obstacles.firstOrNull { it.kind == ObstacleKind.KEYBOARD }?.bounds?.top,
+        )
     }
 
     private fun VoiceState.isVoiceActive() = this !is VoiceState.Stopped &&
-        this !is VoiceState.Failed && this !is VoiceState.KeywordSpotting
+            this !is VoiceState.Failed && this !is VoiceState.KeywordSpotting
 
     override fun onAttachDenied(host: OverlayHost) {
-        val intent = Intent(
-            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-            "package:${host.context.packageName}".toUri()
-        ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        runCatching { host.context.startActivity(intent) }
-            .onFailure { Log.e(tag, "Failed to open overlay permission screen", it) }
+        Log.w(tag, "Overlay permission not granted, overlay not shown")
     }
 
     private companion object {
-        const val TRACKING_INTERVAL_MS = 500L
+        const val SEARCH_STEP_DP = 8
+
+        const val TINY_DP = 12
+        const val FULL_SIZE_DP = 40
+        const val SETTLE_MS = 500L
+
+        const val MAX_SETTLE_MS = 1000L
+        const val MIN_DWELL_MS = 2000L
+        const val FALLBACK_INTERVAL_MS = 3000L
         const val CARD_HEIGHT_DP = 72
+
+        const val MIN_MOVE_DP = 40
         const val GAP_DP = 8
         const val RESULT_VISIBLE = 5_000
         const val MIN_DISPLAY = 1_000
@@ -212,26 +333,28 @@ class VoiceOverlayManager @Inject constructor(
     suspend fun hideOverlay() = withContext(Dispatchers.Main.immediate) { hide() }
 }
 
-internal fun Flow<OverlayState>.withMinDisplayTime(minDisplay: Duration): Flow<OverlayState> = flow {
-    var previous: OverlayState = OverlayState.Idle
-    var shownAt = TimeSource.Monotonic.markNow()
-    buffer(Channel.UNLIMITED).collect { next ->
-        if (next::class != previous::class) {
-            if (!previous.isHidden && next !is OverlayState.ProcessingCommand) {
-                val remaining = minDisplay - shownAt.elapsedNow()
-                if (remaining.isPositive()) delay(remaining)
+internal fun Flow<OverlayState>.withMinDisplayTime(minDisplay: Duration): Flow<OverlayState> =
+    flow {
+        var previous: OverlayState = OverlayState.Idle
+        var shownAt = TimeSource.Monotonic.markNow()
+        buffer(Channel.UNLIMITED).collect { next ->
+            if (next::class != previous::class) {
+                if (!previous.isHidden && next !is OverlayState.ProcessingCommand) {
+                    val remaining = minDisplay - shownAt.elapsedNow()
+                    if (remaining.isPositive()) delay(remaining)
+                }
+                shownAt = TimeSource.Monotonic.markNow()
             }
-            shownAt = TimeSource.Monotonic.markNow()
+            previous = next
+            emit(next)
         }
-        previous = next
-        emit(next)
     }
-}
 
-internal fun Flow<OverlayState>.hideResultsAfter(after: Duration): Flow<OverlayState> = transformLatest { state ->
-    emit(state)
-    if (state.isResult) {
-        delay(after)
-        emit(OverlayState.Idle)
+internal fun Flow<OverlayState>.hideResultsAfter(after: Duration): Flow<OverlayState> =
+    transformLatest { state ->
+        emit(state)
+        if (state.isResult) {
+            delay(after)
+            emit(OverlayState.Idle)
+        }
     }
-}

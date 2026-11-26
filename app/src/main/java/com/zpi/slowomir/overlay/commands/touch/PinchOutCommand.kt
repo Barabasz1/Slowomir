@@ -16,6 +16,9 @@ class PinchOutCommand @AssistedInject constructor(
     @Assisted("y") private val y: Float,
     @Assisted("power") private val power: Float = DEFAULT_PINCH_POWER,
 ) : Command {
+    override val arguments: Map<String, Any?>
+        get() = mapOf("x" to x, "y" to y, "power" to power)
+
 
     override fun execute(): CommandResult {
         val executor = touchExecutorProvider.get()

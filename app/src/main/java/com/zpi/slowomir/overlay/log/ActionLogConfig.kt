@@ -4,6 +4,9 @@ import com.zpi.slowomir.overlay.commands.Command
 import com.zpi.slowomir.overlay.commands.LogCommand
 import com.zpi.slowomir.overlay.commands.macro.AcceptRecordingMacroCommand
 import com.zpi.slowomir.overlay.commands.macro.DiscardRecordingMacroCommand
+import com.zpi.slowomir.overlay.commands.macro.DeleteLastRecordedActionCommand
+import com.zpi.slowomir.overlay.commands.macro.DeleteMacroCommand
+import com.zpi.slowomir.overlay.commands.macro.KeepMacroCommand
 import com.zpi.slowomir.overlay.commands.macro.FinishMacroCommand
 import com.zpi.slowomir.overlay.commands.macro.HideMacroOverlayCommand
 import com.zpi.slowomir.overlay.commands.macro.PlayMacroCommand
@@ -31,6 +34,9 @@ object ActionLogConfig {
         HideMacroOverlayCommand::class.java,
         ToggleMacroOverlayCommand::class.java,
         PlayMacroCommand::class.java,
+        DeleteMacroCommand::class.java,
+        KeepMacroCommand::class.java,
+        DeleteLastRecordedActionCommand::class.java,
         StopMacroCommand::class.java,
         ConfirmCommand::class.java,
         DismissCommand::class.java,

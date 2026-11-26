@@ -20,4 +20,78 @@
     <string name="overlay_error_application_not_found">Could not find application: %1$s</string>
     <string name="overlay_error_no_application">No application was given.</string>
     <string name="overlay_error_no_macros">No macros available</string>
+
+    <!-- Navigation -->
+    <string name="action_back">Back</string>
+    <string name="tab_home">Home</string>
+    <string name="tab_macros">Macros</string>
+    <string name="tab_settings">Settings</string>
+    <string name="tab_dev">Dev</string>
+
+    <!-- Home -->
+    <string name="home_state_off">SłowoMIR is off</string>
+    <string name="home_state_waiting_for_wake_word">SłowoMIR is waiting for the wake word</string>
+    <string name="home_state_listening">SłowoMIR is listening for commands</string>
+    <string name="home_state_processing">SłowoMIR is processing a command</string>
+    <string name="home_state_error">SłowoMIR ran into an error</string>
+    <string name="home_state_command_executed">SłowoMIR executed the command</string>
+    <string name="home_current_state">CURRENT STATE</string>
+    <string name="home_start_listening">Start listening</string>
+    <string name="home_stop_listening">Stop listening</string>
+    <string name="home_tile_instructions">Instructions</string>
+    <string name="home_tile_commands">Command list</string>
+    <string name="home_intro_tooltip">See how to use the app</string>
+    <string name="home_intro_tooltip_dismiss">Dismiss hint</string>
+    <string name="introduction_title">Introduction to the app</string>
+
+    <!-- Permissions -->
+    <string name="permission_accessibility">Accessibility service</string>
+    <string name="permission_overlay">Display over other apps</string>
+    <string name="permission_microphone">Microphone access</string>
+    <string name="permission_contacts">Read contacts</string>
+    <string name="permission_call_phone">Make phone calls</string>
+    <string name="permission_answer_calls">Answer phone calls</string>
+    <string name="permission_notifications">Notifications</string>
+    <string name="permission_notification_access">Media control (notification access)</string>
+    <string name="permission_granted">Granted</string>
+    <string name="permission_enable">Enable</string>
+    <string name="permission_privacy_info">The app processes all data locally on your device.</string>
+    <string name="permissions_manage_title">Manage permissions</string>
+    <string name="permissions_back">Go back</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_tagline">An overlay for precise phone control with voice commands.</string>
+    <string name="onboarding_start">Get started</string>
+    <string name="onboarding_permissions_title">App permissions</string>
+    <string name="onboarding_permissions_subtitle">SłowoMIR needs certain system permissions to work properly.</string>
+    <string name="onboarding_permissions_enable_required">Enable the required permissions:</string>
+    <string name="onboarding_go_to_app">Go to the app</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_section_general">General</string>
+    <string name="settings_section_touch">Touch</string>
+    <string name="settings_section_grid">Grid</string>
+    <string name="settings_show_overlay">Show voice overlay</string>
+    <string name="settings_inverted_controls">Inverted controls</string>
+    <string name="settings_grid_rows">Number of rows</string>
+    <string name="settings_grid_cols">Number of columns</string>
+    <string name="settings_grid_type">Grid type</string>
+    <string name="settings_grid_type_single">Solid</string>
+    <string name="settings_grid_type_dashed">Dashed</string>
+    <string name="settings_grid_type_contrast">High contrast</string>
+    <string name="settings_state_on">On</string>
+    <string name="settings_state_off">Off</string>
+    <string name="settings_state_selected">Selected</string>
+    <string name="settings_state_not_selected">Not selected</string>
+    <string name="settings_range">From %1$d to %2$d</string>
+    <string name="settings_a11y_option">Option %1$d: %2$s</string>
+    <string name="settings_a11y_decrease">Option %1$d: decrease – %2$s, currently %3$d</string>
+    <string name="settings_a11y_increase">Option %1$d: increase – %2$s, currently %3$d</string>
+    <string name="settings_a11y_value">%1$s: %2$d</string>
+
+    <!-- Macros -->
+    <string name="macros_title">Macros</string>
+    <string name="commands_title">Command list</string>
+    <string name="home_stop_confirm">Tap again to turn off</string>
 </resources>

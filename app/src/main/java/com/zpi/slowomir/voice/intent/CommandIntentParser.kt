@@ -59,9 +59,125 @@ class CommandIntentParser @Inject constructor(
         option = RegexOption.IGNORE_CASE
     )
 
-    fun parse(rawInput: String): VoiceIntent? {
+    private val macroDeleteRegex = Regex(
+        pattern = """^(?:usuń|skasuj|wykasuj|kasuj)\s+makro(?:\s+numer)?\s+(\d+)$""",
+        option = RegexOption.IGNORE_CASE
+    )
+
+    private val macroKeepRegex = Regex(
+        pattern = """^zachowaj\s+(?:makro\s+)?(?:numer\s+)?(\d+)$""",
+        option = RegexOption.IGNORE_CASE
+    )
+
+    private val swipeForceRegex = Regex("""^(.+?)\s+([1-5])$""")
+
+
+    private val UNIT = """sekund\p{L}*|minut\p{L}*|min|godzin\p{L}*|s"""
+
+    private val skipAmount ="""o\s+(?:(pół)\s+(minuty|godziny)|(\d+)(?:\s+($UNIT))?|(?:jedn\p{L}+\s+)?($UNIT))"""
+
+    private val skipVerb = """(?:przewiń|przeskocz|przesuń\s+odtwarzanie)"""
+
+    private val skipForwardExplicitRegex = Regex(
+        """^$skipVerb\s+(?:(?:do|od)\s+przodu|naprzód|w\s+przód)\s+$skipAmount$""",
+        RegexOption.IGNORE_CASE
+    )
+
+    private val skipBackwardExplicitRegex = Regex(
+        """^(?:$skipVerb\s+(?:(?:do|od)\s+tyłu|w\s+tył|wstecz)|cofnij(?:\s+nagranie)?)\s+$skipAmount$""",
+        RegexOption.IGNORE_CASE
+    )
+
+    private val skipForwardBareRegex = Regex(
+        """^(?:(?:do|od)\s+przodu|naprzód|w\s+przód|przód)\s+$skipAmount$""",
+        RegexOption.IGNORE_CASE
+    )
+
+    private val skipBackwardBareRegex = Regex(
+        """^(?:(?:do|od)\s+tyłu|w\s+tył|tył)\s+$skipAmount$""",
+        RegexOption.IGNORE_CASE
+    )
+
+    /** Converts a [skipAmount] match to seconds, or null if it cannot be read. */
+    private fun skipSeconds(match: MatchResult): Int? {
+        val g = match.groupValues
+        fun multiplier(unit: String) = when {
+            unit.startsWith("godz", ignoreCase = true) -> 3600
+            unit.startsWith("min", ignoreCase = true) -> 60
+            else -> 1
+        }
+        return when {
+            g[1].isNotEmpty() -> if (g[2].startsWith("godz", ignoreCase = true)) 1800 else 30
+            g[3].isNotEmpty() -> g[3].toIntOrNull()?.let { it * (if (g[4].isEmpty()) 1 else multiplier(g[4])) }
+            g[5].isNotEmpty() -> multiplier(g[5])
+            else -> null
+        }
+    }
+
+    private fun parseSkip(text: String, context: Context): VoiceIntent? {
+        val bare = context != Context.TEXT_EDIT
+        val candidates = listOf(
+            skipForwardExplicitRegex to CommandIdentifier.MEDIA_SKIP_FORWARD,
+            skipBackwardExplicitRegex to CommandIdentifier.MEDIA_SKIP_BACKWARD,
+        ) + if (bare) listOf(
+            skipForwardBareRegex to CommandIdentifier.MEDIA_SKIP_FORWARD,
+            skipBackwardBareRegex to CommandIdentifier.MEDIA_SKIP_BACKWARD,
+        ) else emptyList()
+
+        for ((regex, id) in candidates) {
+            val seconds = regex.find(text)?.let(::skipSeconds)?.takeIf { it > 0 } ?: continue
+            return VoiceIntent(id, CommandArgument.Number(seconds), text)
+        }
+        return null
+    }
+
+
+    enum class Context { DEFAULT, TEXT_EDIT, MEDIA }
+
+    private val contextualPhrases: Map<String, Map<Context, CommandIdentifier>> = buildMap {
+        val forward = mapOf(
+            Context.TEXT_EDIT to CommandIdentifier.TEXT_CURSOR_FORWARD,
+            Context.MEDIA to CommandIdentifier.MEDIA_SKIP_FORWARD,
+        )
+        val backward = mapOf(
+            Context.TEXT_EDIT to CommandIdentifier.TEXT_CURSOR_BACKWARD,
+            Context.MEDIA to CommandIdentifier.MEDIA_SKIP_BACKWARD,
+        )
+
+        listOf("do przodu", "przód", "w przód", "naprzód", "dalej").forEach { put(it, forward) }
+        listOf("do tyłu", "tył", "w tył", "do tyłu").forEach { put(it, backward) }
+    }
+
+    fun parse(rawInput: String, context: Context = Context.DEFAULT): VoiceIntent? {
         val text = normalizer.normalize(rawInput)
         if (text.isBlank()) return null
+
+        contextualPhrases[text]?.get(context)?.let { id ->
+            return VoiceIntent(id, null, rawInput)
+        }
+
+        // 0. Media seek with an amount of seconds
+        parseSkip(text, context)?.let { return it.copy(rawText = rawInput) }
+
+        macroDeleteRegex.find(text)?.let { match ->
+            match.groupValues[1].toIntOrNull()?.let { num ->
+                return VoiceIntent(
+                    identifier = CommandIdentifier.MACRO_DELETE,
+                    argument = CommandArgument.Number(num),
+                    rawText = rawInput
+                )
+            }
+        }
+
+        macroKeepRegex.find(text)?.let { match ->
+            match.groupValues[1].toIntOrNull()?.let { num ->
+                return VoiceIntent(
+                    identifier = CommandIdentifier.MACRO_KEEP,
+                    argument = CommandArgument.Number(num),
+                    rawText = rawInput
+                )
+            }
+        }
 
         // 1. Two-number patterns (CELL_SWIPE)
         swipeTwoNumbersRegex.find(text)?.let { match ->
@@ -130,6 +246,7 @@ class CommandIntentParser @Inject constructor(
             "cofnij", "wróć", "wstecz", "wróć do poprzedniego ekranu", "przejdź wstecz" -> CommandIdentifier.NAVIGATE_BACK
             "ekran startowy", "przejdź na ekran główny", "ekran główny", "wróć do pulpitu", "przejdź do ekranu startowego", "główny ekran" -> CommandIdentifier.NAVIGATE_HOME
             "ostatnie aplikacje", "pokaż ostatnie aplikacje", "otwórz ostatnie aplikacje", "ostatnio używane aplikacje", "pokaż otwarte aplikacje", "ostatnie" -> CommandIdentifier.NAVIGATE_RECENT
+            "aplikacje", "lista aplikacji", "pokaż listę aplikacji", "otwórz listę aplikacji", "wszystkie aplikacje", "pokaż wszystkie aplikacje", "otwórz wszystkie aplikacje", "szuflada aplikacji", "biblioteka aplikacji" -> CommandIdentifier.NAVIGATE_APP_LIBRARY
             "powiadomienia", "pokaż powiadomienia", "otwórz powiadomienia", "panel powiadomień", "rozwiń powiadomienia" -> CommandIdentifier.NOTIFICATIONS
             "szybkie ustawienia", "pokaż szybkie ustawienia", "otwórz szybkie ustawienia", "rozwiń szybkie ustawienia", "panel szybkich ustawień" -> CommandIdentifier.QUICK_SETTINGS
             "zablokuj", "zablokuj ekran", "zgaś i zablokuj ekran", "włącz blokadę ekranu", "zamknij ekran" -> CommandIdentifier.LOCK_SCREEN
@@ -157,6 +274,10 @@ class CommandIntentParser @Inject constructor(
             "zatwierdź", "zatwierdź tekst", "potwierdź wpisany tekst", "zakończ wpisywanie", "zaakceptuj tekst", "wyślij", "zatwierdź i wyślij", "zakończ i wyślij" -> CommandIdentifier.TEXT_CONFIRM
             "anuluj", "anuluj pisanie", "anuluj dyktowanie", "przerwij dyktowanie" -> CommandIdentifier.TEXT_CANCEL
             "edytuj", "edytuj tekst", "tryb edycji", "przejdź do edycji", "włącz edycję" -> CommandIdentifier.TEXT_EDIT
+            "kropka", "wstaw kropkę", "dodaj kropkę", "postaw kropkę" -> CommandIdentifier.TEXT_PUNCTUATION_PERIOD
+            "przecinek", "wstaw przecinek", "dodaj przecinek", "postaw przecinek" -> CommandIdentifier.TEXT_PUNCTUATION_COMMA
+            "znak zapytania", "pytajnik", "wstaw znak zapytania", "dodaj znak zapytania", "wstaw pytajnik", "dodaj pytajnik" -> CommandIdentifier.TEXT_PUNCTUATION_QUESTION
+            "wykrzyknik", "znak wykrzyknika", "wstaw wykrzyknik", "dodaj wykrzyknik", "wstaw znak wykrzyknika" -> CommandIdentifier.TEXT_PUNCTUATION_EXCLAMATION
             "schowaj klawiaturę", "ukryj klawiaturę", "zamknij klawiaturę", "wyłącz klawiaturę ekranową", "schowaj klawiaturę ekranową" -> CommandIdentifier.KEYBOARD_HIDE
             "pokaż klawiaturę", "wyświetl klawiaturę", "otwórz klawiaturę", "włącz klawiaturę ekranową", "pokaż klawiaturę ekranową" -> CommandIdentifier.KEYBOARD_SHOW
             "klawiatura", "przełącz klawiaturę" -> CommandIdentifier.KEYBOARD_TOGGLE
@@ -168,6 +289,7 @@ class CommandIntentParser @Inject constructor(
             "nagraj makro", "rozpocznij nagrywanie makra", "zacznij nagrywać makro", "utwórz nowe makro", "zapisuj czynności jako makro" -> CommandIdentifier.MACRO_RECORD
             "zakończ makro", "zakończ nagrywanie makra", "zatrzymaj nagrywanie makra", "zapisz makro", "skończ nagrywać makro" -> CommandIdentifier.MACRO_FINISH
             "makro", "makra",  "lista makr", "lista makro", "lista makra" , "pokaż makra", "pokaż makro","otwórz listę makr", "wyświetl makra","wyświetl makro"  -> CommandIdentifier.MACRO_SHOW
+            "usuń ostatnią akcję", "usuń ostatnią komendę", "usuń ostatnią czynność", "skasuj ostatnią akcję", "skasuj ostatnią komendę", "usuń ostatnie polecenie", "cofnij ostatnią akcję", "cofnij ostatnią komendę" -> CommandIdentifier.MACRO_RECORDING_DELETE_LAST
             "schowaj makra", "schowaj makro", "schowaj listę", "zamknij listę", "zamknij makra" -> CommandIdentifier.MACRO_HIDE
 
             else -> null
@@ -179,6 +301,20 @@ class CommandIntentParser @Inject constructor(
                 argument = null,
                 rawText = rawInput
             )
+        }
+
+        // Swipe with force, e.g. "w górę 3"
+        swipeForceRegex.matchEntire(text)?.let { match ->
+            val base = parse(match.groupValues[1])
+            val force = match.groupValues[2].toIntOrNull()
+            if (base != null && base.identifier in SWIPE_IDENTIFIERS && base.argument == null && force != null) {
+                return VoiceIntent(base.identifier, CommandArgument.Number(force), rawInput)
+            }
+        }
+
+        // Recording at the current position, e.g. "nagraj makro tutaj"
+        if (text.endsWith(" tutaj") && parse(text.removeSuffix(" tutaj"))?.identifier == CommandIdentifier.MACRO_RECORD) {
+            return VoiceIntent(CommandIdentifier.MACRO_RECORD, CommandArgument.Text(RECORD_HERE), rawInput)
         }
 
         divideNumberRegex.find(text)?.let { match ->
@@ -236,5 +372,15 @@ class CommandIntentParser @Inject constructor(
         }
 
         return null
+    }
+
+    companion object {
+        const val RECORD_HERE = "tutaj"
+        private val SWIPE_IDENTIFIERS = setOf(
+            CommandIdentifier.SWIPE_UP,
+            CommandIdentifier.SWIPE_DOWN,
+            CommandIdentifier.SWIPE_LEFT,
+            CommandIdentifier.SWIPE_RIGHT,
+        )
     }
 }

@@ -21,7 +21,7 @@ class AcceptRecordingMacroCommand @AssistedInject constructor(
     }
 
     override fun canExecute(context: OverlayContext): Boolean {
-        return !(macroExecutorProvider.get()?.isRecordingEmpty() ?: true)
+        return macroExecutorProvider.get()?.isAwaitingRecordingConfirmation() ?: false
     }
 
     @AssistedFactory

@@ -16,6 +16,9 @@ class SwipeCommand @AssistedInject constructor(
     @Assisted("destX") private val destX: Float,
     @Assisted("destY") private val destY: Float,
 ) : Command {
+    override val arguments: Map<String, Any?>
+        get() = mapOf("startX" to startX, "startY" to startY, "destX" to destX, "destY" to destY)
+
 
     override fun execute(): CommandResult {
         val executor = touchExecutorProvider.get()

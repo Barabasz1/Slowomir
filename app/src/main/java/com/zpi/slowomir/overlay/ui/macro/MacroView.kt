@@ -1,16 +1,5 @@
 package com.zpi.slowomir.overlay.ui.macro
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -38,11 +27,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -54,6 +39,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zpi.slowomir.overlay.macro.Macro
+import com.zpi.slowomir.ui.components.animation.OverlayAppearContent
+import com.zpi.slowomir.ui.components.animation.rememberPulse
 
 @Composable
 fun MacroView(
@@ -62,25 +49,12 @@ fun MacroView(
     onSelectMacro: (Int) -> Unit = {},
     onClose: () -> Unit = {},
 ) {
-    var isAppeared by remember { mutableStateOf(false) }
-
-    LaunchedEffect(Unit) {
-        isAppeared = true
-    }
-
-    AnimatedVisibility(
-        visible = isAppeared,
-        enter = fadeIn(animationSpec = tween(durationMillis = MacroView.FADE_IN_DURATION_MS)) +
-                slideInVertically(
-                    initialOffsetY = { MacroView.SLIDE_IN_OFFSET_Y },
-                    animationSpec = tween(durationMillis = MacroView.FADE_IN_DURATION_MS)
-                ) +
-                scaleIn(
-                    initialScale = MacroView.INITIAL_SCALE,
-                    animationSpec = tween(durationMillis = MacroView.FADE_IN_DURATION_MS)
-                ),
-        exit = fadeOut(animationSpec = tween(durationMillis = MacroView.FADE_OUT_DURATION_MS)),
-        modifier = modifier.fillMaxSize()
+    OverlayAppearContent(
+        modifier = modifier.fillMaxSize(),
+        enterDurationMillis = MacroView.FADE_IN_DURATION_MS,
+        exitDurationMillis = MacroView.FADE_OUT_DURATION_MS,
+        initialOffsetY = MacroView.SLIDE_IN_OFFSET_Y,
+        initialScale = MacroView.INITIAL_SCALE,
     ) {
         Box(
             modifier = Modifier
@@ -155,18 +129,11 @@ fun MacroView(
 
 @Composable
 private fun MacroHeaderIndicator() {
-    val transition = rememberInfiniteTransition(label = "macro_pulse")
-    val scale by transition.animateFloat(
+    val scale by rememberPulse(
         initialValue = 0.8f,
         targetValue = 1.2f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(
-                durationMillis = MacroView.PULSE_ANIMATION_DURATION_MS,
-                easing = FastOutSlowInEasing
-            ),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "pulse_scale",
+        durationMillis = MacroView.PULSE_ANIMATION_DURATION_MS,
+        label = "macro_pulse",
     )
 
     Row(
@@ -207,6 +174,16 @@ private fun MacroTitleSection() {
 }
 
 @Composable
+fun MacroSectionHeader(text: String, modifier: Modifier = Modifier) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = modifier.padding(vertical = 2.dp),
+    )
+}
+
+@Composable
 private fun MacroListContent(
     macroList: List<MacroEntry>,
     onSelectMacro: (Int) -> Unit
@@ -216,6 +193,13 @@ private fun MacroListContent(
         contentPadding = PaddingValues(vertical = MacroView.LIST_VERTICAL_PADDING)
     ) {
         itemsIndexed(macroList) { index, entry ->
+            val previous = macroList.getOrNull(index - 1)
+            if (previous == null || previous.isGenerated != entry.isGenerated) {
+                MacroSectionHeader(
+                    text = if (entry.isGenerated) "Proponowane" else "Zapisane",
+                    modifier = Modifier.padding(horizontal = MacroView.ROW_PADDING_HORIZONTAL)
+                )
+            }
             MacroEntryRowHorizontal(
                 position = index + 1,
                 entry = entry,
@@ -313,7 +297,7 @@ private fun MacroEntryRowVertical(
 }
 
 @Composable
-private fun IndexBadge(
+internal fun IndexBadge(
     position: Int,
     isGenerated: Boolean
 ) {
@@ -345,9 +329,8 @@ private fun IndexBadge(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ActionSequenceViewHorizontal(actions: List<ActionEntry>) {
+internal fun ActionSequenceViewHorizontal(actions: List<ActionEntry>) {
     FlowRow(
         verticalArrangement = Arrangement.spacedBy(MacroView.ACTION_CHIP_VERTICAL_SPACING, Alignment.CenterVertically),
         horizontalArrangement = Arrangement.spacedBy(MacroView.ACTION_CHIP_SPACING)
@@ -442,11 +425,11 @@ private fun CloseButton(
 
 object MacroView {
     // Layout & Card Dimensions
-    val OVERLAY_PADDING: Dp = 12.dp
+    val OVERLAY_PADDING: Dp = 6.dp
     val CARD_CORNER_RADIUS: Dp = 20.dp
     val CARD_ELEVATION: Dp = 8.dp
     val CONTENT_PADDING_HORIZONTAL: Dp = 16.dp
-    val HEADER_PADDING_VERTICAL: Dp = 12.dp
+    val HEADER_PADDING_VERTICAL: Dp = 8.dp
     val FOOTER_PADDING_VERTICAL: Dp = 6.dp
 
     // Row & Item Dimensions
@@ -486,5 +469,5 @@ object MacroView {
 
     // Window Layout Params
     const val WIDTH_FRACTION: Float = 1.0f
-    const val HEIGHT_FRACTION: Float = 0.7f
+    const val HEIGHT_FRACTION: Float = 0.92f
 }

@@ -43,6 +43,7 @@ class VoiceSessionManagerContactSelectionTest {
             dictateCommandFactory = mock(),
             punctuationRestorer = mock(),
             fieldProfileHolder = FieldProfileHolder(),
+            mediaPlaybackMonitor = mock(),
         )
     }
 
@@ -74,7 +75,7 @@ class VoiceSessionManagerContactSelectionTest {
 
         verify(mockSelectionManager, timeout(2000)).handleSpeech("wybierz pierwszy")
         verify(mockCommandResolver, timeout(2000)).resolve(chosen)
-        verify(mockIntentParser, never()).parse(any())
+        verify(mockIntentParser, never()).parse(any(), any())
     }
 
     @Test

@@ -14,6 +14,9 @@ class SelectCellCommand @AssistedInject constructor(
     private val gridExcecutorProvider: Provider<GridExecutor?>,
     @Assisted("cell") private val cell: Int
     ) : Command {
+    override val arguments: Map<String, Any?>
+        get() = mapOf("cell" to cell)
+
 
     override fun execute(): CommandResult {
         val gridExecutor = gridExcecutorProvider.get()

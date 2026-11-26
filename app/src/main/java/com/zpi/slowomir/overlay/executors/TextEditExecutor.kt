@@ -200,6 +200,50 @@ class TextEditExecutor(
         return typed
     }
 
+    /**
+     * Types a punctuation [mark] right at the cursor any spaces directly before the
+     * cursor are removed so the mark attaches to the preceding word.
+     *
+     * @return True if the mark was typed, false otherwise.
+     */
+    @Synchronized
+    fun insertPunctuation(mark: String): Boolean {
+        if (mark.isEmpty()) return false
+
+        val connection = inputConnection()
+        if (connection != null) {
+            var removed = 0
+            val done = runCatching {
+                val before = connection.getSurroundingText(PUNCTUATION_LOOKBEHIND, 0, 0)?.text
+                removed = before?.let { trailingSpaces(it) } ?: 0
+                if (removed > 0) connection.deleteSurroundingText(removed, 0)
+                connection.commitText(mark, 1, null)
+            }.onFailure { Log.e(TAG, "commitText failed", it) }.isSuccess
+            if (done) {
+                dictatedLength = dictatedLength?.let { (it - removed + mark.length).coerceAtLeast(0) }
+                return true
+            }
+        }
+
+        var delta = 0
+        val typed = applyViaNode("PUNCTUATION", lenientCursor = true) { state ->
+            val cursor = state.safeSelectionStart
+            val text = state.text.toString()
+            val spaces = trailingSpaces(text.substring(0, cursor))
+            delta = mark.length - spaces
+            engine.insertText(
+                EditorState(text.removeRange(cursor - spaces, cursor), cursor - spaces, cursor - spaces),
+                mark,
+            )
+        }
+        if (typed) dictatedLength = dictatedLength?.let { (it + delta).coerceAtLeast(0) }
+        return typed
+    }
+
+    /** Number of whitespace characters (line breaks excluded) at the end of [text]. */
+    private fun trailingSpaces(text: CharSequence): Int =
+        text.takeLastWhile { it.isWhitespace() && it != '\n' && it != '\r' }.length
+
     private fun needsLeadingSpace(connection: InputMethod.AccessibilityInputConnection): Boolean =
         runCatching {
             val context = connection.getSurroundingText(1, 0, 0) ?: return false
@@ -732,6 +776,7 @@ class TextEditExecutor(
         )
 
         private const val CONTEXT_CHARS = 1000
+        private const val PUNCTUATION_LOOKBEHIND = 20
         private const val FOCUS_ANCESTOR_DEPTH = 3
         private const val DEFAULT_CAPS_MODES = TextUtils.CAP_MODE_SENTENCES
 

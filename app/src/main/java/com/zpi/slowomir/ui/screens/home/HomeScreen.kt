@@ -1,5 +1,8 @@
 package com.zpi.slowomir.ui.screens.home
 
+import com.zpi.slowomir.R
+import androidx.compose.ui.res.stringResource
+import androidx.annotation.StringRes
 import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -69,21 +72,16 @@ import com.zpi.slowomir.voice.stt.VoiceState
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.milliseconds
 
-enum class SlowomirState(val title: String) {
-    Off("SłowoMIR wyłączony"),
-    WaitingForWakeWord("SłowoMIR czeka na wybudzenie"),
-    Listening("SłowoMIR nasłuchuje komend"),
-    Processing("SłowoMIR przetwarza komendę"),
-    Error("SłowoMIR napotkał błąd"),
-    CommandExecuted("SłowoMIR wykonał komendę");
+enum class SlowomirState(@StringRes val titleRes: Int) {
+    Off(R.string.home_state_off),
+    WaitingForWakeWord(R.string.home_state_waiting_for_wake_word),
+    Listening(R.string.home_state_listening),
+    Processing(R.string.home_state_processing),
+    Error(R.string.home_state_error),
+    CommandExecuted(R.string.home_state_command_executed);
 
     val isRunning: Boolean
         get() = this != Off
-
-    val isPulsing: Boolean
-        get() = this == WaitingForWakeWord ||
-                this == Listening ||
-                this == Processing
 }
 
 fun computeSlowomirState(
@@ -244,7 +242,7 @@ fun HomeScreen(
             }
 
             NavTile(
-                title = "Instrukcja",
+                title = stringResource(R.string.home_tile_instructions),
                 icon = Icons.Rounded.Info,
                 isHighlighted = showIntroHighlight,
                 onClick = {
@@ -258,7 +256,7 @@ fun HomeScreen(
             Spacer(Modifier.height(24.dp))
 
             NavTile(
-                title = "Lista komend",
+                title = stringResource(R.string.home_tile_commands),
                 icon = Icons.AutoMirrored.Rounded.List,
                 onClick = onCommandsClick,
             )
@@ -320,7 +318,7 @@ private fun StatusPanel(
             .padding(horizontal = 24.dp, vertical = 36.dp),
     ) {
         Text(
-            text = "AKTUALNY STAN",
+            text = stringResource(R.string.home_current_state),
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.Bold,
             letterSpacing = 1.5.sp,
@@ -340,7 +338,7 @@ private fun StatusPanel(
             label = "statusText",
         ) { current ->
             Text(
-                text = current.title,
+                text = stringResource(current.titleRes),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 color = accent,
@@ -361,7 +359,21 @@ private fun StartStopButton(
     isRunning: Boolean,
     onClick: () -> Unit,
 ) {
-    val stopColor = MaterialTheme.colorScheme.errorContainer
+    var confirming by remember { mutableStateOf(false) }
+
+    LaunchedEffect(isRunning, confirming) {
+        if (confirming) {
+            delay(3000)
+            confirming = false
+        }
+    }
+    LaunchedEffect(isRunning) { confirming = false }
+
+    val stopColor = if (confirming) {
+        Color(0xFFD08A3C)
+    } else {
+        MaterialTheme.colorScheme.errorContainer
+    }
 
     val startColor by animateColorAsState(
         targetValue = if (isRunning) stopColor else SlowomirTeal,
@@ -377,7 +389,8 @@ private fun StartStopButton(
 
     val contentColor by animateColorAsState(
         targetValue = if (isRunning) {
-            MaterialTheme.colorScheme.onErrorContainer
+            if (confirming) Color(0xFF2E1A08)
+            else MaterialTheme.colorScheme.onErrorContainer
         } else {
             MaterialTheme.colorScheme.onPrimary
         },
@@ -397,7 +410,16 @@ private fun StartStopButton(
             )
             .clickable(
                 role = Role.Button,
-                onClick = onClick,
+                onClick = {
+                    if (!isRunning) {
+                        onClick()
+                    } else if (confirming) {
+                        confirming = false
+                        onClick()
+                    } else {
+                        confirming = true
+                    }
+                },
             )
             .padding(horizontal = 16.dp),
         contentAlignment = Alignment.Center,
@@ -411,9 +433,12 @@ private fun StartStopButton(
         ) { running ->
             Text(
                 text = if (running) {
-                    "Zatrzymaj nasłuchiwanie"
+                    stringResource(
+                        if (confirming) R.string.home_stop_confirm
+                        else R.string.home_stop_listening
+                    )
                 } else {
-                    "Rozpocznij nasłuchiwanie"
+                    stringResource(R.string.home_start_listening)
                 },
                 color = contentColor,
                 fontSize = 20.sp,
@@ -461,7 +486,7 @@ private fun IntroTooltipBanner(
         Spacer(Modifier.width(8.dp))
 
         Text(
-            text = "Zobacz, jak korzystać z aplikacji",
+            text = stringResource(R.string.home_intro_tooltip),
             style = MaterialTheme.typography.labelMedium,
             color = Color.White,
             fontWeight = FontWeight.SemiBold,
@@ -474,7 +499,7 @@ private fun IntroTooltipBanner(
         ) {
             Icon(
                 imageVector = Icons.Rounded.Close,
-                contentDescription = "Zamknij podpowiedź",
+                contentDescription = stringResource(R.string.home_intro_tooltip_dismiss),
                 tint = Color.White,
                 modifier = Modifier.size(16.dp)
             )

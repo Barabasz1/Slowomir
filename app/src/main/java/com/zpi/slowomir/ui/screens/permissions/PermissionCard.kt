@@ -1,5 +1,8 @@
 package com.zpi.slowomir.ui.screens.permissions
 
+import com.zpi.slowomir.R
+import androidx.compose.ui.res.stringResource
+import androidx.annotation.StringRes
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -35,18 +38,19 @@ import com.zpi.slowomir.ui.theme.SlowomirTeal
 
 val PermissionSuccessGreen = Color(0xFF3DDC84)
 
-enum class PermissionType {
-    ACCESSIBILITY,
-    OVERLAY,
-    RECORD_AUDIO,
-    READ_CONTACTS,
-    CALL_PHONE,
-    ANSWER_PHONE_CALLS
+enum class PermissionType(@StringRes val titleRes: Int) {
+    ACCESSIBILITY(R.string.permission_accessibility),
+    OVERLAY(R.string.permission_overlay),
+    RECORD_AUDIO(R.string.permission_microphone),
+    READ_CONTACTS(R.string.permission_contacts),
+    CALL_PHONE(R.string.permission_call_phone),
+    ANSWER_PHONE_CALLS(R.string.permission_answer_calls),
+    NOTIFICATIONS(R.string.permission_notifications),
+    NOTIFICATION_ACCESS(R.string.permission_notification_access)
 }
 
 data class PermissionItem(
     val type: PermissionType,
-    val title: String,
     val isGranted: Boolean,
     val icon: ImageVector,
     val manifestPermission: String? = null
@@ -111,7 +115,7 @@ fun PermissionCard(
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = permission.title,
+                    text = stringResource(permission.type.titleRes),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -137,7 +141,7 @@ fun PermissionCard(
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = "Przyznano",
+                            text = stringResource(R.string.permission_granted),
                             style = MaterialTheme.typography.labelSmall,
                             color = PermissionSuccessGreen,
                             fontWeight = FontWeight.Bold
@@ -151,7 +155,7 @@ fun PermissionCard(
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Text(
-                        text = "Włącz",
+                        text = stringResource(R.string.permission_enable),
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -197,7 +201,7 @@ fun PrivacyInfoCard(modifier: Modifier = Modifier) {
             Spacer(modifier = Modifier.width(14.dp))
 
             Text(
-                text = "Aplikacja przetwarza wszystkie dane lokalnie na Twoim urządzeniu.",
+                text = stringResource(R.string.permission_privacy_info),
                 modifier = Modifier
                     .weight(1f)
                     .padding(top = 2.dp),

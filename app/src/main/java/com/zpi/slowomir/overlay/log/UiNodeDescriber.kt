@@ -4,18 +4,22 @@ import android.accessibilityservice.AccessibilityService
 import android.graphics.Rect
 import android.util.Log
 import android.view.accessibility.AccessibilityNodeInfo
+import android.view.accessibility.AccessibilityWindowInfo
+import com.zpi.slowomir.overlay.macro.MacroPlaybackState
 import com.zpi.slowomir.overlay.services.CommandExecutorService
 import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class UiNodeDescriber @Inject constructor() {
+class UiNodeDescriber @Inject constructor(
+    private val playbackState: MacroPlaybackState,
+) {
 
     private class PathEntry(val node: AccessibilityNodeInfo, val indexInParent: Int)
 
     fun describeTapAt(x: Float, y: Float): ActionDescriptor? {
-        if (!ActionLogConfig.isEnabled) return null
+        if (!ActionLogConfig.isEnabled || playbackState.isPlaying) return null
 
         return try {
             resolve(x.toInt(), y.toInt())
@@ -28,12 +32,11 @@ class UiNodeDescriber @Inject constructor() {
     private fun resolve(x: Int, y: Int): ActionDescriptor? {
         val service = CommandExecutorService.instance ?: return null
         val root = findRootAt(service, x, y) ?: return null
-        return resolveInRoot(root, service.packageName, x, y)
+        return resolveInRoot(root, x, y)
     }
 
     internal fun resolveInRoot(
         root: AccessibilityNodeInfo,
-        ownPackage: String?,
         x: Int,
         y: Int,
     ): ActionDescriptor? {
@@ -43,19 +46,19 @@ class UiNodeDescriber @Inject constructor() {
         val packageName = chain.asReversed()
             .firstNotNullOfOrNull { it.node.packageName?.toString()?.takeIf { name -> name.isNotBlank() } }
             ?: return null
-        if (ownPackage != null && packageName == ownPackage) return null
 
         val path = HierarchyPath.format(
             chain.map { HierarchyPath.segment(it.node.className, it.indexInParent) }
         )
-        val label = labelOf(target) ?: descendantLabel(target)
+        val label = labelOf(target, lowercase = false) ?: descendantLabel(target, lowercase = false)
 
         return ActionDescriptor(
             type = ActionType.UI_CLICK,
             packageName = packageName,
             resourceId = target.viewIdResourceName?.takeIf { it.isNotBlank() },
             hierarchyPath = path.takeIf { it.isNotEmpty() },
-            labelHash = label?.let { ActionHasher.sha256Hex(it) },
+            labelHash = label?.let { ActionHasher.sha256Hex(it.lowercase(Locale.ROOT)) },
+            label = label,
         )
     }
 
@@ -68,15 +71,14 @@ class UiNodeDescriber @Inject constructor() {
             .firstNotNullOfOrNull { window ->
                 window.getBoundsInScreen(bounds)
                 val windowRoot = window.root
-                if (bounds.contains(x, y) &&
-                    windowRoot != null &&
-                    windowRoot.packageName?.toString() != ownPackage
-                ) windowRoot else null
+                val isOwnOverlay = windowRoot?.packageName?.toString() == ownPackage &&
+                        window.type != AccessibilityWindowInfo.TYPE_APPLICATION
+                if (bounds.contains(x, y) && windowRoot != null && !isOwnOverlay) windowRoot else null
             }
         if (windowHit != null) return windowHit
 
         val active = service.rootInActiveWindow
-        if (active != null && active.packageName?.toString() != ownPackage) {
+        if (active != null) {
             active.getBoundsInScreen(bounds)
             if (bounds.contains(x, y)) return active
         }
@@ -109,9 +111,9 @@ class UiNodeDescriber @Inject constructor() {
                     if (bestClickable == null ||
                         (enabled && !bestClickableEnabled) ||
                         (enabled == bestClickableEnabled && (
-                            nodeArea < bestClickableArea ||
-                                (nodeArea == bestClickableArea && currentChain.size > bestClickable!!.size)
-                        ))
+                                nodeArea < bestClickableArea ||
+                                        (nodeArea == bestClickableArea && currentChain.size > bestClickable!!.size)
+                                ))
                     ) {
                         bestClickable = currentChain.toList()
                         bestClickableArea = nodeArea
@@ -154,24 +156,24 @@ class UiNodeDescriber @Inject constructor() {
         internal fun isClickable(node: AccessibilityNodeInfo): Boolean =
             node.isClickable || node.actionList.orEmpty().any { it.id == AccessibilityNodeInfo.ACTION_CLICK }
 
-        internal fun labelOf(node: AccessibilityNodeInfo): String? {
+        internal fun labelOf(node: AccessibilityNodeInfo, lowercase: Boolean = true): String? {
             if (node.isPassword) return null
             val candidates = if (node.isEditable) {
                 listOf(node.hintText, node.contentDescription)
             } else {
                 listOf(node.text, node.contentDescription)
             }
-            return candidates.firstNotNullOfOrNull { normalizeLabel(it) }
+            return candidates.firstNotNullOfOrNull { normalizeLabel(it, lowercase) }
         }
 
-        internal fun normalizeLabel(value: CharSequence?): String? =
+        internal fun normalizeLabel(value: CharSequence?, lowercase: Boolean = true): String? =
             value?.toString()
                 ?.trim()
-                ?.lowercase(Locale.ROOT)
                 ?.take(MAX_LABEL_LENGTH)
+                ?.let { if (lowercase) it.lowercase(Locale.ROOT) else it }
                 ?.takeIf { it.isNotEmpty() }
 
-        internal fun descendantLabel(root: AccessibilityNodeInfo): String? {
+        internal fun descendantLabel(root: AccessibilityNodeInfo, lowercase: Boolean = true): String? {
             val queue = ArrayDeque<Pair<AccessibilityNodeInfo, Int>>()
             queue.add(root to 0)
             var visited = 0
@@ -182,7 +184,7 @@ class UiNodeDescriber @Inject constructor() {
                     val child = node.getChild(i) ?: continue
                     if (!child.isVisibleToUser) continue
                     visited++
-                    labelOf(child)?.let { return it }
+                    labelOf(child, lowercase)?.let { return it }
                     queue.add(child to depth + 1)
                 }
             }

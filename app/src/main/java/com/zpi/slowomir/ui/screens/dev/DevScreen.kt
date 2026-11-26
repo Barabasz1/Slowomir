@@ -1,5 +1,6 @@
 package com.zpi.slowomir.ui.screens.dev
 
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -10,9 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -26,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import com.zpi.slowomir.ui.components.ScreenScaffold
 
 @Composable
 fun DevScreen(
@@ -51,17 +51,16 @@ fun DevScreen(
         }
     }
 
+    ScreenScaffold(title = "Dev", scrollState = scrollState, modifier = modifier) { innerPadding ->
     Column(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxSize()
+            .padding(innerPadding)
             .verticalScroll(scrollState)
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.Top),
     ) {
-        Text(text = "Dev", style = MaterialTheme.typography.headlineMedium)
-
-        Spacer(modifier = Modifier.height(8.dp))
 
         OutlinedTextField(
             value = inputText,
@@ -93,5 +92,6 @@ fun DevScreen(
         Button(onClick = { onTapAt(500f, 500f) }, modifier = Modifier.fillMaxWidth()) {
             Text("Execute Tap at (500f, 500f)")
         }
+    }
     }
 }

@@ -5,6 +5,9 @@ import com.zpi.slowomir.overlay.commands.Command
 import com.zpi.slowomir.overlay.commands.CommandIdentifier
 import com.zpi.slowomir.overlay.commands.CommandResult
 import com.zpi.slowomir.overlay.commands.CommandArgument
+import com.zpi.slowomir.utils.MediaPlaybackMonitor
+import com.zpi.slowomir.overlay.ui.confirmation.ConfirmationManager
+import com.zpi.slowomir.overlay.ui.confirmation.ConfirmationSpeechResult
 import com.zpi.slowomir.voice.intent.CommandIntentParser
 import com.zpi.slowomir.voice.intent.CommandIntentResolver
 import com.zpi.slowomir.voice.intent.IntentResolution
@@ -51,6 +54,8 @@ class VoiceSessionManager @Inject constructor(
     private val dictateCommandFactory: DictateCommand.Factory,
     private val punctuationRestorer: PunctuationRestorer,
     private val fieldProfileHolder: FieldProfileHolder,
+    private val confirmationManager: ConfirmationManager = ConfirmationManager(),
+    private val mediaPlaybackMonitor: MediaPlaybackMonitor,
 ) : VoiceInputSink, VoiceStateSource {
 
     val selection: StateFlow<Selection?> = selectionManager.selection
@@ -64,11 +69,6 @@ class VoiceSessionManager @Inject constructor(
     init {
         scope.launch {
             for (input in inbox) handle(input)
-        }
-        scope.launch {
-            intentResolver.initialize().onFailure {
-                Log.w(TAG, "Intent model unavailable, using the rule-based parser only", it)
-            }
         }
     }
 
@@ -101,6 +101,7 @@ class VoiceSessionManager @Inject constructor(
             Log.d(TAG, "State transition: $oldState + $input -> $newState")
             onStateChanged(newState)
             updatePunctuationModel(oldState, newState)
+            updateIntentModel(oldState, newState)
             if (newState.isIdle()) mediator.handleEvent(OverlayEvent.SessionIdle)
         }
     }
@@ -130,6 +131,20 @@ class VoiceSessionManager @Inject constructor(
             }
 
             wasDictating && !isDictating -> punctuationRestorer.release()
+        }
+    }
+
+    private fun updateIntentModel(oldState: VoiceState, newState: VoiceState) {
+        val wasIdle = oldState.isIdle()
+        val isIdle = newState.isIdle()
+        when {
+            wasIdle && !isIdle -> scope.launch {
+                intentResolver.initialize().onFailure {
+                    Log.w(TAG, "Intent model unavailable, using the rule-based parser only", it)
+                }
+            }
+
+            !wasIdle && isIdle -> intentResolver.release()
         }
     }
 
@@ -174,6 +189,15 @@ class VoiceSessionManager @Inject constructor(
 
             Log.d(TAG, "Parsing '$text' (selection active: ${selectionManager.isActive})")
 
+            if (confirmationManager.isActive) {
+
+                val answer = confirmationManager.handleSpeech(normalizer.normalize(text))
+                Log.d(TAG, "Confirmation answer for '$text': $answer")
+                if (answer == ConfirmationSpeechResult.Ignored) mediator.handleEvent(OverlayEvent.InvalidCommand(text))
+                inbox.send(InternalEvent.IntentFailed(text))
+                return@launch
+            }
+
             if (selectionManager.isActive) {
                 when (val result = selectionManager.handleSpeech(text)) {
                     is SelectionSpeechResult.Chosen -> proceed(result.intent)
@@ -183,7 +207,13 @@ class VoiceSessionManager @Inject constructor(
                 return@launch
             }
 
-            val intent = intentParser.parse(text) ?: resolveWithModel(text)
+            val parseContext = when {
+                fieldProfileHolder.hasFocusedField -> CommandIntentParser.Context.TEXT_EDIT
+                mediaPlaybackMonitor.isPlayingNow() || mediaPlaybackMonitor.hasMediaSession() ->
+                    CommandIntentParser.Context.MEDIA
+                else -> CommandIntentParser.Context.DEFAULT
+            }
+            val intent = intentParser.parse(text, parseContext) ?: resolveWithModel(text, parseContext)
 
             if (intent == null) {
                 mediator.handleEvent(OverlayEvent.InvalidCommand(text))
@@ -219,7 +249,7 @@ class VoiceSessionManager @Inject constructor(
             mediator.handleEvent(OverlayEvent.SpeechRecognized(text, mode))
             val allowed = if (mode == TextMode.EDIT) EDIT_MODE_COMMANDS else DICTATION_MODE_COMMANDS
 
-            val spoken = intentParser.parse(text) ?: if (mode == TextMode.EDIT) resolveWithModel(text) else null
+            val spoken = intentParser.parse(text, CommandIntentParser.Context.TEXT_EDIT) ?: if (mode == TextMode.EDIT) resolveWithModel(text, CommandIntentParser.Context.TEXT_EDIT) else null
             val intent = spoken?.takeIf { it.identifier in allowed }
             when {
                 intent != null -> proceed(intent)
@@ -256,8 +286,9 @@ class VoiceSessionManager @Inject constructor(
      * command and its argument. Returns null when the model is unsure, unavailable, or did not
      * extract the argument that command needs.
      */
-    private suspend fun resolveWithModel(text: String): VoiceIntent? {
-        val result = intentResolver.resolve(normalizer.normalize(text))
+    private suspend fun resolveWithModel(text: String, context: CommandIntentParser.Context): VoiceIntent? {
+        intentResolver.initialize().onFailure { return null }
+        val result = intentResolver.resolve(normalizer.normalize(text), context)
         if (result !is IntentResolution.Resolved) {
             Log.d(TAG, "Model could not resolve '$text': $result")
             return null
@@ -273,7 +304,9 @@ class VoiceSessionManager @Inject constructor(
     }
 
     private fun hasRequiredArgument(intent: VoiceIntent): Boolean = when (intent.identifier) {
-        CommandIdentifier.CELL_SELECT -> intent.argument is CommandArgument.Number
+        CommandIdentifier.CELL_SELECT,
+        CommandIdentifier.MACRO_DELETE,
+        CommandIdentifier.MACRO_KEEP -> intent.argument is CommandArgument.Number
         CommandIdentifier.CELL_SWIPE -> intent.argument is CommandArgument.TwoNumbers
         CommandIdentifier.NAVIGATE_APP_OPEN,
         CommandIdentifier.PHONE_CALL,
@@ -299,7 +332,8 @@ class VoiceSessionManager @Inject constructor(
         scope.launch {
             val result = mediator.dispatch(command)
             mediator.handleEvent(OverlayEvent.CommandExecuted(command, result))
-            val returnToKws = intent.identifier == CommandIdentifier.OVERLAY_STOP
+            val returnToKws = result is CommandResult.Success &&
+                (command.returnsToKeywordSpotting || intent.identifier in CALL_STARTING_COMMANDS)
 
             inbox.send(InternalEvent.CommandFinished(result, returnToKws = returnToKws))
         }
@@ -345,8 +379,17 @@ class VoiceSessionManager @Inject constructor(
             CommandIdentifier.TEXT_CURSOR_PREVIOUS_WORD,
             CommandIdentifier.TEXT_DELETE_CHARACTER,
             CommandIdentifier.TEXT_DELETE_WORD,
+            CommandIdentifier.TEXT_PUNCTUATION_PERIOD,
+            CommandIdentifier.TEXT_PUNCTUATION_COMMA,
+            CommandIdentifier.TEXT_PUNCTUATION_QUESTION,
+            CommandIdentifier.TEXT_PUNCTUATION_EXCLAMATION,
             CommandIdentifier.TEXT_CONFIRM,
             CommandIdentifier.OVERLAY_STOP,
+        )
+
+        private val CALL_STARTING_COMMANDS = setOf(
+            CommandIdentifier.PHONE_CALL,
+            CommandIdentifier.PHONE_PICK_UP,
         )
 
         private val SELECTABLE_INTENTS = setOf(
