@@ -146,48 +146,48 @@ class PredictionNodeMatcherTest {
     }
 
     @Test
-    fun `guarded node with protected descendant label or password flag is never returned`() {
-        // Guarded child label inside clickable LinearLayout
-        val path = HierarchyPath.format(listOf("FrameLayout[0]", "LinearLayout[0]"))
-        val protectedLabelHash = ActionHasher.sha256Hex("usuń konto")
-        val protectedDef = makeTargetDef(
-            packageName = "com.example.app",
-            resourceId = "com.example.app:id/danger_row",
+    fun `editable field like Messenger message box is matched`() {
+        val path = HierarchyPath.format(
+            listOf("FrameLayout[0]", "ViewGroup[2]", "EditText[0]")
+        )
+        val labelHash = ActionHasher.sha256Hex("aa")
+        val targetDef = makeTargetDef(
+            packageName = "com.facebook.orca",
+            resourceId = null,
             hierarchyPath = path,
-            labelHash = protectedLabelHash,
+            labelHash = labelHash,
         )
 
-        val rootWithProtectedDescendant = mockNode(
-            className = "android.widget.FrameLayout",
-            packageName = "com.example.app",
-            children = listOf(
-                makeRowNode("com.example.app", "com.example.app:id/danger_row", "Usuń konto"),
-            ),
+        val messageInput = mockNode(
+            className = "android.widget.EditText",
+            packageName = "com.facebook.orca",
+            resourceId = null,
+            hintText = "Aa",
+            isClickable = true,
+            isEditable = true,
         )
-        assertTrue(PredictionNodeMatcher.findMatchingNodes(rootWithProtectedDescendant, protectedDef).isEmpty())
-
-        // Password field
-        val passwordPath = HierarchyPath.format(listOf("FrameLayout[0]", "EditText[0]"))
-        val passwordDef = makeTargetDef(
-            packageName = "com.example.app",
-            resourceId = "com.example.app:id/password",
-            hierarchyPath = passwordPath,
-            labelHash = null,
-        )
-        val rootWithPassword = mockNode(
+        val root = mockNode(
             className = "android.widget.FrameLayout",
-            packageName = "com.example.app",
+            packageName = "com.facebook.orca",
             children = listOf(
                 mockNode(
-                    className = "android.widget.EditText",
-                    packageName = "com.example.app",
-                    resourceId = "com.example.app:id/password",
-                    isClickable = true,
-                    isPassword = true,
+                    className = "android.view.ViewGroup",
+                    children = emptyList(),
+                ),
+                mockNode(
+                    className = "android.view.ViewGroup",
+                    children = emptyList(),
+                ),
+                mockNode(
+                    className = "android.view.ViewGroup",
+                    children = listOf(messageInput),
                 ),
             ),
         )
-        assertTrue(PredictionNodeMatcher.findMatchingNodes(rootWithPassword, passwordDef).isEmpty())
+
+        val matches = PredictionNodeMatcher.findMatchingNodes(root, targetDef)
+        assertEquals(1, matches.size)
+        assertSame(messageInput, matches[0])
     }
 
     @Test
@@ -242,6 +242,54 @@ class PredictionNodeMatcherTest {
         assertSame(targetRow, matches[0])
     }
 
+    @Test
+    fun `non-clickable custom view matches via scroll fallback when no clickable match exists`() {
+        val oldPath = HierarchyPath.format(
+            listOf(
+                "FrameLayout[0]",
+                "RecyclerView[0]",
+                "ViewGroup[5]",
+            )
+        )
+        val labelHash = ActionHasher.sha256Hex("jan kowalski")
+        val targetDef = makeTargetDef(
+            packageName = "com.facebook.orca",
+            resourceId = null,
+            hierarchyPath = oldPath,
+            labelHash = labelHash,
+        )
+
+        val customRow = mockNode(
+            className = "android.view.ViewGroup",
+            packageName = "com.facebook.orca",
+            resourceId = null,
+            text = "Jan Kowalski",
+            isClickable = false,
+        )
+        val root = mockNode(
+            className = "android.widget.FrameLayout",
+            packageName = "com.facebook.orca",
+            children = listOf(
+                mockNode(
+                    className = "androidx.recyclerview.widget.RecyclerView",
+                    children = listOf(
+                        mockNode(
+                            className = "android.view.ViewGroup",
+                            packageName = "com.facebook.orca",
+                            text = "Anna Nowak",
+                            isClickable = false,
+                        ),
+                        customRow,
+                    ),
+                ),
+            ),
+        )
+
+        val matches = PredictionNodeMatcher.findMatchingNodes(root, targetDef)
+        assertEquals(1, matches.size)
+        assertSame(customRow, matches[0])
+    }
+
     private fun makeTargetDef(
         packageName: String,
         resourceId: String?,
@@ -286,6 +334,7 @@ class PredictionNodeMatcherTest {
         packageName: String? = null,
         resourceId: String? = null,
         text: String? = null,
+        hintText: String? = null,
         contentDescription: String? = null,
         isClickable: Boolean = false,
         isPassword: Boolean = false,
@@ -298,6 +347,7 @@ class PredictionNodeMatcherTest {
         whenever(node.packageName).thenReturn(packageName)
         whenever(node.viewIdResourceName).thenReturn(resourceId)
         whenever(node.text).thenReturn(text)
+        whenever(node.hintText).thenReturn(hintText)
         whenever(node.contentDescription).thenReturn(contentDescription)
         whenever(node.isClickable).thenReturn(isClickable)
         whenever(node.isPassword).thenReturn(isPassword)

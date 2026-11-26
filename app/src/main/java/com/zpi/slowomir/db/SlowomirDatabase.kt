@@ -7,16 +7,14 @@ import com.zpi.slowomir.overlay.log.db.ActionDefEntity
 import com.zpi.slowomir.overlay.log.db.ActionEventEntity
 import com.zpi.slowomir.overlay.log.db.PredictionDao
 import com.zpi.slowomir.overlay.log.db.PredictionObservationEntity
-import com.zpi.slowomir.overlay.log.db.PredictionSuppressionEntity
 
 @Database(
     entities = [
         ActionDefEntity::class,
         ActionEventEntity::class,
         PredictionObservationEntity::class,
-        PredictionSuppressionEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = false,
 )
 abstract class SlowomirDatabase : RoomDatabase() {

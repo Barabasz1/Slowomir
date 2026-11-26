@@ -10,7 +10,7 @@ import com.zpi.slowomir.overlay.log.db.ActionDefEntity
 
 object PredictionNodeMatcher {
 
-    private const val MAX_NODES = 600
+    private const val MAX_NODES = 1500
 
     private data class NodeEntry(
         val node: AccessibilityNodeInfo,
@@ -37,7 +37,8 @@ object PredictionNodeMatcher {
         )
 
         val exactMatches = mutableListOf<AccessibilityNodeInfo>()
-        val fallbackMatches = mutableListOf<AccessibilityNodeInfo>()
+        val clickableFallbackMatches = mutableListOf<AccessibilityNodeInfo>()
+        val nonClickableFallbackMatches = mutableListOf<AccessibilityNodeInfo>()
         var visited = 0
 
         while (queue.isNotEmpty() && visited < MAX_NODES) {
@@ -47,11 +48,7 @@ object PredictionNodeMatcher {
 
             val pkg = node.packageName?.toString()?.takeIf { it.isNotBlank() } ?: entry.inheritedPackage
 
-            if (node.isVisibleToUser &&
-                !node.isPassword &&
-                !node.isEditable &&
-                !PredictionGuard.isGuardedNode(node)
-            ) {
+            if (node.isVisibleToUser) {
                 val pkgMatches = targetDef.packageName == null || pkg == targetDef.packageName
                 val resId = node.viewIdResourceName?.takeIf { it.isNotBlank() }
                 val resMatches = resId == targetDef.resourceId
@@ -65,57 +62,59 @@ object PredictionNodeMatcher {
                     ?: "Unknown"
                 val classMatches = expectedSimpleClass == null || nodeSimpleClass == expectedSimpleClass
 
+                val clickable = UiNodeDescriber.isClickable(node)
                 val canExact = exactMatches.size < 2 && pkgMatches && resMatches && pathMatches
-                val canFallback = fallbackMatches.size < 2 &&
-                    targetDef.labelHash != null &&
-                    pkgMatches &&
-                    resMatches &&
-                    classMatches &&
-                    UiNodeDescriber.isClickable(node)
+                val canFallback =
+                    (if (clickable) clickableFallbackMatches.size < 2 else nonClickableFallbackMatches.size < 2) &&
+                        targetDef.labelHash != null &&
+                        pkgMatches &&
+                        resMatches &&
+                        classMatches
 
                 if (canExact || canFallback) {
                     val label = UiNodeDescriber.labelOf(node) ?: UiNodeDescriber.descendantLabel(node)
-                    val isGuardedLabel = label != null &&
-                        PredictionGuard.isProtectedLabel(PredictionGuard.normalizeText(label))
+                    val labelHash = label?.let { ActionHasher.sha256Hex(it) }
 
-                    if (!isGuardedLabel) {
-                        val labelHash = label?.let { ActionHasher.sha256Hex(it) }
-
-                        if (canExact) {
-                            val descriptor = ActionDescriptor(
-                                type = ActionType.UI_CLICK,
-                                packageName = pkg,
-                                resourceId = resId,
-                                hierarchyPath = path,
-                                labelHash = labelHash,
-                            )
-                            if (ActionHasher.hash(descriptor) == targetDef.actionHash) {
-                                exactMatches.add(node)
-                                if (exactMatches.size >= 2) {
-                                    return exactMatches
-                                }
+                    if (canExact) {
+                        val descriptor = ActionDescriptor(
+                            type = ActionType.UI_CLICK,
+                            packageName = pkg,
+                            resourceId = resId,
+                            hierarchyPath = path,
+                            labelHash = labelHash,
+                        )
+                        if (ActionHasher.hash(descriptor) == targetDef.actionHash) {
+                            exactMatches.add(node)
+                            if (exactMatches.size >= 2) {
+                                return exactMatches
                             }
                         }
+                    }
 
-                        if (canFallback && labelHash == targetDef.labelHash) {
-                            fallbackMatches.add(node)
+                    if (canFallback && labelHash == targetDef.labelHash) {
+                        if (clickable) {
+                            clickableFallbackMatches.add(node)
+                        } else {
+                            nonClickableFallbackMatches.add(node)
                         }
                     }
                 }
             }
 
-            if (!node.isPassword) {
-                for (i in 0 until node.childCount) {
-                    val child = node.getChild(i) ?: continue
-                    if (child.isVisibleToUser) {
-                        val nextSegments = (entry.segments + HierarchyPath.segment(child.className, i))
-                            .takeLast(HierarchyPath.MAX_SEGMENTS)
-                        queue.add(NodeEntry(child, nextSegments, pkg))
-                    }
+            for (i in 0 until node.childCount) {
+                val child = node.getChild(i) ?: continue
+                if (child.isVisibleToUser) {
+                    val nextSegments = (entry.segments + HierarchyPath.segment(child.className, i))
+                        .takeLast(HierarchyPath.MAX_SEGMENTS)
+                    queue.add(NodeEntry(child, nextSegments, pkg))
                 }
             }
         }
 
-        return if (exactMatches.isNotEmpty()) exactMatches else fallbackMatches
+        return when {
+            exactMatches.isNotEmpty() -> exactMatches
+            clickableFallbackMatches.isNotEmpty() -> clickableFallbackMatches
+            else -> nonClickableFallbackMatches
+        }
     }
 }

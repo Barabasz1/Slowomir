@@ -15,8 +15,10 @@ object ScreenFingerprint {
     private const val MAX_SCROLL_PEEK_CHILDREN = 2
     private const val SHALLOW_SCROLL_MAX_DEPTH = 2
 
+    private val SEPARATOR_REGEX = Regex("""[\r\n•·|]+""")
     private val TAB_SUFFIX_REGEX = Regex(""",\s*(?:karta|tab)\s+\d+\s+(?:z|of)\s+\d+""", RegexOption.IGNORE_CASE)
     private val COUNT_SEGMENT_REGEX = Regex(""",\s*\d+\s+[^,]+""", RegexOption.IGNORE_CASE)
+    private val TRAILING_BADGE_REGEX = Regex("""\s+\d+\+?$""")
     private val PAREN_COUNT_REGEX = Regex("""\s*\(\s*\d+\s*\)""")
     private val CLOCK_OR_DATE_REGEX = Regex(""".*\d+[:./-]\d+.*""")
 
@@ -97,8 +99,8 @@ object ScreenFingerprint {
             winHeight = winBottom
         }
 
-        val topBarThreshold = winTop + (winHeight * 0.16f).toInt()
-        val bottomBarThreshold = winTop + (winHeight * 0.84f).toInt()
+        val topBarThreshold = winTop + (winHeight * 0.12f).toInt()
+        val bottomBarThreshold = winTop + (winHeight * 0.86f).toInt()
         val headingThreshold = winTop + (winHeight * 0.42f).toInt()
 
         val signals = mutableSetOf<String>()
@@ -290,9 +292,11 @@ object ScreenFingerprint {
             ?: return null
 
         val stripped = initial
+            .replace(SEPARATOR_REGEX, ", ")
             .replace(TAB_SUFFIX_REGEX, "")
             .replace(COUNT_SEGMENT_REGEX, "")
             .replace(PAREN_COUNT_REGEX, "")
+            .replace(TRAILING_BADGE_REGEX, "")
             .trim()
 
         if (stripped.isEmpty() || stripped.length > MAX_LABEL_LENGTH) return null

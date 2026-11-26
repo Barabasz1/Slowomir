@@ -402,6 +402,40 @@ class ScreenFingerprintTest {
         assertEquals(ScreenFingerprint.UNKNOWN_SCREEN, fp)
     }
 
+    @Test
+    fun `messenger multiline bullet and trailing badge counts normalize to the same fingerprint`() {
+        fun messengerChatsScreen(chatsTabLabel: String): AccessibilityNodeInfo = mockNode(
+            className = "android.widget.FrameLayout",
+            packageName = "com.facebook.orca",
+            bounds = RectSpec(0, 0, 1080, 2400),
+            children = listOf(
+                mockNode(
+                    className = "android.view.ViewGroup",
+                    bounds = RectSpec(0, 2214, 1080, 2361),
+                    children = listOf(
+                        mockNode(
+                            className = "android.widget.Button",
+                            contentDescription = chatsTabLabel,
+                            isClickable = true,
+                            isSelected = true,
+                            bounds = RectSpec(32, 2214, 286, 2361),
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        val fpBase = ScreenFingerprint.compute(messengerChatsScreen("Czaty"), 1080, 2400)
+        val fpMultiline = ScreenFingerprint.compute(messengerChatsScreen("Czaty\n3 nieprzeczytane"), 1080, 2400)
+        val fpBullet = ScreenFingerprint.compute(messengerChatsScreen("Czaty • 2 wiadomości"), 1080, 2400)
+        val fpTrailing = ScreenFingerprint.compute(messengerChatsScreen("Czaty 9+"), 1080, 2400)
+
+        assertNotEquals(ScreenFingerprint.UNKNOWN_SCREEN, fpBase)
+        assertEquals(fpBase, fpMultiline)
+        assertEquals(fpBase, fpBullet)
+        assertEquals(fpBase, fpTrailing)
+    }
+
     private data class RectSpec(val left: Int, val top: Int, val right: Int, val bottom: Int)
 
     private fun mockNode(

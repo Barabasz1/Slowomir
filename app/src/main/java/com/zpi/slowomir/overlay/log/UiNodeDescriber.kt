@@ -63,13 +63,7 @@ class UiNodeDescriber @Inject constructor() {
         val ownPackage = service.packageName
         val bounds = Rect()
 
-        val active = service.rootInActiveWindow
-        if (active != null && active.packageName?.toString() != ownPackage) {
-            active.getBoundsInScreen(bounds)
-            if (bounds.contains(x, y)) return active
-        }
-
-        return service.windows
+        val windowHit = service.windows
             .sortedByDescending { it.layer }
             .firstNotNullOfOrNull { window ->
                 window.getBoundsInScreen(bounds)
@@ -79,6 +73,15 @@ class UiNodeDescriber @Inject constructor() {
                     windowRoot.packageName?.toString() != ownPackage
                 ) windowRoot else null
             }
+        if (windowHit != null) return windowHit
+
+        val active = service.rootInActiveWindow
+        if (active != null && active.packageName?.toString() != ownPackage) {
+            active.getBoundsInScreen(bounds)
+            if (bounds.contains(x, y)) return active
+        }
+
+        return null
     }
 
     private fun findBestTargetChain(root: AccessibilityNodeInfo, x: Int, y: Int): List<PathEntry>? {
