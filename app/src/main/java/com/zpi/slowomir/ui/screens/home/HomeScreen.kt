@@ -359,7 +359,21 @@ private fun StartStopButton(
     isRunning: Boolean,
     onClick: () -> Unit,
 ) {
-    val stopColor = MaterialTheme.colorScheme.errorContainer
+    var confirming by remember { mutableStateOf(false) }
+
+    LaunchedEffect(isRunning, confirming) {
+        if (confirming) {
+            delay(3000)
+            confirming = false
+        }
+    }
+    LaunchedEffect(isRunning) { confirming = false }
+
+    val stopColor = if (confirming) {
+        Color(0xFFD08A3C)
+    } else {
+        MaterialTheme.colorScheme.errorContainer
+    }
 
     val startColor by animateColorAsState(
         targetValue = if (isRunning) stopColor else SlowomirTeal,
@@ -375,7 +389,8 @@ private fun StartStopButton(
 
     val contentColor by animateColorAsState(
         targetValue = if (isRunning) {
-            MaterialTheme.colorScheme.onErrorContainer
+            if (confirming) Color(0xFF2E1A08)
+            else MaterialTheme.colorScheme.onErrorContainer
         } else {
             MaterialTheme.colorScheme.onPrimary
         },
@@ -395,7 +410,16 @@ private fun StartStopButton(
             )
             .clickable(
                 role = Role.Button,
-                onClick = onClick,
+                onClick = {
+                    if (!isRunning) {
+                        onClick()
+                    } else if (confirming) {
+                        confirming = false
+                        onClick()
+                    } else {
+                        confirming = true
+                    }
+                },
             )
             .padding(horizontal = 16.dp),
         contentAlignment = Alignment.Center,
@@ -409,7 +433,10 @@ private fun StartStopButton(
         ) { running ->
             Text(
                 text = if (running) {
-                    stringResource(R.string.home_stop_listening)
+                    stringResource(
+                        if (confirming) R.string.home_stop_confirm
+                        else R.string.home_stop_listening
+                    )
                 } else {
                     stringResource(R.string.home_start_listening)
                 },

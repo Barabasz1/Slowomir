@@ -115,7 +115,7 @@ class MainViewModel @Inject constructor(
     init {
         viewModelScope.launch(Dispatchers.IO) { macroRepository.reloadRecordedMacros() }
         viewModelScope.launch {
-            if (isOverlayEnabled.value) {
+            if (isOverlayEnabled.value && voiceState.value.let { it !is VoiceState.Stopped && it !is VoiceState.Failed }) {
                 voiceOverlayManager.showOverlay()
             }
         }
@@ -124,7 +124,7 @@ class MainViewModel @Inject constructor(
     fun setOverlayEnabled(enabled: Boolean) {
         preferencesManager.setOverlayEnabled(enabled)
         viewModelScope.launch {
-            if (enabled) {
+            if (enabled && voiceState.value.let { it !is VoiceState.Stopped && it !is VoiceState.Failed }) {
                 voiceOverlayManager.showOverlay()
             } else {
                 voiceOverlayManager.hideOverlay()
@@ -141,6 +141,7 @@ class MainViewModel @Inject constructor(
     }
 
     fun startVoiceService() {
+        voiceOverlayManager.clearEvents()
         VoiceRecognitionService.start(context)
         if (isOverlayEnabled.value) {
             viewModelScope.launch {

@@ -93,4 +93,5 @@
     <!-- Macros -->
     <string name="macros_title">Makra</string>
     <string name="commands_title">Lista komend</string>
+    <string name="home_stop_confirm">Dotknij ponownie, aby wyłączyć</string>
 </resources>

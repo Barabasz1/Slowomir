@@ -14,7 +14,6 @@ import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.os.IBinder
 import android.os.PowerManager
-import android.os.SystemClock
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
@@ -23,6 +22,8 @@ import com.zpi.slowomir.MainActivity
 import com.zpi.slowomir.R
 import com.zpi.slowomir.kws.KeywordSpotter
 import com.zpi.slowomir.kws.KwsResult
+import com.zpi.slowomir.overlay.executors.GridExecutor
+import com.zpi.slowomir.overlay.executors.MacroExecutor
 import com.zpi.slowomir.overlay.executors.MediaExecutor
 import com.zpi.slowomir.utils.MediaPlaybackMonitor
 import com.zpi.slowomir.utils.ScreenWaker
@@ -48,6 +49,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import com.zpi.slowomir.overlay.ui.voice.PickerOverlayManager
+import com.zpi.slowomir.overlay.ui.voice.VoiceOverlayManager
 
 /**
  * Dedicated Foreground Service responsible for recording audio and running the Vosk
@@ -81,8 +83,8 @@ class VoiceRecognitionService : Service() {
 
     private var mediaJob: Job? = null
 
-    // Needs no accessibility service: it only uses the context to reach the audio system services
-    private val mediaExecutor by lazy { MediaExecutor(applicationContext) }
+    @Inject
+    lateinit var mediaExecutor: MediaExecutor
 
     @Volatile
     private var stopReason: String? = null
@@ -103,6 +105,15 @@ class VoiceRecognitionService : Service() {
 
     @Inject
     lateinit var pickerOverlayManager: PickerOverlayManager
+
+    @Inject
+    lateinit var voiceOverlayManager: VoiceOverlayManager
+
+    @Inject
+    lateinit var gridExecutor: GridExecutor
+
+    @Inject
+    lateinit var macroExecutor: MacroExecutor
 
 //    @Inject
 //    lateinit var macroRecordingOverlayManager: MacroRecordingOverlayManager
@@ -304,6 +315,7 @@ class VoiceRecognitionService : Service() {
         super.onDestroy()
         unregisterReceiver(screenOffReceiver)
         sink.accept(VoiceInput.ServiceStopped(stopReason))
+        shutDownOverlayFeatures()
 
         val job = engineJob
         scope.cancel()
@@ -313,6 +325,17 @@ class VoiceRecognitionService : Service() {
             stt.release()
         }
         Log.i(TAG, "Destroyed")
+    }
+
+    private fun shutDownOverlayFeatures() {
+        runCatching {
+            gridExecutor.disable()
+            macroExecutor.stopMacro()
+            macroExecutor.discardRecording()
+            macroExecutor.hideMacroOverlay()
+            pickerOverlayManager.hide()
+            voiceOverlayManager.hide()
+        }.onFailure { Log.w(TAG, "Failed to shut down overlay features", it) }
     }
 
     override fun onBind(intent: Intent?): IBinder? = null

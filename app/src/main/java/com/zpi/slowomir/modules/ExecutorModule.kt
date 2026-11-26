@@ -1,7 +1,6 @@
 package com.zpi.slowomir.modules
 
 import com.zpi.slowomir.overlay.executors.MacroExecutor
-import com.zpi.slowomir.overlay.executors.MediaExecutor
 import com.zpi.slowomir.overlay.executors.NavigationExecutor
 import com.zpi.slowomir.overlay.executors.PhoneCallExecutor
 import com.zpi.slowomir.overlay.executors.PredictionExecutor
@@ -20,11 +19,6 @@ class ExecutorModule {
     @Provides
     fun provideTouchExecutor(): TouchExecutor? {
         return CommandExecutorService.instance?.touchExecutor
-    }
-
-    @Provides
-    fun provideMediaExecutor(): MediaExecutor? {
-        return CommandExecutorService.instance?.mediaExecutor
     }
 
     @Provides

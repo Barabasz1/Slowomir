@@ -18,7 +18,7 @@ class PreviousTrackCommand @AssistedInject constructor(
 ) : Command {
     override fun execute(): CommandResult {
         val executor = mediaExecutorProvider.get()
-            ?: return CommandResult.Failure("Accessibility Service is not enabled")
+            ?: return CommandResult.Failure("Media executor unavailable")
 
         val success = executor.previousTrack()
         return if (success) CommandResult.Success() else CommandResult.Failure("Media previous track failed")
