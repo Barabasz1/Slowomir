@@ -17,7 +17,7 @@ import org.mockito.kotlin.whenever
 
 class UiNodeDescriberHitTestTest {
 
-    private val describer = UiNodeDescriber()
+    private val describer = UiNodeDescriber(mock())
 
     @Test
     fun `tapping launcher icon behind full-screen non-clickable backdrop resolves icon and PredictionNodeMatcher matches only icon`() {
@@ -50,7 +50,6 @@ class UiNodeDescriberHitTestTest {
 
         val descriptor = describer.resolveInRoot(
             root = root,
-            ownPackage = "com.zpi.slowomir",
             x = 150,
             y = 500,
         )
@@ -58,6 +57,7 @@ class UiNodeDescriberHitTestTest {
         assertNotNull(descriptor)
         assertEquals(ActionType.UI_CLICK, descriptor!!.type)
         assertEquals("FrameLayout[0]/Workspace[0]/TextView[0]", descriptor.hierarchyPath)
+        assertEquals("Messenger", descriptor.label)
         assertEquals(ActionHasher.sha256Hex("messenger"), descriptor.labelHash)
 
         val entity = ActionDefEntity(
@@ -105,7 +105,6 @@ class UiNodeDescriberHitTestTest {
 
         val descriptor = describer.resolveInRoot(
             root = root,
-            ownPackage = "com.zpi.slowomir",
             x = 150,
             y = 500,
         )
@@ -149,7 +148,6 @@ class UiNodeDescriberHitTestTest {
 
         val switchDescriptor = describer.resolveInRoot(
             root = root,
-            ownPackage = "com.zpi.slowomir",
             x = 960,
             y = 400,
         )
@@ -159,7 +157,6 @@ class UiNodeDescriberHitTestTest {
 
         val rowDescriptor = describer.resolveInRoot(
             root = root,
-            ownPackage = "com.zpi.slowomir",
             x = 200,
             y = 400,
         )
@@ -193,7 +190,7 @@ class UiNodeDescriberHitTestTest {
             children = listOf(enabledIcon, disabledOverlay),
         )
 
-        val descriptor = describer.resolveInRoot(root, "com.zpi.slowomir", 150, 150)
+        val descriptor = describer.resolveInRoot(root, 150, 150)
         assertNotNull(descriptor)
         assertEquals("FrameLayout[0]/TextView[0]", descriptor!!.hierarchyPath)
         assertEquals(ActionHasher.sha256Hex("dalej"), descriptor.labelHash)

@@ -15,7 +15,7 @@ import com.zpi.slowomir.overlay.log.ActionHasher
 import com.zpi.slowomir.overlay.log.ActionType
 import com.zpi.slowomir.overlay.log.db.ActionDefEntity
 import com.zpi.slowomir.overlay.log.db.PredictionDao
-import com.zpi.slowomir.overlay.macro.MacroPlayer
+import com.zpi.slowomir.overlay.macro.MacroPlaybackState
 import com.zpi.slowomir.overlay.services.CommandExecutorService
 import com.zpi.slowomir.overlay.ui.prediction.PredictionOverlayManager
 import com.zpi.slowomir.voice.stt.VoiceState
@@ -74,7 +74,7 @@ internal interface PredictionEnvironment {
 
 @Singleton
 class DefaultPredictionEnvironment @Inject constructor(
-    private val macroPlayer: MacroPlayer,
+    private val macroPlaybackState: MacroPlaybackState,
     private val voiceStateSource: VoiceStateSource,
 ) : PredictionEnvironment {
 
@@ -122,8 +122,18 @@ class DefaultPredictionEnvironment @Inject constructor(
         return metricHeight ?: service.resources.displayMetrics.heightPixels
     }
 
-    override fun keyboardTop(): Int? =
-        CommandExecutorService.instance?.focusLayout()?.keyboardTop
+    override fun keyboardTop(): Int? {
+        val service = CommandExecutorService.instance ?: return null
+        return runCatching {
+            service.windows
+                .firstOrNull { it.type == AccessibilityWindowInfo.TYPE_INPUT_METHOD }
+                ?.let { window ->
+                    val bounds = Rect()
+                    window.getBoundsInScreen(bounds)
+                    bounds.top.takeIf { bounds.right > bounds.left && bounds.bottom > bounds.top }
+                }
+        }.getOrNull()
+    }
 
     override fun isVoiceServiceRunning(): Boolean {
         val state = voiceStateSource.state.value
@@ -137,7 +147,7 @@ class DefaultPredictionEnvironment @Inject constructor(
             state is VoiceState.TextProcessing
     }
 
-    override fun isMacroPlaying(): Boolean = macroPlayer.isPlaying
+    override fun isMacroPlaying(): Boolean = macroPlaybackState.isPlaying
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -216,9 +226,12 @@ class PredictionManager internal constructor(
     }
 
     fun captureScreenSnapshot(action: ActionDescriptor): ScreenSnapshot? {
-        if (!env.isVoiceServiceRunning() || env.isMacroPlaying()) return null
+        if (!env.isVoiceServiceRunning() || env.isMacroPlaying() || action.packageName == ownPackageName) {
+            return null
+        }
         val root = env.findRootForPackage(action.packageName) ?: return null
         val rootPkg = root.packageName?.toString()
+        if (rootPkg == ownPackageName) return null
         if (action.packageName != null && rootPkg != action.packageName) {
             Log.d(TAG, "captureScreenSnapshot skipped: pkg mismatch root=$rootPkg action=${action.packageName}")
             return null
@@ -241,6 +254,7 @@ class PredictionManager internal constructor(
     ) {
         if (action.commandType == ConfirmCommand::class.java.name ||
             action.commandType == DismissCommand::class.java.name ||
+            action.packageName == ownPackageName ||
             !env.isVoiceServiceRunning() ||
             env.isMacroPlaying()
         ) {
