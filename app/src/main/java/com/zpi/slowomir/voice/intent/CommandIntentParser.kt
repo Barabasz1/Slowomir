@@ -262,8 +262,8 @@ class CommandIntentParser @Inject constructor(
             "przewiń do tyłu", "przeskocz do tyłu", "przesuń odtwarzanie do tyłu", "przewiń nagranie wstecz", "cofnij nagranie o kilka sekund" -> CommandIdentifier.MEDIA_SKIP_BACKWARD
             "następna piosenka", "następny utwór", "przejdź do następnej piosenki", "włącz następny utwór", "kolejna piosenka" -> CommandIdentifier.MEDIA_NEXT_TRACK
             "poprzednia piosenka", "poprzedni utwór", "przejdź do poprzedniej piosenki", "włącz poprzedni utwór", "wcześniejsza piosenka" -> CommandIdentifier.MEDIA_PREVIOUS_TRACK
-            "potwierdź", "zaakceptuj propozycję", "wykonaj sugerowaną akcję", "potwierdź sugestię", "zgadzam się na propozycję" -> CommandIdentifier.PREDICTION_CONFIRM
-            "odrzuć propozycję", "nie wykonuj sugestii", "anuluj sugerowaną akcję", "pomiń sugestię" -> CommandIdentifier.PREDICTION_DISMISS
+            "tak", "potwierdź", "zaakceptuj propozycję", "wykonaj sugerowaną akcję", "potwierdź sugestię", "zgadzam się na propozycję" -> CommandIdentifier.PREDICTION_CONFIRM
+            "nie", "odrzuć sugestię", "odrzuć propozycję", "nie wykonuj sugestii", "anuluj sugerowaną akcję", "pomiń sugestię" -> CommandIdentifier.PREDICTION_DISMISS
             "pisz", "dyktuj", "rozpocznij dyktowanie", "wpisz tekst głosem", "zacznij pisać" -> CommandIdentifier.TEXT_ENTER
             "do przodu", "przesuń kursor do przodu", "kursor w prawo", "jeden znak w prawo", "przesuń o znak do przodu" -> CommandIdentifier.TEXT_CURSOR_FORWARD
             "do tyłu", "przesuń kursor do tyłu", "kursor w lewo", "jeden znak w lewo", "przesuń o znak wstecz" -> CommandIdentifier.TEXT_CURSOR_BACKWARD

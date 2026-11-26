@@ -6,6 +6,7 @@ import android.annotation.SuppressLint
 import android.content.Intent
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
+import com.zpi.slowomir.overlay.commands.touch.TapCommand
 import android.view.accessibility.AccessibilityNodeInfo
 import android.view.inputmethod.EditorInfo
 import com.zpi.slowomir.overlay.executors.GridExecutor
@@ -20,6 +21,7 @@ import com.zpi.slowomir.utils.AccessibilityUtils
 import com.zpi.slowomir.utils.PreferencesManager
 import com.zpi.slowomir.overlay.ui.voice.VoiceOverlayManager
 import com.zpi.slowomir.voice.dictation.FieldProfileHolder
+import com.zpi.slowomir.prediction.PredictionManager
 import com.zpi.slowomir.voice.mediator.CommandMediator
 import com.zpi.slowomir.voice.VoiceSessionManager
 import dagger.hilt.android.AndroidEntryPoint
@@ -67,6 +69,12 @@ class CommandExecutorService : AccessibilityService() {
     lateinit var macroExecutor: MacroExecutor
 
     @Inject
+    lateinit var predictionManager: PredictionManager
+
+    @Inject
+    lateinit var tapCommandFactory: TapCommand.Factory
+
+    @Inject
     lateinit var preferencesManager: PreferencesManager
 
     // Executors for different modules
@@ -100,7 +108,7 @@ class CommandExecutorService : AccessibilityService() {
         val touch = TouchExecutor(this, preferencesManager)
         touchExecutor = touch
         navigationExecutor = NavigationExecutor(this, touch)
-        predictionExecutor = PredictionExecutor(this)
+        predictionExecutor = PredictionExecutor(predictionManager, tapCommandFactory, mediator)
         textEditExecutor = TextEditExecutor(
             service = this,
             touchExecutor = touch,
@@ -115,6 +123,11 @@ class CommandExecutorService : AccessibilityService() {
         }
 
         instance = this
+    }
+
+    override fun onAccessibilityEvent(event: AccessibilityEvent?) {
+        predictionManager.onAccessibilityEvent(event)
+        event?.let { screenEventsBus.publish(it.eventType) }
     }
 
     @Volatile
@@ -141,9 +154,6 @@ class CommandExecutorService : AccessibilityService() {
         }.also { textInputMethod = it }
     }
 
-    override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        event?.let { screenEventsBus.publish(it.eventType) }
-    }
 
     override fun onInterrupt() {}
 
@@ -162,6 +172,7 @@ class CommandExecutorService : AccessibilityService() {
      */
     private fun release() {
         fieldProfileHolder.focusProbe = null
+        predictionManager.onServiceDisconnected()
         overlayHostProvider.useApplication()
         clearExecutors()
         instance = null

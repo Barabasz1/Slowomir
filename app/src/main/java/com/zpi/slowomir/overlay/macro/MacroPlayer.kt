@@ -51,6 +51,10 @@ class MacroPlayer @Inject constructor(
     @Volatile
     private var stopMacro: Boolean = false
 
+    @Volatile
+    var isPlaying: Boolean = false
+        private set
+
     fun play(macro: Macro): Boolean {
         val startedAt = SystemClock.elapsedRealtime()
         Log.i(TAG, "Play: ${macro.commands.size} commands, startingPoint=${macro.startingPoint}")

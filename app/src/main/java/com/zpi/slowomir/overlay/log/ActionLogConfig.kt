@@ -14,12 +14,14 @@ import com.zpi.slowomir.overlay.commands.macro.RecordMacroCommand
 import com.zpi.slowomir.overlay.commands.macro.ShowMacroOverlayCommand
 import com.zpi.slowomir.overlay.commands.macro.StopMacroCommand
 import com.zpi.slowomir.overlay.commands.macro.ToggleMacroOverlayCommand
+import com.zpi.slowomir.overlay.commands.predictions.ConfirmCommand
+import com.zpi.slowomir.overlay.commands.predictions.DismissCommand
 
 object ActionLogConfig {
     val isEnabled: Boolean = true
     const val RETENTION_DAYS = 90L
     const val PRUNE_INTERVAL_HOURS = 24L
-    val clearOnStart: Boolean = true
+    val clearOnStart: Boolean = false
     val logRowsToConsole: Boolean = true
     const val CONSOLE_TAG = "ActionLog"
 
@@ -36,6 +38,8 @@ object ActionLogConfig {
         KeepMacroCommand::class.java,
         DeleteLastRecordedActionCommand::class.java,
         StopMacroCommand::class.java,
+        ConfirmCommand::class.java,
+        DismissCommand::class.java,
         LogCommand::class.java,
     )
 

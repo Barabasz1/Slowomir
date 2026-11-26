@@ -16,6 +16,8 @@ import javax.inject.Provider
 class DismissCommand @AssistedInject constructor(
     private val predictionExecutorProvider: Provider<PredictionExecutor?>,
 ) : Command {
+    override val requiresBackgroundExecution: Boolean = true
+
     override fun execute(): CommandResult {
         val executor = predictionExecutorProvider.get()
             ?: return CommandResult.Failure("Accessibility Service is not enabled")
@@ -25,7 +27,7 @@ class DismissCommand @AssistedInject constructor(
     }
 
     override fun canExecute(context: OverlayContext): Boolean {
-        return true
+        return predictionExecutorProvider.get()?.hasActiveSuggestion() == true
     }
 
     @AssistedFactory

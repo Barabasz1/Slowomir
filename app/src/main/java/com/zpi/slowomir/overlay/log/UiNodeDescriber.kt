@@ -32,28 +32,25 @@ class UiNodeDescriber @Inject constructor(
     private fun resolve(x: Int, y: Int): ActionDescriptor? {
         val service = CommandExecutorService.instance ?: return null
         val root = findRootAt(service, x, y) ?: return null
+        return resolveInRoot(root, x, y)
+    }
 
-        val chain = ArrayList<PathEntry>()
-        chain.add(PathEntry(root, 0))
-        descend(root, x, y, chain)
+    internal fun resolveInRoot(
+        root: AccessibilityNodeInfo,
+        x: Int,
+        y: Int,
+    ): ActionDescriptor? {
+        val chain = findBestTargetChain(root, x, y) ?: return null
+        val target = chain.last().node
 
-        val clickableIndex = chain.indexOfLast { isClickable(it.node) }
-        val targetIndex = when {
-            clickableIndex >= 0 -> clickableIndex
-            LOG_NON_CLICKABLE_TARGETS -> chain.lastIndex
-            else -> return null
-        }
-        val target = chain[targetIndex].node
-
-        val packageName = chain.subList(0, targetIndex + 1).asReversed()
+        val packageName = chain.asReversed()
             .firstNotNullOfOrNull { it.node.packageName?.toString()?.takeIf { name -> name.isNotBlank() } }
             ?: return null
 
         val path = HierarchyPath.format(
-            chain.subList(0, targetIndex + 1)
-                .map { HierarchyPath.segment(it.node.className, it.indexInParent) }
+            chain.map { HierarchyPath.segment(it.node.className, it.indexInParent) }
         )
-        val label = labelOf(target) ?: descendantLabel(target)
+        val label = labelOf(target, lowercase = false) ?: descendantLabel(target, lowercase = false)
 
         return ActionDescriptor(
             type = ActionType.UI_CLICK,
@@ -69,13 +66,7 @@ class UiNodeDescriber @Inject constructor(
         val ownPackage = service.packageName
         val bounds = Rect()
 
-        val active = service.rootInActiveWindow
-        if (active != null) {
-            active.getBoundsInScreen(bounds)
-            if (bounds.contains(x, y)) return active
-        }
-
-        return service.windows
+        val windowHit = service.windows
             .sortedByDescending { it.layer }
             .firstNotNullOfOrNull { window ->
                 window.getBoundsInScreen(bounds)
@@ -84,70 +75,74 @@ class UiNodeDescriber @Inject constructor(
                         window.type != AccessibilityWindowInfo.TYPE_APPLICATION
                 if (bounds.contains(x, y) && windowRoot != null && !isOwnOverlay) windowRoot else null
             }
+        if (windowHit != null) return windowHit
+
+        val active = service.rootInActiveWindow
+        if (active != null) {
+            active.getBoundsInScreen(bounds)
+            if (bounds.contains(x, y)) return active
+        }
+
+        return null
     }
 
-    private fun descend(
-        parent: AccessibilityNodeInfo,
-        x: Int,
-        y: Int,
-        chain: MutableList<PathEntry>,
-    ) {
+    private fun findBestTargetChain(root: AccessibilityNodeInfo, x: Int, y: Int): List<PathEntry>? {
         val bounds = Rect()
-        var current = parent
-        var depth = 0
-        while (depth < MAX_DEPTH) {
-            var next: PathEntry? = null
-            for (i in current.childCount - 1 downTo 0) {
-                val child = current.getChild(i) ?: continue
-                if (!child.isVisibleToUser) continue
-                child.getBoundsInScreen(bounds)
-                if (bounds.contains(x, y)) {
-                    next = PathEntry(child, i)
-                    break
+        var bestClickable: List<PathEntry>? = null
+        var bestClickableArea = Long.MAX_VALUE
+        var bestClickableEnabled = false
+        var bestFallback: List<PathEntry>? = null
+        var bestFallbackArea = Long.MAX_VALUE
+        val currentChain = ArrayList<PathEntry>()
+
+        fun dfs(node: AccessibilityNodeInfo, indexInParent: Int, depth: Int) {
+            node.getBoundsInScreen(bounds)
+            val containsPoint = x >= bounds.left && x < bounds.right && y >= bounds.top && y < bounds.bottom
+            if (!containsPoint && depth > 0) return
+
+            currentChain.add(PathEntry(node, indexInParent))
+            if (containsPoint) {
+                val width = (bounds.right - bounds.left).coerceAtLeast(0).toLong()
+                val height = (bounds.bottom - bounds.top).coerceAtLeast(0).toLong()
+                val nodeArea = width * height
+
+                if (isClickable(node)) {
+                    val enabled = node.isEnabled
+                    if (bestClickable == null ||
+                        (enabled && !bestClickableEnabled) ||
+                        (enabled == bestClickableEnabled && (
+                                nodeArea < bestClickableArea ||
+                                        (nodeArea == bestClickableArea && currentChain.size > bestClickable!!.size)
+                                ))
+                    ) {
+                        bestClickable = currentChain.toList()
+                        bestClickableArea = nodeArea
+                        bestClickableEnabled = enabled
+                    }
+                } else if (LOG_NON_CLICKABLE_TARGETS) {
+                    if (bestFallback == null ||
+                        nodeArea < bestFallbackArea ||
+                        (nodeArea == bestFallbackArea && currentChain.size > bestFallback!!.size)
+                    ) {
+                        bestFallback = currentChain.toList()
+                        bestFallbackArea = nodeArea
+                    }
                 }
             }
-            if (next == null) return
-            chain.add(next)
-            current = next.node
-            depth++
-        }
-    }
 
-    private fun isClickable(node: AccessibilityNodeInfo): Boolean =
-        node.isClickable || node.actionList.any { it.id == AccessibilityNodeInfo.ACTION_CLICK }
-
-    private fun labelOf(node: AccessibilityNodeInfo): String? {
-        if (node.isPassword) return null
-        val candidates = if (node.isEditable) {
-            listOf(node.hintText, node.contentDescription)
-        } else {
-            listOf(node.text, node.contentDescription)
-        }
-        return candidates.firstNotNullOfOrNull { normalize(it) }
-    }
-
-    private fun normalize(value: CharSequence?): String? =
-        value?.toString()
-            ?.trim()
-            ?.take(MAX_LABEL_LENGTH)
-            ?.takeIf { it.isNotEmpty() }
-
-    private fun descendantLabel(root: AccessibilityNodeInfo): String? {
-        val queue = ArrayDeque<Pair<AccessibilityNodeInfo, Int>>()
-        queue.add(root to 0)
-        var visited = 0
-        while (queue.isNotEmpty() && visited < MAX_LABEL_SCAN_NODES) {
-            val (node, depth) = queue.removeFirst()
-            if (depth >= MAX_LABEL_SCAN_DEPTH) continue
-            for (i in 0 until node.childCount) {
-                val child = node.getChild(i) ?: continue
-                if (!child.isVisibleToUser) continue
-                visited++
-                labelOf(child)?.let { return it }
-                queue.add(child to depth + 1)
+            if (depth < MAX_DEPTH) {
+                for (i in node.childCount - 1 downTo 0) {
+                    val child = node.getChild(i) ?: continue
+                    if (!child.isVisibleToUser) continue
+                    dfs(child, i, depth + 1)
+                }
             }
+
+            currentChain.removeAt(currentChain.lastIndex)
         }
-        return null
+
+        dfs(root, 0, 0)
+        return bestClickable ?: bestFallback
     }
 
     companion object {
@@ -157,5 +152,43 @@ class UiNodeDescriber @Inject constructor(
         private const val MAX_LABEL_SCAN_DEPTH = 3
         private const val MAX_LABEL_SCAN_NODES = 40
         private const val LOG_NON_CLICKABLE_TARGETS = true
+
+        internal fun isClickable(node: AccessibilityNodeInfo): Boolean =
+            node.isClickable || node.actionList.orEmpty().any { it.id == AccessibilityNodeInfo.ACTION_CLICK }
+
+        internal fun labelOf(node: AccessibilityNodeInfo, lowercase: Boolean = true): String? {
+            if (node.isPassword) return null
+            val candidates = if (node.isEditable) {
+                listOf(node.hintText, node.contentDescription)
+            } else {
+                listOf(node.text, node.contentDescription)
+            }
+            return candidates.firstNotNullOfOrNull { normalizeLabel(it, lowercase) }
+        }
+
+        internal fun normalizeLabel(value: CharSequence?, lowercase: Boolean = true): String? =
+            value?.toString()
+                ?.trim()
+                ?.take(MAX_LABEL_LENGTH)
+                ?.let { if (lowercase) it.lowercase(Locale.ROOT) else it }
+                ?.takeIf { it.isNotEmpty() }
+
+        internal fun descendantLabel(root: AccessibilityNodeInfo, lowercase: Boolean = true): String? {
+            val queue = ArrayDeque<Pair<AccessibilityNodeInfo, Int>>()
+            queue.add(root to 0)
+            var visited = 0
+            while (queue.isNotEmpty() && visited < MAX_LABEL_SCAN_NODES) {
+                val (node, depth) = queue.removeFirst()
+                if (depth >= MAX_LABEL_SCAN_DEPTH) continue
+                for (i in 0 until node.childCount) {
+                    val child = node.getChild(i) ?: continue
+                    if (!child.isVisibleToUser) continue
+                    visited++
+                    labelOf(child, lowercase)?.let { return it }
+                    queue.add(child to depth + 1)
+                }
+            }
+            return null
+        }
     }
 }
