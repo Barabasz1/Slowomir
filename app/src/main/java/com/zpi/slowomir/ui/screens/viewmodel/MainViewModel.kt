@@ -13,6 +13,7 @@ import com.zpi.slowomir.overlay.ui.macro.appLabelResolver
 import com.zpi.slowomir.overlay.ui.confirmation.ConfirmationOverlayManager
 import com.zpi.slowomir.overlay.ui.macro.MacroRecordingOverlayManager
 import com.zpi.slowomir.overlay.commands.grid.GridToggleCommand
+import com.zpi.slowomir.overlay.commands.overlay.LabelsToggleCommand
 import com.zpi.slowomir.overlay.services.VoiceRecognitionService
 import com.zpi.slowomir.overlay.ui.grid.GridType
 import com.zpi.slowomir.overlay.ui.voice.PickerOverlayManager
@@ -42,6 +43,7 @@ class MainViewModel @Inject constructor(
     private val mediator: CommandMediator,
     private val tapCommandFactory: TapCommand.Factory,
     private val gridToggleCommandFactory: GridToggleCommand.Factory,
+    private val labelsToggleCommandFactory: LabelsToggleCommand.Factory,
     private val voiceSessionManager: VoiceSessionManager,
     private val voiceOverlayManager: VoiceOverlayManager,
     pickerOverlayManager: PickerOverlayManager, // injected so it starts observing selections
@@ -179,6 +181,12 @@ class MainViewModel @Inject constructor(
             val toggleGridCommand = gridToggleCommandFactory.create()
             val result = mediator.dispatch(toggleGridCommand)
             _uiState.value = result
+        }
+    }
+
+    fun toggleLabels() {
+        viewModelScope.launch {
+            _uiState.value = mediator.dispatch(labelsToggleCommandFactory.create())
         }
     }
 }

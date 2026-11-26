@@ -199,6 +199,7 @@ fun MainScreen(
                                 onSpeechCompleted = { mainViewModel.simulateSpeechCompletion(it) },
                                 onWakeWord = { mainViewModel.simulateWakeWord() },
                                 onToggleGrid = { mainViewModel.toggleGrid() },
+                                onToggleLabels = { mainViewModel.toggleLabels() },
                                 onTapAt = { x, y -> mainViewModel.executeTapAt(x, y) },
                                 modifier = contentModifier
                             )
