@@ -104,6 +104,15 @@ class VoiceRecognitionService : Service() {
     @Inject
     lateinit var pickerOverlayManager: PickerOverlayManager
 
+//    @Inject
+//    lateinit var macroRecordingOverlayManager: MacroRecordingOverlayManager
+//
+//    @Inject
+//    lateinit var macroPlaybackOverlayManager: MacroPlaybackOverlayManager
+//
+//    @Inject
+//    lateinit var confirmationOverlayManager: ConfirmationOverlayManager
+
     private val screenOffReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             if (intent.action == Intent.ACTION_SCREEN_OFF) {
@@ -244,17 +253,17 @@ class VoiceRecognitionService : Service() {
 
     private suspend fun runStt() {
         stt.initialize().onFailure {
-            fail(it.message ?: "Speech engine failed to initialize")
+            fail(it.message ?: "Nie udało się uruchomić rozpoznawania mowy")
             return
         }
         try {
             stt.startListening()
-                .catch { fail(it.message ?: "Speech engine failed") }
+                .catch { fail(it.message ?: "Rozpoznawanie mowy nie działa") }
                 .collect { result ->
                     when (result) {
                         is SttResult.Partial -> sink.accept(VoiceInput.SpeechPartial(result.text))
                         is SttResult.Final -> sink.accept(VoiceInput.SpeechFinal(result.text))
-                        is SttResult.Error -> fail(result.exception.message ?: "Speech engine failed")
+                        is SttResult.Error -> fail(result.exception.message ?: "Rozpoznawanie mowy nie działa")
                     }
                 }
         } finally {
@@ -311,10 +320,10 @@ class VoiceRecognitionService : Service() {
     private fun createNotificationChannel() {
         val channel = NotificationChannel(
             CHANNEL_ID,
-            "Voice Recognition Service",
+            "Rozpoznawanie mowy",
             NotificationManager.IMPORTANCE_MIN
         ).apply {
-            description = "Background microphone service for voice command recognition"
+            description = "Usługa mikrofonu działająca w tle, która rozpoznaje komendy głosowe"
             setShowBadge(false)
         }
         val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -338,7 +347,7 @@ class VoiceRecognitionService : Service() {
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Słowomir")
-            .setContentText("Voice command recognition is active")
+            .setContentText("Rozpoznawanie komend głosowych jest włączone")
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_MIN)

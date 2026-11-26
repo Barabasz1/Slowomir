@@ -26,6 +26,9 @@ class WriteSMSCommand @AssistedInject constructor(
     @ApplicationContext private val appContext: Context,
     @Assisted("recipient") private val recipient: String? = null,
 ) : Command {
+    override val arguments: Map<String, Any?>
+        get() = mapOf("recipient" to recipient)
+
 
     override fun execute(): CommandResult {
         val number = recipient?.takeIf { it.isNotBlank() }

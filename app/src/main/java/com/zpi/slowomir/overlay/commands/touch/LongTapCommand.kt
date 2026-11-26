@@ -16,6 +16,9 @@ class LongTapCommand @AssistedInject constructor(
     @Assisted("y") private val y: Float,
     @Assisted("duration") private val duration: Long = DEFAULT_HOLD_DURATION
 ) : Command {
+    override val arguments: Map<String, Any?>
+        get() = mapOf("x" to x, "y" to y, "duration" to duration)
+
 
     override fun execute(): CommandResult {
         val executor = touchExecutorProvider.get()

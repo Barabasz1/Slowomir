@@ -44,9 +44,10 @@ interface CommandMediator {
      * Dispatches and executes a command after validating against [currentContext].
      *
      * @param command The [Command] to execute.
+     * @param logged Whether a successful execution is written to the action log (and so recorded into macros).
      * @return The resulting [CommandResult].
      */
-    suspend fun dispatch(command: Command): CommandResult
+    suspend fun dispatch(command: Command, logged: Boolean = true): CommandResult
 
-    fun dispatchScoped(command: Command): Deferred<CommandResult>
+    fun dispatchScoped(command: Command, logged: Boolean = true): Deferred<CommandResult>
 }

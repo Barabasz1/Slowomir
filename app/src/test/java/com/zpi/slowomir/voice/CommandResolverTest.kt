@@ -97,6 +97,9 @@ class CommandResolverTest {
     private val playMacroCommandFactory = mock<PlayMacroCommand.Factory>()
     private val recordMacroCommandFactory = mock<RecordMacroCommand.Factory>()
     private val finishMacroCommandFactory = mock<FinishMacroCommand.Factory>()
+    private val deleteMacroCommandFactory = mock<DeleteMacroCommand.Factory>()
+    private val keepMacroCommandFactory = mock<KeepMacroCommand.Factory>()
+    private val deleteLastRecordedActionCommandFactory = mock<DeleteLastRecordedActionCommand.Factory>()
     private val sleepCommandFactory = mock<SleepCommand.Factory>()
 
     private val resolver = CommandResolver(
@@ -158,6 +161,9 @@ class CommandResolverTest {
         playMacroCommandFactory = playMacroCommandFactory,
         recordMacroCommandFactory = recordMacroCommandFactory,
         finishMacroCommandFactory = finishMacroCommandFactory,
+        deleteMacroCommandFactory = deleteMacroCommandFactory,
+        keepMacroCommandFactory = keepMacroCommandFactory,
+        deleteLastRecordedActionCommandFactory = deleteLastRecordedActionCommandFactory,
         sleepCommandFactory = sleepCommandFactory,
         addColumnGridCommandFactory = addColumnGridCommandFactory,
         addRowGridCommandFactory = addRowGridCommandFactory,

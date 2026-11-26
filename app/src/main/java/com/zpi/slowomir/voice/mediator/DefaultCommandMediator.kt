@@ -39,9 +39,9 @@ class DefaultCommandMediator @Inject constructor(
     private val _mediatorState = MutableStateFlow(MediatorState())
     override val mediatorState: StateFlow<MediatorState> = _mediatorState.asStateFlow()
 
-    override fun dispatchScoped(command: Command): Deferred<CommandResult> {
+    override fun dispatchScoped(command: Command, logged: Boolean): Deferred<CommandResult> {
         return scope.async {
-            dispatch(command)
+            dispatch(command, logged)
         }
     }
 
@@ -118,12 +118,12 @@ class DefaultCommandMediator @Inject constructor(
         null -> ListeningToSpeech(text)
     }
 
-    override suspend fun dispatch(command: Command): CommandResult = withContext(Dispatchers.Main.immediate) {
+    override suspend fun dispatch(command: Command, logged: Boolean): CommandResult = withContext(Dispatchers.Main.immediate) {
         val context = mediatorState.value.overlayContext
 
         if (!command.canExecute(context)) {
             val invalidResult = CommandResult.InvalidContext(
-                "Command ${command::class.simpleName} cannot execute in current context"
+                "Komendy nie można teraz wykonać (${command::class.simpleName})"
             )
 
             return@withContext invalidResult
@@ -136,7 +136,7 @@ class DefaultCommandMediator @Inject constructor(
                 command.execute()
             }
             executionResult.also {
-                if (executionResult is CommandResult.Success) {
+                if (logged && executionResult is CommandResult.Success) {
                     commandLogger.log(command)
                 }
             }

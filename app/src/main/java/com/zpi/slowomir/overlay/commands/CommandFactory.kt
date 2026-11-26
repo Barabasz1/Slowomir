@@ -21,6 +21,9 @@ import com.zpi.slowomir.overlay.commands.grid.UndivideCellCommand
 import com.zpi.slowomir.overlay.commands.grid.ZoomInCellCommand
 import com.zpi.slowomir.overlay.commands.grid.ZoomOutCellCommand
 import com.zpi.slowomir.overlay.commands.macro.AcceptRecordingMacroCommand
+import com.zpi.slowomir.overlay.commands.macro.DeleteLastRecordedActionCommand
+import com.zpi.slowomir.overlay.commands.macro.DeleteMacroCommand
+import com.zpi.slowomir.overlay.commands.macro.KeepMacroCommand
 import com.zpi.slowomir.overlay.commands.macro.DiscardRecordingMacroCommand
 import com.zpi.slowomir.overlay.commands.macro.FinishMacroCommand
 import com.zpi.slowomir.overlay.commands.macro.HideMacroOverlayCommand
@@ -81,7 +84,7 @@ import com.zpi.slowomir.overlay.commands.touch.SwipeUpCommand
 import com.zpi.slowomir.overlay.commands.touch.TapCommand
 import com.zpi.slowomir.overlay.executors.TouchExecutor.Companion.DEFAULT_HOLD_DURATION
 import com.zpi.slowomir.overlay.executors.TouchExecutor.Companion.DEFAULT_PINCH_POWER
-import com.zpi.slowomir.overlay.executors.TouchExecutor.Companion.DEFAULT_SWIPE_DISTANCE
+import com.zpi.slowomir.overlay.executors.TouchExecutor.Companion.DEFAULT_SWIPE_FORCE
 import org.json.JSONObject
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -143,6 +146,9 @@ class CommandFactory @Inject constructor(
     private val zoomOutCellCommandFactory: ZoomOutCellCommand.Factory,
     private val acceptRecordingMacroCommandFactory: AcceptRecordingMacroCommand.Factory,
     private val discardRecordingMacroCommandFactory: DiscardRecordingMacroCommand.Factory,
+    private val deleteMacroCommandFactory: DeleteMacroCommand.Factory,
+    private val keepMacroCommandFactory: KeepMacroCommand.Factory,
+    private val deleteLastRecordedActionCommandFactory: DeleteLastRecordedActionCommand.Factory,
     private val finishMacroCommandFactory: FinishMacroCommand.Factory,
     private val hideMacroOverlayCommandFactory: HideMacroOverlayCommand.Factory,
     private val playMacroCommandFactory: PlayMacroCommand.Factory,
@@ -243,7 +249,12 @@ class CommandFactory @Inject constructor(
                 gridToggleCommandFactory.create()
 
             LongTapCellCommand::class.java.name ->
-                longTapCellCommandFactory.create(arguments.longOrDefault("duration", DEFAULT_HOLD_DURATION))
+                longTapCellCommandFactory.create(
+                    arguments.longOrDefault(
+                        "duration",
+                        DEFAULT_HOLD_DURATION
+                    )
+                )
 
             SelectCellCommand::class.java.name ->
                 selectCellCommandFactory.create(arguments.intOrDefault("cell", 1))
@@ -261,16 +272,36 @@ class CommandFactory @Inject constructor(
                 )
 
             SwipeDownCellCommand::class.java.name ->
-                swipeDownCellCommandFactory.create(arguments.floatOrDefault("distance", DEFAULT_SWIPE_DISTANCE))
+                swipeDownCellCommandFactory.create(
+                    arguments.intOrDefault(
+                        "force",
+                        DEFAULT_SWIPE_FORCE
+                    )
+                )
 
             SwipeLeftCellCommand::class.java.name ->
-                swipeLeftCellCommandFactory.create(arguments.floatOrDefault("distance", DEFAULT_SWIPE_DISTANCE))
+                swipeLeftCellCommandFactory.create(
+                    arguments.intOrDefault(
+                        "force",
+                        DEFAULT_SWIPE_FORCE
+                    )
+                )
 
             SwipeRightCellCommand::class.java.name ->
-                swipeRightCellCommandFactory.create(arguments.floatOrDefault("distance", DEFAULT_SWIPE_DISTANCE))
+                swipeRightCellCommandFactory.create(
+                    arguments.intOrDefault(
+                        "force",
+                        DEFAULT_SWIPE_FORCE
+                    )
+                )
 
             SwipeUpCellCommand::class.java.name ->
-                swipeUpCellCommandFactory.create(arguments.floatOrDefault("distance", DEFAULT_SWIPE_DISTANCE))
+                swipeUpCellCommandFactory.create(
+                    arguments.intOrDefault(
+                        "force",
+                        DEFAULT_SWIPE_FORCE
+                    )
+                )
 
             TapCellCommand::class.java.name ->
                 tapCellCommandFactory.create()
@@ -279,16 +310,35 @@ class CommandFactory @Inject constructor(
                 undivideCellCommandFactory.create()
 
             ZoomInCellCommand::class.java.name ->
-                zoomInCellCommandFactory.create(arguments.floatOrDefault("power", DEFAULT_PINCH_POWER))
+                zoomInCellCommandFactory.create(
+                    arguments.floatOrDefault(
+                        "power",
+                        DEFAULT_PINCH_POWER
+                    )
+                )
 
             ZoomOutCellCommand::class.java.name ->
-                zoomOutCellCommandFactory.create(arguments.floatOrDefault("power", DEFAULT_PINCH_POWER))
+                zoomOutCellCommandFactory.create(
+                    arguments.floatOrDefault(
+                        "power",
+                        DEFAULT_PINCH_POWER
+                    )
+                )
 
             AcceptRecordingMacroCommand::class.java.name ->
                 acceptRecordingMacroCommandFactory.create()
 
             DiscardRecordingMacroCommand::class.java.name ->
                 discardRecordingMacroCommandFactory.create()
+
+            DeleteMacroCommand::class.java.name ->
+                deleteMacroCommandFactory.create(arguments.intOrDefault("index", 0))
+
+            DeleteLastRecordedActionCommand::class.java.name ->
+                deleteLastRecordedActionCommandFactory.create()
+
+            KeepMacroCommand::class.java.name ->
+                keepMacroCommandFactory.create(arguments.intOrDefault("index", 0))
 
             FinishMacroCommand::class.java.name ->
                 finishMacroCommandFactory.create()
@@ -300,7 +350,7 @@ class CommandFactory @Inject constructor(
                 playMacroCommandFactory.create(arguments.intOrDefault("index", 0))
 
             RecordMacroCommand::class.java.name ->
-                recordMacroCommandFactory.create()
+                recordMacroCommandFactory.create(arguments["here"] == true)
 
             ShowMacroOverlayCommand::class.java.name ->
                 showMacroOverlayCommandFactory.create()
@@ -360,16 +410,36 @@ class CommandFactory @Inject constructor(
                 screenshotCommandFactory.create()
 
             SwipeDownNavCommand::class.java.name ->
-                swipeDownNavCommandFactory.create()
+                swipeDownNavCommandFactory.create(
+                    arguments.intOrDefault(
+                        "force",
+                        DEFAULT_SWIPE_FORCE
+                    )
+                )
 
             SwipeLeftNavCommand::class.java.name ->
-                swipeLeftNavCommandFactory.create()
+                swipeLeftNavCommandFactory.create(
+                    arguments.intOrDefault(
+                        "force",
+                        DEFAULT_SWIPE_FORCE
+                    )
+                )
 
             SwipeRightNavCommand::class.java.name ->
-                swipeRightNavCommandFactory.create()
+                swipeRightNavCommandFactory.create(
+                    arguments.intOrDefault(
+                        "force",
+                        DEFAULT_SWIPE_FORCE
+                    )
+                )
 
             SwipeUpNavCommand::class.java.name ->
-                swipeUpNavCommandFactory.create()
+                swipeUpNavCommandFactory.create(
+                    arguments.intOrDefault(
+                        "force",
+                        DEFAULT_SWIPE_FORCE
+                    )
+                )
 
             ZoomInNavCommand::class.java.name ->
                 zoomInNavCommandFactory.create()
@@ -467,28 +537,28 @@ class CommandFactory @Inject constructor(
                 swipeDownCommandFactory.create(
                     arguments.floatOrDefault("x", 0f),
                     arguments.floatOrDefault("y", 0f),
-                    arguments.floatOrDefault("distance", DEFAULT_SWIPE_DISTANCE),
+                    arguments.intOrDefault("force", DEFAULT_SWIPE_FORCE),
                 )
 
             SwipeLeftCommand::class.java.name ->
                 swipeLeftCommandFactory.create(
                     arguments.floatOrDefault("x", 0f),
                     arguments.floatOrDefault("y", 0f),
-                    arguments.floatOrDefault("distance", DEFAULT_SWIPE_DISTANCE),
+                    arguments.intOrDefault("force", DEFAULT_SWIPE_FORCE),
                 )
 
             SwipeRightCommand::class.java.name ->
                 swipeRightCommandFactory.create(
                     arguments.floatOrDefault("x", 0f),
                     arguments.floatOrDefault("y", 0f),
-                    arguments.floatOrDefault("distance", DEFAULT_SWIPE_DISTANCE),
+                    arguments.intOrDefault("force", DEFAULT_SWIPE_FORCE),
                 )
 
             SwipeUpCommand::class.java.name ->
                 swipeUpCommandFactory.create(
                     arguments.floatOrDefault("x", 0f),
                     arguments.floatOrDefault("y", 0f),
-                    arguments.floatOrDefault("distance", DEFAULT_SWIPE_DISTANCE),
+                    arguments.intOrDefault("force", DEFAULT_SWIPE_FORCE),
                 )
 
             TapCommand::class.java.name ->
@@ -499,7 +569,8 @@ class CommandFactory @Inject constructor(
 
             LogCommand::class.java.name -> {
                 val idName = arguments.stringOrNull("identifier") ?: return null
-                val identifier = runCatching { CommandIdentifier.valueOf(idName) }.getOrNull() ?: return null
+                val identifier =
+                    runCatching { CommandIdentifier.valueOf(idName) }.getOrNull() ?: return null
                 val rawArg = arguments.stringOrNull("argument")
                 val arg = rawArg?.let { CommandArgument.Text(it) }
                 LogCommand(identifier, arg)

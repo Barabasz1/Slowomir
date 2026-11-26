@@ -15,6 +15,9 @@ class ZoomOutCellCommand @AssistedInject constructor(
     private val gridExecutorProvider: Provider<GridExecutor?>,
     @Assisted("power") private val power: Float = DEFAULT_PINCH_POWER,
 ) : Command {
+    override val arguments: Map<String, Any?>
+        get() = mapOf("power" to power)
+
 
     override fun execute(): CommandResult {
         val gridExecutor = gridExecutorProvider.get()

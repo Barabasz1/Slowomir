@@ -45,7 +45,13 @@ class VoiceSessionManagerSelectionFlowTest {
     private val applicationUtils = mock<com.zpi.slowomir.utils.ApplicationUtils>()
     private val macroSupplier = mock<com.zpi.slowomir.overlay.macro.MacroSupplier>()
 
-    private val selectionManager = SelectionManager(mock<Context>(), contactUtils, applicationUtils, macroSupplier, PolishTextNormalizer())
+    private val selectionManager = SelectionManager(
+        mock<Context>(),
+        contactUtils,
+        applicationUtils,
+        macroSupplier,
+        PolishTextNormalizer()
+    )
 
     private val jan = listOf(
         ContactOption("Jan Kowalski (Komórka)", "+48111222333"),
@@ -57,10 +63,34 @@ class VoiceSessionManagerSelectionFlowTest {
     @Before
     fun setUp() {
         whenever(mediator.mediatorState).thenReturn(MutableStateFlow(MediatorState()))
-        runBlocking { whenever(mediator.dispatch(any())).thenReturn(CommandResult.Success()) }
-        whenever(contactUtils.lookup(any(), eq("Jan"))).thenReturn(ContactLookupResult.Ambiguous(jan))
+        runBlocking {
+            whenever(
+                mediator.dispatch(
+                    any(),
+                    any()
+                )
+            ).thenReturn(CommandResult.Success())
+        }
+        whenever(
+            contactUtils.lookup(
+                any(),
+                eq("Jan")
+            )
+        ).thenReturn(ContactLookupResult.Ambiguous(jan))
 
-        sessionManager = VoiceSessionManager(mediator, intentParser, commandResolver, selectionManager, intentResolver, PolishTextNormalizer(), mock(), mock(), FieldProfileHolder(), mock())
+        sessionManager = VoiceSessionManager(
+            mediator,
+            intentParser,
+            commandResolver,
+            selectionManager,
+            intentResolver,
+            PolishTextNormalizer(),
+            mock(),
+            mock(),
+            FieldProfileHolder(),
+            mock(),
+            mock()
+        )
         sessionManager.accept(VoiceInput.ServiceStarted)
         sessionManager.accept(VoiceInput.KeywordDetected)
         eventually("session is listening") { sessionManager.state.value is VoiceState.Listening }
@@ -189,7 +219,7 @@ class VoiceSessionManagerSelectionFlowTest {
 
     private fun verifyExecuted(command: Command) {
         runBlocking {
-            verify(mediator, timeout(2000)).dispatch(argThat { this === command })
+            verify(mediator, timeout(2000)).dispatch(argThat { this === command }, any())
         }
     }
 
