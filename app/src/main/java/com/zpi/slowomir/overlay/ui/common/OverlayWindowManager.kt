@@ -52,7 +52,7 @@ abstract class OverlayWindowManager(
 
     protected open fun onAttachDenied(host: OverlayHost) {}
 
-    fun show(): Boolean {
+    open fun show(): Boolean {
         wanted = true
         observeHost()
         return view != null || attach(host)

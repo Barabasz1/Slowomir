@@ -2,6 +2,7 @@ package com.zpi.slowomir.overlay.executors
 
 import android.content.Context
 import android.graphics.PixelFormat
+import android.util.Log
 import android.view.Gravity
 import android.view.View
 import android.view.WindowManager
@@ -40,6 +41,7 @@ class LabelsExecutor(
     private val tapCommandFactory: TapCommand.Factory,
     private val longTapCommandFactory: LongTapCommand.Factory,
     private val uiNodeDescriber: UiNodeDescriber,
+    private val gridExecutor: GridExecutor,
 ) : OverlayWindowManager(hostProvider) {
 
     override val tag = "LabelsOverlay"
@@ -65,7 +67,11 @@ class LabelsExecutor(
             number != null -> targets.firstOrNull { it.number == number }
             text != null -> targets.findByText(text)
             else -> null
-        } ?: return false
+        }
+        if (target == null) {
+            Log.d(tag, "No label for number=$number text=$text; known: ${targets.map { it.number to it.texts }}")
+            return false
+        }
 
         val x = (target.bounds.left + target.bounds.right) / 2f
         val y = (target.bounds.top + target.bounds.bottom) / 2f
@@ -77,6 +83,11 @@ class LabelsExecutor(
         }
         mediator.dispatchScoped(command, logged = false)
         return true
+    }
+
+    override fun show(): Boolean {
+        if (!isShowing) gridExecutor.disable()
+        return super.show()
     }
 
     fun release() {

@@ -32,7 +32,11 @@ fun UiSnapshot.toLabelTargets(
     val bySize = kept.sortedBy { it.second.area }
     val texts = HashMap<ScreenRect, MutableList<String>>()
     for (node in nodes) {
-        val owner = bySize.firstOrNull { it.second.contains(node.bounds) } ?: continue
+        val cx = (node.bounds.left + node.bounds.right) / 2
+        val cy = (node.bounds.top + node.bounds.bottom) / 2
+        val owner = bySize.firstOrNull { it.second.contains(node.bounds) }
+            ?: bySize.firstOrNull { cx in it.second.left..it.second.right && cy in it.second.top..it.second.bottom }
+            ?: continue
         val list = texts.getOrPut(owner.second) { mutableListOf() }
         listOfNotNull(node.text, node.description)
             .map { it.trim() }

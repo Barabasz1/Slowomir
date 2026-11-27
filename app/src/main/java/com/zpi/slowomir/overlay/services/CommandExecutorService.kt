@@ -145,6 +145,7 @@ class CommandExecutorService : AccessibilityService() {
             tapCommandFactory = tapCommandFactory,
             longTapCommandFactory = longTapCommandFactory,
             uiNodeDescriber = uiNodeDescriber,
+            gridExecutor = gridExecutor,
         )
 
         fieldProfileHolder.focusProbe = {
