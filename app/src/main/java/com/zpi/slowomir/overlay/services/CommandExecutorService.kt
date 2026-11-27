@@ -11,7 +11,6 @@ import android.view.accessibility.AccessibilityNodeInfo
 import android.view.inputmethod.EditorInfo
 import com.zpi.slowomir.overlay.executors.GridExecutor
 import com.zpi.slowomir.overlay.commands.touch.LongTapCommand
-import com.zpi.slowomir.overlay.commands.touch.TapCommand
 import com.zpi.slowomir.overlay.executors.LabelsExecutor
 import com.zpi.slowomir.overlay.executors.MacroExecutor
 import com.zpi.slowomir.overlay.log.UiNodeDescriber
@@ -84,9 +83,6 @@ class CommandExecutorService : AccessibilityService() {
 
     @Inject
     lateinit var uiTree: AccessibilityUiTreeSource
-
-    @Inject
-    lateinit var tapCommandFactory: TapCommand.Factory
 
     @Inject
     lateinit var longTapCommandFactory: LongTapCommand.Factory

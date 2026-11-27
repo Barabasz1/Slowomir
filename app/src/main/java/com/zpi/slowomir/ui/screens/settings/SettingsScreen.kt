@@ -21,7 +21,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.selection.toggleable
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
@@ -60,17 +59,6 @@ import com.zpi.slowomir.ui.components.ScreenScaffold
 import com.zpi.slowomir.utils.PreferencesManager
 import com.zpi.slowomir.utils.Minus
 
-private object Idx {
-    const val PERMISSIONS = 1
-    const val OVERLAY = 2
-    const val INVERTED_CONTROLS = 3
-    const val ROWS_MINUS = 4
-    const val ROWS_PLUS = 5
-    const val COLS_MINUS = 6
-    const val COLS_PLUS = 7
-    const val GRID_TYPE_FIRST = 8 // 9..10
-}
-
 @Composable
 fun SettingsScreen(
     isOverlayEnabled: Boolean,
@@ -89,8 +77,8 @@ fun SettingsScreen(
     val scrollState = rememberScrollState()
     val stateOn = stringResource(R.string.settings_state_on)
     val stateOff = stringResource(R.string.settings_state_off)
-    val overlayDescription = stringResource(R.string.settings_a11y_option, Idx.OVERLAY, stringResource(R.string.settings_show_overlay))
-    val invertedDescription = stringResource(R.string.settings_a11y_option, Idx.OVERLAY, stringResource(R.string.settings_inverted_controls))
+    val overlayDescription = stringResource(R.string.settings_show_overlay)
+    val invertedDescription = stringResource(R.string.settings_inverted_controls)
 
     ScreenScaffold(title = stringResource(R.string.settings_title), scrollState = scrollState, modifier = modifier) { innerPadding ->
         Column(
@@ -104,7 +92,7 @@ fun SettingsScreen(
             SectionTitle(stringResource(R.string.settings_section_general))
 
             SettingsCard {
-                val description = stringResource(R.string.settings_a11y_option, Idx.PERMISSIONS, stringResource(R.string.permissions_manage_title))
+                val description = stringResource(R.string.permissions_manage_title)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -120,8 +108,6 @@ fun SettingsScreen(
                         .padding(12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    IndexBadge(Idx.PERMISSIONS)
-                    Spacer(modifier = Modifier.width(12.dp))
                     IconTile(Icons.Rounded.Lock)
                     Spacer(modifier = Modifier.width(16.dp))
                     Text(
@@ -156,8 +142,6 @@ fun SettingsScreen(
                         .padding(12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    IndexBadge(Idx.OVERLAY)
-                    Spacer(modifier = Modifier.width(12.dp))
                     IconTile(Icons.Filled.Build)
                     Spacer(modifier = Modifier.width(16.dp))
                     Text(
@@ -185,15 +169,13 @@ fun SettingsScreen(
                         )
                         .clearAndSetSemantics {
                             contentDescription = invertedDescription
-                            stateDescription = if (isOverlayEnabled) stateOn else stateOff
+                            stateDescription = if (invertedControls) stateOn else stateOff
                             role = Role.Switch
-                            onClick(label = null) { onOverlayEnabledChange(!isOverlayEnabled); true }
+                            onClick(label = null) { onInvertedControlsChange(!invertedControls); true }
                         }
                         .padding(12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    IndexBadge(Idx.INVERTED_CONTROLS)
-                    Spacer(modifier = Modifier.width(12.dp))
                     IconTile(Icons.Filled.Build)
                     Spacer(modifier = Modifier.width(16.dp))
                     Text(
@@ -218,15 +200,11 @@ fun SettingsScreen(
                     Stepper(
                         title = stringResource(R.string.settings_grid_rows),
                         value = gridRows,
-                        minusIndex = Idx.ROWS_MINUS,
-                        plusIndex = Idx.ROWS_PLUS,
                         onValueChange = onGridRowsChange
                     )
                     Stepper(
                         title = stringResource(R.string.settings_grid_cols),
                         value = gridCols,
-                        minusIndex = Idx.COLS_MINUS,
-                        plusIndex = Idx.COLS_PLUS,
                         onValueChange = onGridColsChange
                     )
                 }
@@ -246,9 +224,8 @@ fun SettingsScreen(
                             .padding(horizontal = 12.dp, vertical = 6.dp)
                             .semantics { heading() }
                     )
-                    GridType.entries.forEachIndexed { i, type ->
+                    GridType.entries.forEach { type ->
                         ChoiceRow(
-                            index = Idx.GRID_TYPE_FIRST + i,
                             label = type.label(),
                             selected = type == gridType,
                             onSelect = { onGridTypeChange(type) },
@@ -312,32 +289,13 @@ private fun IconTile(icon: ImageVector) {
 }
 
 @Composable
-private fun IndexBadge(index: Int) {
-    Box(
-        modifier = Modifier
-            .size(24.dp)
-            .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.secondaryContainer),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = index.toString(),
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSecondaryContainer
-        )
-    }
-}
-
-@Composable
 private fun ChoiceRow(
-    index: Int,
     label: String,
     selected: Boolean,
     onSelect: () -> Unit,
     trailing: (@Composable () -> Unit)? = null
 ) {
-    val description = stringResource(R.string.settings_a11y_option, index, label)
+    val description = label
     val stateText = if (selected) stringResource(R.string.settings_state_selected) else stringResource(R.string.settings_state_not_selected)
     Row(
         modifier = Modifier
@@ -353,8 +311,6 @@ private fun ChoiceRow(
             .padding(horizontal = 12.dp, vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        IndexBadge(index)
-        Spacer(modifier = Modifier.width(12.dp))
         RadioButton(selected = selected, onClick = null)
         Spacer(modifier = Modifier.width(12.dp))
         Text(
@@ -370,8 +326,6 @@ private fun ChoiceRow(
 private fun Stepper(
     title: String,
     value: Int,
-    minusIndex: Int,
-    plusIndex: Int,
     onValueChange: (Int) -> Unit
 ) {
     val min = PreferencesManager.GRID_MIN
@@ -400,9 +354,8 @@ private fun Stepper(
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             StepperButton(
-                index = minusIndex,
                 icon = Icons.Filled.Minus,
-                description = stringResource(R.string.settings_a11y_decrease, minusIndex, title, value),
+                description = stringResource(R.string.settings_a11y_decrease, title, value),
                 enabled = value > min,
                 onClick = { onValueChange(value - 1) }
             )
@@ -423,9 +376,8 @@ private fun Stepper(
             }
 
             StepperButtonReverse(
-                index = plusIndex,
                 icon = Icons.Filled.Add,
-                description = stringResource(R.string.settings_a11y_increase, plusIndex, title, value),
+                description = stringResource(R.string.settings_a11y_increase, title, value),
                 enabled = value < max,
                 onClick = { onValueChange(value + 1) }
             )
@@ -435,7 +387,6 @@ private fun Stepper(
 
 @Composable
 private fun StepperButton(
-    index: Int,
     icon: ImageVector,
     description: String,
     enabled: Boolean,
@@ -445,7 +396,6 @@ private fun StepperButton(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(2.dp)
     ) {
-        IndexBadge(index)
         FilledTonalIconButton(
             onClick = onClick,
             enabled = enabled,
@@ -459,7 +409,6 @@ private fun StepperButton(
 }
 @Composable
 private fun StepperButtonReverse(
-    index: Int,
     icon: ImageVector,
     description: String,
     enabled: Boolean,
@@ -478,7 +427,6 @@ private fun StepperButtonReverse(
         ) {
             Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(16.dp))
         }
-        IndexBadge(index)
     }
 }
 
