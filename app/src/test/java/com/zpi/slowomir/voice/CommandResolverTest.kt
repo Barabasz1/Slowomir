@@ -3,6 +3,8 @@ package com.zpi.slowomir.voice
 import com.zpi.slowomir.overlay.commands.CommandArgument
 import com.zpi.slowomir.overlay.commands.CommandIdentifier
 import com.zpi.slowomir.overlay.commands.grid.*
+import com.zpi.slowomir.overlay.commands.overlay.LabelsToggleCommand
+import com.zpi.slowomir.overlay.commands.overlay.SelectLabelCommand
 import com.zpi.slowomir.overlay.commands.macro.*
 import com.zpi.slowomir.overlay.commands.overlay.SleepCommand
 import com.zpi.slowomir.overlay.commands.media.NextTrackCommand
@@ -83,6 +85,10 @@ class CommandResolverTest {
     private val gridEnableCommandFactory = mock<GridEnableCommand.Factory>()
     private val disableGridCommandFactory = mock<GridDisableCommand.Factory>()
     private val gridToggleCommandFactory = mock<GridToggleCommand.Factory>()
+    private val labelsToggleCommandFactory = mock<LabelsToggleCommand.Factory>()
+    private val selectLabelCommandFactory = mock<SelectLabelCommand.Factory>()
+    private val labelsExecutorProvider = mock<javax.inject.Provider<com.zpi.slowomir.overlay.executors.LabelsExecutor?>>()
+    private val gridExecutorProvider = mock<javax.inject.Provider<com.zpi.slowomir.overlay.executors.GridExecutor?>>()
     private val gridResetCommandFactory = mock<GridResetCommand.Factory>()
     private val addColumnGridCommandFactory = mock<AddColumnGridCommand.Factory>()
     private val addRowGridCommandFactory = mock<AddRowGridCommand.Factory>()
@@ -153,6 +159,10 @@ class CommandResolverTest {
         gridEnableCommandFactory = gridEnableCommandFactory,
         disableGridCommandFactory = disableGridCommandFactory,
         gridToggleCommandFactory = gridToggleCommandFactory,
+        labelsToggleCommandFactory = labelsToggleCommandFactory,
+        selectLabelCommandFactory = selectLabelCommandFactory,
+        labelsExecutorProvider = labelsExecutorProvider,
+        gridExecutorProvider = gridExecutorProvider,
         gridResetCommandFactory = gridResetCommandFactory,
         selectCellCommandFactory = selectCellCommandFactory,
         divideCellCommandFactory = divideCellCommandFactory,

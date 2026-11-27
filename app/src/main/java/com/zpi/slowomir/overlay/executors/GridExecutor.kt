@@ -153,6 +153,7 @@ class GridExecutor @Inject constructor(
 
     fun enable() {
         if (isEnabled()) return
+        CommandExecutorService.instance?.labelsExecutor?.hide()
         resetSelection()
         show()
     }

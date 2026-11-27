@@ -39,6 +39,16 @@ class CommandIntentParser @Inject constructor(
         option = RegexOption.IGNORE_CASE
     )
 
+    private val labelLongPressTextRegex = Regex(
+        pattern = """^(?:naciśnij\s+i\s+przytrzymaj|długo\s+naciśnij|przytrzymaj)\s+(?:(?:na|w|przycisk|etykietę)\s+)?(.+)$""",
+        option = RegexOption.IGNORE_CASE
+    )
+
+    private val labelPressTextRegex = Regex(
+        pattern = """^(?:kliknij|naciśnij|dotknij|stuknij)\s+(?:(?:na|w|przycisk|etykietę)\s+)?(.+)$""",
+        option = RegexOption.IGNORE_CASE
+    )
+
     private val openAppRegex = Regex(
         pattern = """^(?:otwórz(?:\s+aplikację)?|uruchom|włącz(?:\s+aplikację)?|przejdź\s+do\s+aplikacji)\s+(.+)""",
         option = RegexOption.IGNORE_CASE
@@ -229,6 +239,7 @@ class CommandIntentParser @Inject constructor(
             "pokaż siatkę", "wyświetl siatkę", "włącz siatkę", "pokaż podział ekranu", "wyświetl pola" -> CommandIdentifier.GRID_SHOW
             "ukryj siatkę", "schowaj siatkę", "wyłącz siatkę", "usuń siatkę z ekranu", "nie pokazuj siatki" -> CommandIdentifier.GRID_HIDE
             "siatka", "siatkę" -> CommandIdentifier.GRID_TOGGLE
+            "etykiety", "numery", "pokaż etykiety", "ukryj etykiety", "pokaż numery", "ukryj numery" -> CommandIdentifier.LABELS_TOGGLE
             "reset siatki", "zresetuj siatkę", "wyczyść podziały siatki", "przywróć siatkę", "zacznij siatkę od nowa", "resetuj siatkę" -> CommandIdentifier.GRID_RESET
             "podziel", "rozdziel" -> CommandIdentifier.CELL_DIVIDE
             "dodaj kolumnę" -> CommandIdentifier.GRID_ADD_COL
@@ -301,6 +312,14 @@ class CommandIntentParser @Inject constructor(
                 argument = null,
                 rawText = rawInput
             )
+        }
+
+        // Tapping a label by the text inside it, e.g. "kliknij ustawienia"
+        labelLongPressTextRegex.find(text)?.let { match ->
+            return VoiceIntent(CommandIdentifier.LABEL_LONG_PRESS, CommandArgument.Text(match.groupValues[1]), rawInput)
+        }
+        labelPressTextRegex.find(text)?.let { match ->
+            return VoiceIntent(CommandIdentifier.LABEL_PRESS, CommandArgument.Text(match.groupValues[1]), rawInput)
         }
 
         // Swipe with force, e.g. "w górę 3"

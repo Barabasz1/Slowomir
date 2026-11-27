@@ -85,9 +85,9 @@
     <string name="settings_state_selected">Wybrana</string>
     <string name="settings_state_not_selected">Niewybrana</string>
     <string name="settings_range">Od %1$d do %2$d</string>
-    <string name="settings_a11y_option">Opcja %1$d: %2$s</string>
-    <string name="settings_a11y_decrease">Opcja %1$d: zmniejsz – %2$s, obecnie %3$d</string>
-    <string name="settings_a11y_increase">Opcja %1$d: zwiększ – %2$s, obecnie %3$d</string>
+    <string name="settings_a11y_option">%1$s</string>
+    <string name="settings_a11y_decrease">Zmniejsz – %1$s, obecnie %2$d</string>
+    <string name="settings_a11y_increase">Zwiększ – %1$s, obecnie %2$d</string>
     <string name="settings_a11y_value">%1$s: %2$d</string>
 
     <!-- Macros -->

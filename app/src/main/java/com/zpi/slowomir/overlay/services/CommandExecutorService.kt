@@ -10,7 +10,11 @@ import com.zpi.slowomir.overlay.commands.touch.TapCommand
 import android.view.accessibility.AccessibilityNodeInfo
 import android.view.inputmethod.EditorInfo
 import com.zpi.slowomir.overlay.executors.GridExecutor
+import com.zpi.slowomir.overlay.commands.touch.LongTapCommand
+import com.zpi.slowomir.overlay.executors.LabelsExecutor
 import com.zpi.slowomir.overlay.executors.MacroExecutor
+import com.zpi.slowomir.overlay.log.UiNodeDescriber
+import com.zpi.slowomir.overlay.ui.common.AccessibilityUiTreeSource
 import com.zpi.slowomir.overlay.executors.NavigationExecutor
 import com.zpi.slowomir.overlay.executors.PhoneCallExecutor
 import com.zpi.slowomir.overlay.executors.PredictionExecutor
@@ -77,7 +81,19 @@ class CommandExecutorService : AccessibilityService() {
     @Inject
     lateinit var preferencesManager: PreferencesManager
 
+    @Inject
+    lateinit var uiTree: AccessibilityUiTreeSource
+
+    @Inject
+    lateinit var longTapCommandFactory: LongTapCommand.Factory
+
+    @Inject
+    lateinit var uiNodeDescriber: UiNodeDescriber
+
     // Executors for different modules
+    var labelsExecutor: LabelsExecutor? = null
+        private set
+
     var touchExecutor: TouchExecutor? = null
         private set
 
@@ -117,6 +133,16 @@ class CommandExecutorService : AccessibilityService() {
             inputConnection = { textInputMethod?.currentInputConnection },
         )
         phoneCallExecutor = PhoneCallExecutor(this, touch)
+        labelsExecutor = LabelsExecutor(
+            hostProvider = overlayHostProvider,
+            uiTree = uiTree,
+            preferencesManager = preferencesManager,
+            mediator = mediator,
+            tapCommandFactory = tapCommandFactory,
+            longTapCommandFactory = longTapCommandFactory,
+            uiNodeDescriber = uiNodeDescriber,
+            gridExecutor = gridExecutor,
+        )
 
         fieldProfileHolder.focusProbe = {
             findFocus(AccessibilityNodeInfo.FOCUS_INPUT)?.let { AccessibilityUtils.isInputCandidate(it) } == true
@@ -182,6 +208,8 @@ class CommandExecutorService : AccessibilityService() {
      * Clears all executors associated with the service by setting them to `null`.
      */
     private fun clearExecutors() {
+        labelsExecutor?.release()
+        labelsExecutor = null
         touchExecutor = null
         navigationExecutor = null
         predictionExecutor = null

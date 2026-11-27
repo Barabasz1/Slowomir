@@ -289,4 +289,22 @@ class CommandIntentParserTest {
         val toggleGrid = parser.parse("Siatka")
         assertEquals(CommandIdentifier.GRID_TOGGLE, toggleGrid?.identifier)
     }
+
+    @Test
+    fun `parse taps a label by its text`() {
+        val tap = parser.parse("Kliknij ustawienia")
+        assertEquals(CommandIdentifier.LABEL_PRESS, tap?.identifier)
+        assertEquals(CommandArgument.Text("ustawienia"), tap?.argument)
+
+        val longTap = parser.parse("Przytrzymaj przycisk wstecz")
+        assertEquals(CommandIdentifier.LABEL_LONG_PRESS, longTap?.identifier)
+        assertEquals(CommandArgument.Text("wstecz"), longTap?.argument)
+    }
+
+    @Test
+    fun `parse keeps grid commands when no text is given`() {
+        assertEquals(CommandIdentifier.CELL_PRESS, parser.parse("Kliknij")?.identifier)
+        assertEquals(CommandIdentifier.CELL_PRESS, parser.parse("Kliknij 5")?.identifier)
+        assertEquals(CommandIdentifier.CELL_PRESS, parser.parse("kliknij zaznaczone")?.identifier)
+    }
 }

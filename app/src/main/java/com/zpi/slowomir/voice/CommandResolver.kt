@@ -4,6 +4,11 @@ import com.zpi.slowomir.overlay.commands.Command
 import com.zpi.slowomir.overlay.commands.CommandArgument
 import com.zpi.slowomir.overlay.commands.CommandIdentifier
 import com.zpi.slowomir.overlay.commands.LogCommand
+import com.zpi.slowomir.overlay.commands.overlay.LabelsToggleCommand
+import com.zpi.slowomir.overlay.commands.overlay.SelectLabelCommand
+import com.zpi.slowomir.overlay.executors.GridExecutor
+import com.zpi.slowomir.overlay.executors.LabelsExecutor
+import javax.inject.Provider
 import com.zpi.slowomir.overlay.commands.overlay.SleepCommand
 import com.zpi.slowomir.overlay.commands.media.NextTrackCommand
 import com.zpi.slowomir.overlay.commands.media.PauseCommand
@@ -95,6 +100,10 @@ class CommandResolver @Inject constructor(
     private val gridEnableCommandFactory: GridEnableCommand.Factory,
     private val disableGridCommandFactory: GridDisableCommand.Factory,
     private val gridToggleCommandFactory: GridToggleCommand.Factory,
+    private val labelsToggleCommandFactory: LabelsToggleCommand.Factory,
+    private val selectLabelCommandFactory: SelectLabelCommand.Factory,
+    private val labelsExecutorProvider: Provider<LabelsExecutor?>,
+    private val gridExecutorProvider: Provider<GridExecutor?>,
     private val gridResetCommandFactory: GridResetCommand.Factory,
     private val addColumnGridCommandFactory: AddColumnGridCommand.Factory,
     private val addRowGridCommandFactory: AddRowGridCommand.Factory,
@@ -134,6 +143,7 @@ class CommandResolver @Inject constructor(
 
         // Grid
         CommandIdentifier.GRID_TOGGLE -> gridToggleCommandFactory.create()
+        CommandIdentifier.LABELS_TOGGLE -> labelsToggleCommandFactory.create()
         CommandIdentifier.GRID_SHOW -> gridEnableCommandFactory.create()
         CommandIdentifier.GRID_HIDE -> disableGridCommandFactory.create()
         CommandIdentifier.GRID_RESET -> gridResetCommandFactory.create()
@@ -144,10 +154,11 @@ class CommandResolver @Inject constructor(
 
         CommandIdentifier.CELL_SELECT -> {
             val arg = intent.intArgument()
-            if (arg != null)
-                selectCellCommandFactory.create(arg)
-            else
-                voidCommand(intent)
+            when {
+                arg != null && labelsAddressed() -> selectLabelCommandFactory.create(arg, null, false)
+                arg != null -> selectCellCommandFactory.create(arg)
+                else -> voidCommand(intent)
+            }
         }
 
         CommandIdentifier.CELL_DIVIDE -> {
@@ -162,8 +173,16 @@ class CommandResolver @Inject constructor(
         }
 
         CommandIdentifier.CELL_UNDIVIDE -> undivideCellCommandFactory.create()
-        CommandIdentifier.CELL_PRESS -> tapCellCommandFactory.create()
-        CommandIdentifier.CELL_LONG_PRESS -> longTapCellCommandFactory.create()
+        CommandIdentifier.CELL_PRESS ->
+            intent.intArgument()?.takeIf { labelsAddressed() }
+                ?.let { selectLabelCommandFactory.create(it, null, false) }
+                ?: tapCellCommandFactory.create()
+        CommandIdentifier.CELL_LONG_PRESS ->
+            intent.intArgument()?.takeIf { labelsAddressed() }
+                ?.let { selectLabelCommandFactory.create(it, null, true) }
+                ?: longTapCellCommandFactory.create()
+        CommandIdentifier.LABEL_PRESS -> selectLabelCommandFactory.create(null, intent.textArgument(), false)
+        CommandIdentifier.LABEL_LONG_PRESS -> selectLabelCommandFactory.create(null, intent.textArgument(), true)
 
         //rest of cell actions are shared with navigation commands because they are ambiguous
 
@@ -261,6 +280,10 @@ class CommandResolver @Inject constructor(
         else -> LogCommand(intent.identifier, intent.argument)
     }
 
+
+    /** Numbers refer to the labels while they are shown and the grid is not. */
+    private fun labelsAddressed(): Boolean =
+        labelsExecutorProvider.get()?.isShowing == true && gridExecutorProvider.get()?.isEnabled() != true
 
     private fun VoiceIntent.textArgument(): String? =
         (argument as? CommandArgument.Text)?.value

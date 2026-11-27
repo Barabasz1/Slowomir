@@ -33,6 +33,8 @@ fun DevScreen(
     onSpeechCompleted: (String) -> Unit,
     onWakeWord: () -> Unit,
     onToggleGrid: () -> Unit,
+    onToggleLabels: () -> Unit,
+    onToggleNodesDebug: () -> Unit,
     onTapAt: (x: Float, y: Float) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -87,6 +89,14 @@ fun DevScreen(
 
         Button(onClick = onToggleGrid, modifier = Modifier.fillMaxWidth()) {
             Text("Turn On Grid")
+        }
+
+        Button(onClick = onToggleLabels, modifier = Modifier.fillMaxWidth()) {
+            Text("Toggle Labels")
+        }
+
+        Button(onClick = onToggleNodesDebug, modifier = Modifier.fillMaxWidth()) {
+            Text("Toggle Accessibility Nodes")
         }
 
         Button(onClick = { onTapAt(500f, 500f) }, modifier = Modifier.fillMaxWidth()) {
