@@ -200,6 +200,7 @@ fun MainScreen(
                                 onWakeWord = { mainViewModel.simulateWakeWord() },
                                 onToggleGrid = { mainViewModel.toggleGrid() },
                                 onToggleLabels = { mainViewModel.toggleLabels() },
+                                onToggleNodesDebug = { mainViewModel.toggleNodesDebug() },
                                 onTapAt = { x, y -> mainViewModel.executeTapAt(x, y) },
                                 modifier = contentModifier
                             )
