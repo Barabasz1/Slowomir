@@ -105,7 +105,7 @@ private fun fitAround(rect: ScreenRect, others: List<ScreenRect>, minSidePx: Int
     return best
 }
 
-private const val MAX_JOINT_OTHERS = 14
+private const val MAX_JOINT_OTHERS = 6
 private const val FULL_WIDTH_BONUS = 1.3
 
 private fun trimAround(rect: ScreenRect, other: ScreenRect, minSidePx: Int): ScreenRect? {

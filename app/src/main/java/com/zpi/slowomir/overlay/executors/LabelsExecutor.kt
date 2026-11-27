@@ -23,17 +23,16 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
-import javax.inject.Inject
-import javax.inject.Singleton
+import kotlinx.coroutines.withContext
 
 /**
  * Shows numbered labels over the smallest non-overlapping interactive fragments of the screen.
  * The labels follow the screen while the overlay is visible.
  */
-@Singleton
-class LabelsExecutor @Inject constructor(
+class LabelsExecutor(
     hostProvider: OverlayHostProvider,
     private val uiTree: AccessibilityUiTreeSource,
     private val preferencesManager: PreferencesManager,
@@ -48,6 +47,7 @@ class LabelsExecutor @Inject constructor(
     private val scope = CoroutineScope(Dispatchers.Main.immediate + SupervisorJob())
     private var refreshJob: Job? = null
     private var gridTypeJob: Job? = null
+    private var computeJob: Job? = null
     private var labelsView: LabelsView? = null
     private var targets: List<LabelTarget> = emptyList()
     private var lastTarget: ActionDescriptor? = null
@@ -77,6 +77,11 @@ class LabelsExecutor @Inject constructor(
         }
         mediator.dispatchScoped(command, logged = false)
         return true
+    }
+
+    fun release() {
+        hide()
+        scope.cancel()
     }
 
     override fun onCreateView(context: Context): View =
@@ -115,13 +120,22 @@ class LabelsExecutor @Inject constructor(
         refreshJob = null
         gridTypeJob?.cancel()
         gridTypeJob = null
+        computeJob?.cancel()
+        computeJob = null
     }
 
     private fun refresh() {
         val view = labelsView ?: return
         val minSide = (MIN_SIDE_DP * view.resources.displayMetrics.density).toInt()
-        targets = uiTree.snapshot().toLabelTargets(minSidePx = minSide)
-        view.update(targets, preferencesManager.gridType.value)
+        computeJob?.cancel()
+        computeJob = scope.launch {
+            val computed = withContext(Dispatchers.Default) {
+                uiTree.snapshot().toLabelTargets(minSidePx = minSide)
+            }
+            if (labelsView !== view) return@launch
+            targets = computed
+            view.update(computed, preferencesManager.gridType.value)
+        }
     }
 
     private companion object {

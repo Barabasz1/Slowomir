@@ -1,5 +1,6 @@
 package com.zpi.slowomir.modules
 
+import com.zpi.slowomir.overlay.executors.LabelsExecutor
 import com.zpi.slowomir.overlay.executors.MacroExecutor
 import com.zpi.slowomir.overlay.executors.NavigationExecutor
 import com.zpi.slowomir.overlay.executors.PhoneCallExecutor
@@ -34,6 +35,11 @@ class ExecutorModule {
     @Provides
     fun providePredictionExecutor(): PredictionExecutor? {
         return CommandExecutorService.instance?.predictionExecutor
+    }
+
+    @Provides
+    fun provideLabelsExecutor(): LabelsExecutor? {
+        return CommandExecutorService.instance?.labelsExecutor
     }
 
     @Provides

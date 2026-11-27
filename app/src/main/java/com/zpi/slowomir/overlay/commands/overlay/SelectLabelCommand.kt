@@ -30,6 +30,9 @@ class SelectLabelCommand @AssistedInject constructor(
     override fun consumeLoggedAction(): ActionDescriptor? = target
 
     override fun execute(): CommandResult {
+        if (CommandExecutorService.instance == null) {
+            return CommandResult.Failure("Accessibility service is not enabled")
+        }
         val executor = labelsExecutorProvider.get()
             ?: return CommandResult.Failure("Labels executor is null")
         target = null
